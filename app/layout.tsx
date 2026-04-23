@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { Toaster } from "sonner";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -42,6 +43,7 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-gray-50 text-gray-900">
         <main className="">{children}</main>
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );

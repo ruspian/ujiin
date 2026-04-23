@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, BookOpen, LogOut, User as UserIcon, LogIn } from "lucide-react";
+import { Menu, BookOpen, LogOut, User as UserIcon } from "lucide-react";
 import { useState } from "react";
 
 type UserRole = "GURU" | "SISWA" | "ADMIN";
@@ -20,7 +20,6 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Kiri: Logo (Selalu Muncul) */}
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-white">
             <BookOpen size={20} />
@@ -39,7 +38,6 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
               href="/login"
               className="flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700 shadow-sm"
             >
-              <LogIn size={18} />
               Masuk
             </Link>
           </div>

@@ -1,0 +1,150 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+enum Role {
+  ADMIN
+  GURU
+  SISWA
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique 
+  name      String
+  password  String
+  role      Role     @default(SISWA)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi Siswa
+  classId   String?  
+  class     Class?   @relation(fields: [classId], references: [id])
+  attempts  Attempt[] 
+
+  // Relasi Guru
+  questions Question[] 
+  exams     Exam[]     
+
+  accounts  Account[]
+  sessions  Session[]
+}
+
+
+model Class {
+  id        String   @id @default(cuid())
+  name      String   
+  level     Int     
+  
+  students  User[]   
+  exams     Exam[]   
+}
+
+model Subject {
+  id        String     @id @default(cuid())
+  name      String     
+  
+  questions Question[] 
+  exams     Exam[]     
+}
+
+
+model Question {
+  id            String   @id @default(cuid())
+  text          String   @db.Text 
+  options       Json     
+  correctAnswer String  
+  
+  authorId      String
+  author        User     @relation(fields: [authorId], references: [id])
+
+  subjectId     String
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+
+  exams         Exam[]   
+}
+
+model Exam {
+  id          String    @id @default(cuid())
+  title       String    
+  token       String    @unique 
+  startTime   DateTime  
+  endTime     DateTime  
+  duration    Int       
+
+  
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+
+ 
+  subjectId   String
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+
+  
+  classes     Class[]     
+  questions   Question[]  
+  attempts    Attempt[]   
+}
+
+
+model Attempt {
+  id          String    @id @default(cuid())
+  startTime   DateTime  @default(now()) 
+  endTime     DateTime? 
+  score       Float?    
+  answers     Json?     
+  status      AttemptStatus @default(ONGOING) 
+  
+  studentId   String
+  student     User      @relation(fields: [studentId], references: [id])
+  
+  examId      String
+  exam        Exam      @relation(fields: [examId], references: [id])
+
+  // Satu siswa hanya bisa ngerjain satu ujian satu kali
+  @@unique([studentId, examId]) 
+}
+
+enum AttemptStatus {
+  ONGOING   
+  SUBMITTED 
+  CHEATED   
+}
