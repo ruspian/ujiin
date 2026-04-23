@@ -7,7 +7,10 @@ import { Role } from "@prisma/client";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // adapter: PrismaAdapter(prisma) as Adapter,
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // batas sesi login selama 24 jam
+  },
   pages: {
     signIn: "/login",
   },
@@ -79,4 +82,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
+
+  secret: process.env.NEXTAUTH_SECRET,
 });
