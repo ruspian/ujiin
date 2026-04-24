@@ -13,7 +13,7 @@ export default function LoginPage() {
             Masuk ke Akun Anda
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Gunakan Username/NISN yang telah terdaftar
+            Gunakan Username yang telah terdaftar
           </p>
         </div>
 
