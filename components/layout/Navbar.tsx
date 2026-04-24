@@ -8,10 +8,9 @@ import {
   LogOut,
   User as UserIcon,
   LogIn,
-  KeyRound,
+  ChevronDown,
 } from "lucide-react";
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useRef, useEffect } from "react";
 
 type UserRole = "GURU" | "ADMIN";
 
@@ -22,10 +21,25 @@ interface NavbarProps {
 export default function Navbar({ isPublic = false }: NavbarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const session = useSession();
+  // Hardcode sementara. Nanti diganti pakai session dari NextAuth
+  const currentRole = "ADMIN" as UserRole;
 
-  const currentRole = session.data?.user?.role as UserRole;
+  // Tutup dropdown kalau user klik di luar area dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDataMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md">
@@ -44,13 +58,6 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
 
         {isPublic ? (
           <div className="flex items-center gap-4">
-            <Link
-              href="/siswa"
-              className="hidden sm:flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-teal-600 transition-colors"
-            >
-              <KeyRound size={18} />
-              Portal Ujian Siswa
-            </Link>
             <Link
               href="/login"
               className="flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700 shadow-sm"
@@ -72,24 +79,59 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
 
               {currentRole === "ADMIN" && (
                 <>
-                  <Link
-                    href="/admin/pengguna"
-                    className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/admin/pengguna") ? "text-teal-600" : "text-gray-600"}`}
-                  >
-                    Data Pengguna
-                  </Link>
-                  <Link
-                    href="/admin/master"
-                    className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/admin/master") ? "text-teal-600" : "text-gray-600"}`}
-                  >
-                    Data Master
-                  </Link>
-                  <Link
-                    href="/admin/monitoring"
-                    className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/admin/monitoring") ? "text-teal-600" : "text-gray-600"}`}
-                  >
-                    Monitoring Ujian
-                  </Link>
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => setIsDataMenuOpen(!isDataMenuOpen)}
+                      className={`flex items-center gap-1 text-sm font-medium transition-colors hover:text-teal-600 ${
+                        pathname.startsWith("/admin/pengguna") ||
+                        pathname.startsWith("/admin/master") ||
+                        pathname.startsWith("/admin/monitoring")
+                          ? "text-teal-600"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      Data{" "}
+                      <ChevronDown
+                        size={16}
+                        className={`transition-transform ${isDataMenuOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+
+                    {isDataMenuOpen && (
+                      <div className="absolute left-0 mt-3 w-48 rounded-xl border border-gray-100 bg-white p-2 shadow-xl ring-1 ring-black ring-opacity-5">
+                        <Link
+                          href="/admin/pengguna"
+                          onClick={() => setIsDataMenuOpen(false)}
+                          className="block rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                        >
+                          Data Pengguna
+                        </Link>
+                        <Link
+                          href="/admin/master"
+                          onClick={() => setIsDataMenuOpen(false)}
+                          className="block rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                        >
+                          Data Master
+                        </Link>
+                        <Link
+                          href="/admin/jadwal"
+                          onClick={() => setIsDataMenuOpen(false)}
+                          className="block rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                        >
+                          Jadwal Ujian
+                        </Link>
+
+                        <Link
+                          href="/admin/monitoring"
+                          onClick={() => setIsDataMenuOpen(false)}
+                          className="block rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                        >
+                          Monitoring Ujian
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+
                   <Link
                     href="/admin/pengaturan"
                     className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/admin/pengaturan") ? "text-teal-600" : "text-gray-600"}`}
@@ -107,12 +149,7 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
                   >
                     Bank Soal
                   </Link>
-                  <Link
-                    href="/jadwal"
-                    className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/jadwal") ? "text-teal-600" : "text-gray-600"}`}
-                  >
-                    Jadwal Ujian
-                  </Link>
+
                   <Link
                     href="/koreksi"
                     className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/koreksi") ? "text-teal-600" : "text-gray-600"}`}
@@ -149,7 +186,7 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
         )}
       </div>
 
-      {/* Mobile Menu Dropdown  */}
+      {/* Mobile Menu Dropdown */}
       {!isPublic && isMobileMenuOpen && (
         <div className="border-t border-gray-200 bg-white px-4 py-4 lg:hidden shadow-lg">
           <div className="flex flex-col space-y-4">
@@ -160,26 +197,44 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
               Dashboard
             </Link>
 
+            {/* MOBILE MENU ADMIN  */}
             {currentRole === "ADMIN" && (
               <>
-                <Link
-                  href="/admin/pengguna"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Data Pengguna
-                </Link>
-                <Link
-                  href="/admin/master"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Data Master
-                </Link>
-                <Link
-                  href="/admin/monitoring"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Monitoring Ujian
-                </Link>
+                <div className="flex flex-col space-y-3">
+                  <button
+                    onClick={() => setIsDataMenuOpen(!isDataMenuOpen)}
+                    className="flex items-center justify-between text-sm font-medium text-gray-700"
+                  >
+                    Data{" "}
+                    <ChevronDown
+                      size={16}
+                      className={`transition-transform ${isDataMenuOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {isDataMenuOpen && (
+                    <div className="flex flex-col space-y-3 border-l-2 border-teal-100 pl-4 ml-1">
+                      <Link
+                        href="/admin/pengguna"
+                        className="text-sm font-medium text-gray-500 hover:text-teal-600"
+                      >
+                        Data Pengguna
+                      </Link>
+                      <Link
+                        href="/admin/master"
+                        className="text-sm font-medium text-gray-500 hover:text-teal-600"
+                      >
+                        Data Master
+                      </Link>
+                      <Link
+                        href="/admin/monitoring"
+                        className="text-sm font-medium text-gray-500 hover:text-teal-600"
+                      >
+                        Monitoring Ujian
+                      </Link>
+                    </div>
+                  )}
+                </div>
                 <Link
                   href="/admin/pengaturan"
                   className="text-sm font-medium text-gray-700"
