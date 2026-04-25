@@ -13,6 +13,7 @@ import { PenggunaProps } from "@/types/user.admin";
 import { useDebounce } from "use-debounce";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Pagination from "./Pagination";
+import AddUserModal from "./AddUserModal";
 
 export default function DataPenggunaPage({
   users,
@@ -21,6 +22,9 @@ export default function DataPenggunaPage({
   currentPage,
 }: PenggunaProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [debouncedSearch] = useDebounce(searchTerm, 500);
 
   const searchParams = useSearchParams();
@@ -59,11 +63,22 @@ export default function DataPenggunaPage({
             Kelola akses akun Admin dan Guru untuk dashboard ini.
           </p>
         </div>
-        <button className="flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition-all active:scale-95">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition-all active:scale-95"
+        >
           <UserPlus size={18} />
           Tambah Pengguna
         </button>
       </div>
+
+      {isModalOpen && (
+        <AddUserModal
+          setIsModalOpen={setIsModalOpen}
+          isSubmitting={isSubmitting}
+          setIsSubmitting={setIsSubmitting}
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-4">
         <div className="relative md:col-span-8">

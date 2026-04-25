@@ -9,3 +9,9 @@ export type PenggunaProps = {
   totalPages: number;
   currentPage: number;
 };
+
+export type AddUserModalProps = {
+  setIsModalOpen: (isOpen: boolean) => void;
+  isSubmitting: boolean;
+  setIsSubmitting: (isSubmitting: boolean) => void;
+};
