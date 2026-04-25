@@ -14,6 +14,7 @@ import { useDebounce } from "use-debounce";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Pagination from "./Pagination";
 import AddUserModal from "./AddUserModal";
+import EditUserModal from "./EditUserModal";
 
 export default function DataPenggunaPage({
   users,
@@ -24,6 +25,13 @@ export default function DataPenggunaPage({
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isModalEditOpen, setIsModalEditOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{
+    id: string;
+    name: string | null;
+    username: string;
+    role: string;
+  } | null>(null);
 
   const [debouncedSearch] = useDebounce(searchTerm, 500);
 
@@ -75,6 +83,15 @@ export default function DataPenggunaPage({
       {isModalOpen && (
         <AddUserModal
           setIsModalOpen={setIsModalOpen}
+          isSubmitting={isSubmitting}
+          setIsSubmitting={setIsSubmitting}
+        />
+      )}
+
+      {isModalEditOpen && selectedUser && (
+        <EditUserModal
+          user={selectedUser}
+          setIsModalEditOpen={setIsModalEditOpen}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
         />
@@ -149,7 +166,18 @@ export default function DataPenggunaPage({
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <button className="p-2 text-gray-400 hover:text-teal-600 transition-colors">
+                        <button
+                          onClick={() => {
+                            setSelectedUser({
+                              id: user.id,
+                              name: user.name,
+                              username: user.username,
+                              role: user.role,
+                            });
+                            setIsModalEditOpen(true);
+                          }}
+                          className="p-2 text-gray-400 hover:text-teal-600 transition-colors"
+                        >
                           <Edit2 size={16} />
                         </button>
                         <button className="p-2 text-gray-400 hover:text-red-600 transition-colors">
