@@ -34,7 +34,7 @@ export async function createUser(formData: FormData) {
     await prisma.user.create({
       data: {
         name,
-        username,
+        username: username.toLowerCase(),
         password: hashedPassword,
         role,
       },
@@ -80,7 +80,7 @@ export async function updateUser(formData: FormData) {
 
     const dataToUpdate: Prisma.UserUpdateInput = {
       name,
-      username,
+      username: username.toLowerCase(),
       role,
     };
 
@@ -105,5 +105,26 @@ export async function updateUser(formData: FormData) {
     }
 
     return { success: false, message: "Terjadi kesalahan pada server!" };
+  }
+}
+
+export async function deleteUser(id: string) {
+  if (!id) {
+    return { success: false, message: "ID pengguna tidak ditemukan!" };
+  }
+
+  try {
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    revalidatePath("/admin/pengguna");
+    return { success: true, message: "Pengguna berhasil dihapus!" };
+  } catch (error) {
+    console.error("DELETE_USER_ERROR:", error);
+    return {
+      success: false,
+      message: "Terjadi kesalahan saat menghapus data!",
+    };
   }
 }

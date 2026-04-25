@@ -15,6 +15,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Pagination from "./Pagination";
 import AddUserModal from "./AddUserModal";
 import EditUserModal from "./EditUserModal";
+import DeleteUserModal from "./DeleteModal";
 
 export default function DataPenggunaPage({
   users,
@@ -26,6 +27,11 @@ export default function DataPenggunaPage({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
+  const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string;
+    name: string | null;
+  } | null>(null);
   const [selectedUser, setSelectedUser] = useState<{
     id: string;
     name: string | null;
@@ -60,6 +66,20 @@ export default function DataPenggunaPage({
     router.replace(`${pathname}?${params.toString()}`);
   };
 
+  const onClickDeleteButton = (id: string, name: string | null) => {
+    setUserToDelete({ id, name });
+    setIsModalDeleteOpen(true);
+  };
+
+  const onClickEditButton = (
+    id: string,
+    name: string | null,
+    username: string,
+    role: string,
+  ) => {
+    setSelectedUser({ id, name, username, role });
+    setIsModalEditOpen(true);
+  };
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -92,6 +112,15 @@ export default function DataPenggunaPage({
         <EditUserModal
           user={selectedUser}
           setIsModalEditOpen={setIsModalEditOpen}
+          isSubmitting={isSubmitting}
+          setIsSubmitting={setIsSubmitting}
+        />
+      )}
+
+      {isModalDeleteOpen && userToDelete && (
+        <DeleteUserModal
+          user={userToDelete}
+          setIsModalDeleteOpen={setIsModalDeleteOpen}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
         />
@@ -168,19 +197,23 @@ export default function DataPenggunaPage({
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => {
-                            setSelectedUser({
-                              id: user.id,
-                              name: user.name,
-                              username: user.username,
-                              role: user.role,
-                            });
-                            setIsModalEditOpen(true);
+                            onClickEditButton(
+                              user.id,
+                              user.name,
+                              user.username,
+                              user.role,
+                            );
                           }}
                           className="p-2 text-gray-400 hover:text-teal-600 transition-colors"
                         >
                           <Edit2 size={16} />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-red-600 transition-colors">
+                        <button
+                          onClick={() => {
+                            onClickDeleteButton(user.id, user.name);
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -196,10 +229,10 @@ export default function DataPenggunaPage({
                       </div>
                       <div className="space-y-1">
                         <p className="text-xl font-black text-gray-900 dark:text-white">
-                          Produk tidak ditemukan
+                          Pengguna tidak ditemukan
                         </p>
                         <p className="text-sm text-gray-500 font-medium">
-                          Coba gunakan kata kunci lain atau periksa filter kamu.
+                          Coba gunakan kata kunci lain.
                         </p>
                       </div>
                     </div>
