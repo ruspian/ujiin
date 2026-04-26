@@ -17,20 +17,7 @@ import Pagination from "./Pagination";
 import AddClassModal from "./AddKelasModal";
 import EditClassModal from "./EditKelasModal";
 import DeleteKelasModal from "./DeleteKelasModal";
-
-interface ClassData {
-  id: string;
-  name: string;
-  level: number;
-  studentCount: number;
-}
-
-interface KelasClientProps {
-  classes: ClassData[];
-  totalCount: number;
-  totalPages: number;
-  currentPage: number;
-}
+import { ClassData, KelasClientProps } from "@/types/class";
 
 export default function Kelas({
   classes,
@@ -74,7 +61,6 @@ export default function Kelas({
 
   return (
     <div className="space-y-6">
-      {/* Header Info */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Data Master</h1>
         <p className="text-sm text-gray-500">
@@ -108,7 +94,6 @@ export default function Kelas({
         </nav>
       </div>
 
-      {/* Action Bar (Search & Tambah) */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">

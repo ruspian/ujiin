@@ -11,6 +11,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useSession } from "next-auth/react";
 
 type UserRole = "GURU" | "ADMIN";
 
@@ -23,11 +24,10 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const session = useSession();
 
-  // Hardcode sementara. Nanti diganti pakai session dari NextAuth
-  const currentRole = "ADMIN" as UserRole;
+  const currentRole = session.data?.user?.role as UserRole;
 
-  // Tutup dropdown kalau user klik di luar area dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (

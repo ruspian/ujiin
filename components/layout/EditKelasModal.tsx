@@ -1,16 +1,9 @@
-// src/components/layout/master/EditClassModal.tsx
 "use client";
 
 import { updateClass } from "@/actions/class";
+import { EditClassModalProps } from "@/types/class";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-
-interface EditClassModalProps {
-  classData: { id: string; name: string; level: number };
-  setIsModalEditOpen: (val: boolean) => void;
-  isSubmitting: boolean;
-  setIsSubmitting: (val: boolean) => void;
-}
 
 export default function EditClassModal({
   classData,
@@ -52,7 +45,6 @@ export default function EditClassModal({
         </div>
 
         <form action={handleEditClass} className="space-y-4">
-          {/* Hidden input ID */}
           <input type="hidden" name="id" value={classData.id} />
 
           <div>

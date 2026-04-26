@@ -1,15 +1,9 @@
-// src/components/layout/master/AddClassModal.tsx
 "use client";
 
 import { createClass } from "@/actions/class";
+import { AddClassModalProps } from "@/types/class";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-
-interface AddClassModalProps {
-  setIsModalOpen: (val: boolean) => void;
-  isSubmitting: boolean;
-  setIsSubmitting: (val: boolean) => void;
-}
 
 export default function AddClassModal({
   setIsModalOpen,

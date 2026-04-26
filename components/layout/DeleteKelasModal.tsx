@@ -1,7 +1,7 @@
 "use client";
 
 import { deleteClass } from "@/actions/class";
-import { DeleteKelasModalProps } from "@/schemas/classSchema";
+import { DeleteKelasModalProps } from "@/types/class";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
