@@ -15,7 +15,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Pagination from "./Pagination";
 import AddUserModal from "./AddUserModal";
 import EditUserModal from "./EditUserModal";
-import DeleteUserModal from "./DeleteModal";
+import DeleteUserModal from "./DeleteUserModal";
 
 export default function DataPenggunaPage({
   users,
@@ -119,10 +119,11 @@ export default function DataPenggunaPage({
 
       {isModalDeleteOpen && userToDelete && (
         <DeleteUserModal
-          user={userToDelete}
+          data={userToDelete}
           setIsModalDeleteOpen={setIsModalDeleteOpen}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
+          name="pengguna"
         />
       )}
 

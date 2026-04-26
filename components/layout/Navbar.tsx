@@ -107,7 +107,7 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
                           Data Pengguna
                         </Link>
                         <Link
-                          href="/admin/master"
+                          href="/admin/master/kelas"
                           onClick={() => setIsDataMenuOpen(false)}
                           className="block rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-600 transition-colors"
                         >

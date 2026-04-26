@@ -28,3 +28,11 @@ export type EditUserModalProps = {
   isSubmitting: boolean;
   setIsSubmitting: (isSubmitting: boolean) => void;
 };
+
+export interface DeleteUserModalProps {
+  data: { id: string; name: string | null };
+  setIsModalDeleteOpen: (val: boolean) => void;
+  isSubmitting: boolean;
+  setIsSubmitting: (val: boolean) => void;
+  name: string;
+}

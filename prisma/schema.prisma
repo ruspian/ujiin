@@ -1,22 +1,17 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
-  
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-
 enum Role {
   ADMIN
   GURU
-  SISWA
 }
 
 model Account {
@@ -45,22 +40,16 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model User {
   id        String   @id @default(cuid())
   username  String   @unique 
   name      String
-  password  String?
-  role      Role     @default(SISWA)
+  password  String
+  role      Role     @default(GURU)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relasi Siswa
-  classId   String?  
-  class     Class?   @relation(fields: [classId], references: [id])
-  attempts  Attempt[] 
-
-  // Relasi Guru
+  
   questions Question[] 
   exams     Exam[]     
 
@@ -69,13 +58,31 @@ model User {
 }
 
 
+
 model Class {
-  id        String   @id @default(cuid())
-  name      String   
-  level     Int     
+  id        String    @id @default(cuid())
+  name      String    
+  level     Int       
   
-  students  User[]   
+  students  Student[] 
   exams     Exam[]   
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  nisn      String   @unique 
+  name      String
+  
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id])
+  
+  attempts  Attempt[] 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Subject {
@@ -85,7 +92,6 @@ model Subject {
   questions Question[] 
   exams     Exam[]     
 }
-
 
 model Question {
   id            String   @id @default(cuid())
@@ -110,20 +116,16 @@ model Exam {
   endTime     DateTime  
   duration    Int       
 
-  
   authorId    String
   author      User      @relation(fields: [authorId], references: [id])
 
- 
   subjectId   String
   subject     Subject   @relation(fields: [subjectId], references: [id])
 
-  
   classes     Class[]     
   questions   Question[]  
   attempts    Attempt[]   
 }
-
 
 model Attempt {
   id          String    @id @default(cuid())
@@ -134,12 +136,11 @@ model Attempt {
   status      AttemptStatus @default(ONGOING) 
   
   studentId   String
-  student     User      @relation(fields: [studentId], references: [id])
+  student     Student   @relation(fields: [studentId], references: [id]) 
   
   examId      String
   exam        Exam      @relation(fields: [examId], references: [id])
 
-  // Satu siswa hanya bisa ngerjain satu ujian satu kali
   @@unique([studentId, examId]) 
 }
 

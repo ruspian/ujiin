@@ -1,22 +1,16 @@
-// src/components/layout/DeleteUserModal.tsx
 "use client";
 
 import { deleteUser } from "@/actions/user";
+import { DeleteUserModalProps } from "@/types/user.admin";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-interface DeleteUserModalProps {
-  user: { id: string; name: string | null };
-  setIsModalDeleteOpen: (val: boolean) => void;
-  isSubmitting: boolean;
-  setIsSubmitting: (val: boolean) => void;
-}
-
 export default function DeleteUserModal({
-  user,
+  data,
   setIsModalDeleteOpen,
   isSubmitting,
   setIsSubmitting,
+  name,
 }: DeleteUserModalProps) {
   const handleDelete = async (id: string) => {
     try {
@@ -48,8 +42,8 @@ export default function DeleteUserModal({
           Hapus Pengguna?
         </h2>
         <p className="mb-6 text-sm text-gray-500">
-          Apakah Anda yakin ingin menghapus akun{" "}
-          <span className="font-semibold text-gray-900">{user.name}</span>?
+          Apakah Anda yakin ingin menghapus {name}{" "}
+          <span className="font-semibold text-gray-900">{data.name}</span>?
           Tindakan ini tidak dapat dibatalkan.
         </p>
 
@@ -63,7 +57,7 @@ export default function DeleteUserModal({
           </button>
           <button
             type="submit"
-            onClick={() => handleDelete(user.id)}
+            onClick={() => handleDelete(data.id)}
             disabled={isSubmitting}
             className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50 transition-all"
           >

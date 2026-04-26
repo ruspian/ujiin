@@ -24,7 +24,7 @@ export default async function DataPenggunaPage({
       }
     : {};
 
-  const [users, totalCount] = await prisma.$transaction([
+  const [users, totalCount] = await Promise.all([
     prisma.user.findMany({
       where: whereCondition,
       skip: (page - 1) * limit,
