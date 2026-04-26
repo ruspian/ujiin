@@ -109,3 +109,90 @@ export async function deleteStudent(id: string) {
     };
   }
 }
+
+export async function importStudents(
+  studentsData: { nisn: string; name: string; className: string }[],
+) {
+  if (!studentsData || studentsData.length === 0) {
+    return { success: false, message: "File Excel kosong atau format salah!" };
+  }
+
+  try {
+    const getClasses = await prisma.class.findMany({
+      select: { id: true, name: true },
+    });
+
+    const classMap = new Map(
+      getClasses.map((c) => [c.name.trim().toLowerCase(), c.id]),
+    );
+
+    const existingStudents = await prisma.student.findMany({
+      select: { nisn: true },
+    });
+
+    const existingNisnSet = new Set(existingStudents.map((s) => s.nisn));
+
+    const validStudents = [];
+    const errors = [];
+
+    // Proses data baris per baris ke excel
+    for (const [index, row] of studentsData.entries()) {
+      const rowNumber = index + 2; // +2 karena index 0 itu baris ke-2 di Excel
+
+      if (!row.nisn || !row.name || !row.className) {
+        errors.push(`Baris ${rowNumber}: Data tidak lengkap`);
+        continue;
+      }
+
+      const nisnStr = String(row.nisn).trim();
+
+      if (existingNisnSet.has(nisnStr)) {
+        errors.push(`Baris ${rowNumber}: NISN ${nisnStr} sudah terdaftar`);
+        continue;
+      }
+
+      const classId = classMap.get(String(row.className).trim().toLowerCase());
+
+      if (!classId) {
+        errors.push(
+          `Baris ${rowNumber}: Kelas '${row.className}' tidak ditemukan`,
+        );
+        continue;
+      }
+
+      validStudents.push({
+        nisn: nisnStr,
+        name: String(row.name).trim(),
+        classId: classId,
+      });
+
+      // Tambahkan ke Set untuk mencegah duplikat dalam file yang sama
+      existingNisnSet.add(nisnStr);
+    }
+
+    // masukkan ke database sekaligus
+    if (validStudents.length > 0) {
+      await prisma.student.createMany({
+        data: validStudents,
+        skipDuplicates: true, // skip jika ada duplikat
+      });
+    }
+
+    revalidatePath("/admin/master/siswa");
+    revalidatePath("/admin/master/kelas");
+
+    return {
+      success: true,
+      message: `Berhasil import ${validStudents.length} siswa. ${
+        errors.length > 0 ? `Gagal memproses ${errors.length} baris.` : ""
+      }`,
+      errors,
+    };
+  } catch (error) {
+    console.error("IMPORT_STUDENT_ERROR:", error);
+    return {
+      success: false,
+      message: "Terjadi kesalahan pada server saat import!",
+    };
+  }
+}

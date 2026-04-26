@@ -20,6 +20,7 @@ import AddStudentModal from "./AddStudentModal";
 import EditStudentModal from "./EditStudentModal";
 import DeleteStudentModal from "./DeleteStudentModal";
 import { SiswaClientProps, StudentData } from "@/types/student";
+import ImportStudentModal from "./ImportStudentModal";
 
 export default function Siswa({
   students,
@@ -38,6 +39,7 @@ export default function Siswa({
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(
     null,
   );
+  const [isModalImportOpen, setIsModalImportOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -114,7 +116,10 @@ export default function Siswa({
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-all active:scale-95">
+          <button
+            onClick={() => setIsModalImportOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-all active:scale-95"
+          >
             <FileSpreadsheet size={18} />
             Import Excel
           </button>
@@ -151,6 +156,14 @@ export default function Siswa({
         <DeleteStudentModal
           studentData={selectedStudent!}
           setIsModalDeleteOpen={setIsModalDeleteOpen}
+          isSubmitting={isSubmitting}
+          setIsSubmitting={setIsSubmitting}
+        />
+      )}
+
+      {isModalImportOpen && (
+        <ImportStudentModal
+          setIsModalImportOpen={setIsModalImportOpen}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
         />

@@ -41,3 +41,16 @@ export interface DeleteStudentModalProps {
   isSubmitting: boolean;
   setIsSubmitting: (val: boolean) => void;
 }
+
+export interface ImportStudentModalProps {
+  setIsModalImportOpen: (val: boolean) => void;
+  isSubmitting: boolean;
+  setIsSubmitting: (val: boolean) => void;
+}
+
+export interface RawExcelRow {
+  nisn?: string | number;
+  name?: string;
+  className?: string;
+  [key: string]: unknown;
+}
