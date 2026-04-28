@@ -1,15 +1,9 @@
 "use client";
 
 import { deleteSubject } from "@/actions/subject";
+import { DeleteSubjectModalProps } from "@/types/data.master";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-
-interface DeleteSubjectModalProps {
-  subjectData: { id: string; name: string };
-  setIsModalDeleteOpen: (val: boolean) => void;
-  isSubmitting: boolean;
-  setIsSubmitting: (val: boolean) => void;
-}
 
 export default function DeleteSubjectModal({
   subjectData,

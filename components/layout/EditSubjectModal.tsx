@@ -1,21 +1,9 @@
 "use client";
 
 import { updateSubject } from "@/actions/subject";
+import { EditSubjectModalProps } from "@/types/data.master";
 import { X, Users } from "lucide-react";
 import { toast } from "sonner";
-
-interface TeacherData {
-  id: string;
-  name: string;
-}
-
-interface EditSubjectModalProps {
-  subjectData: { id: string; name: string; teachers: TeacherData[] };
-  teachers: TeacherData[];
-  setIsModalEditOpen: (val: boolean) => void;
-  isSubmitting: boolean;
-  setIsSubmitting: (val: boolean) => void;
-}
 
 export default function EditSubjectModal({
   subjectData,

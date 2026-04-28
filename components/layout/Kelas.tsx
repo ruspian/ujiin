@@ -1,23 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Search,
-  Edit2,
-  Trash2,
-  Plus,
-  School,
-  Users,
-  BookOpen,
-} from "lucide-react";
+import { Search, Edit2, Trash2, Plus, School, Users } from "lucide-react";
 import { useDebounce } from "use-debounce";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import Pagination from "./Pagination";
 import AddClassModal from "./AddKelasModal";
 import EditClassModal from "./EditKelasModal";
 import DeleteKelasModal from "./DeleteKelasModal";
 import { ClassData, KelasClientProps } from "@/types/class";
+import MasterAdminNavbar from "./MasterAdminNavbar";
 
 export default function Kelas({
   classes,
@@ -69,29 +61,7 @@ export default function Kelas({
       </div>
 
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex gap-6" aria-label="Tabs">
-          <Link
-            href="/admin/master/kelas"
-            className="flex items-center gap-2 border-b-2 border-teal-600 px-1 py-3 text-sm font-medium text-teal-600"
-          >
-            <School size={18} />
-            Data Kelas
-          </Link>
-          <Link
-            href="/admin/master/siswa"
-            className="flex items-center gap-2 border-b-2 border-transparent px-1 py-3 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
-          >
-            <Users size={18} />
-            Data Siswa
-          </Link>
-          <Link
-            href="/admin/master/mapel"
-            className="flex items-center gap-2 border-b-2 border-transparent px-1 py-3 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
-          >
-            <BookOpen size={18} />
-            Mata Pelajaran
-          </Link>
-        </nav>
+        <MasterAdminNavbar />
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

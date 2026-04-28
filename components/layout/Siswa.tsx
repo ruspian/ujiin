@@ -7,20 +7,18 @@ import {
   Edit2,
   Trash2,
   Plus,
-  School,
   Users,
-  BookOpen,
   FileSpreadsheet,
 } from "lucide-react";
 import { useDebounce } from "use-debounce";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import Pagination from "./Pagination";
 import AddStudentModal from "./AddStudentModal";
 import EditStudentModal from "./EditStudentModal";
 import DeleteStudentModal from "./DeleteStudentModal";
 import { SiswaClientProps, StudentData } from "@/types/student";
 import ImportStudentModal from "./ImportStudentModal";
+import MasterAdminNavbar from "./MasterAdminNavbar";
 
 export default function Siswa({
   students,
@@ -76,29 +74,7 @@ export default function Siswa({
       </div>
 
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex gap-6" aria-label="Tabs">
-          <Link
-            href="/admin/master/kelas"
-            className="flex items-center gap-2 border-b-2 border-transparent px-1 py-3 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
-          >
-            <School size={18} />
-            Data Kelas
-          </Link>
-          <Link
-            href="/admin/master/siswa"
-            className="flex items-center gap-2 border-b-2 border-teal-600 px-1 py-3 text-sm font-medium text-teal-600"
-          >
-            <Users size={18} />
-            Data Siswa
-          </Link>
-          <Link
-            href="/admin/master/mapel"
-            className="flex items-center gap-2 border-b-2 border-transparent px-1 py-3 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
-          >
-            <BookOpen size={18} />
-            Mata Pelajaran
-          </Link>
-        </nav>
+        <MasterAdminNavbar />
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -34,7 +34,7 @@ export default function LoginForm() {
     });
 
     if (result?.error) {
-      toast.error(result.error);
+      toast.error("Username atau password salah!");
       setLoading(false);
     } else {
       toast.success("Berhasil masuk!");
