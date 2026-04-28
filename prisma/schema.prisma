@@ -53,6 +53,8 @@ model User {
   questions Question[] 
   exams     Exam[]     
 
+  subjects  Subject[]
+
   accounts  Account[]
   sessions  Session[]
 }
@@ -90,7 +92,9 @@ model Subject {
   name      String     
   
   questions Question[] 
-  exams     Exam[]     
+  exams     Exam[]    
+
+  teachers  User[] 
 }
 
 model Question {
