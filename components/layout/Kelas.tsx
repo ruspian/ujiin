@@ -61,7 +61,7 @@ export default function Kelas({
       </div>
 
       <div className="border-b border-gray-200">
-        <MasterAdminNavbar />
+        <MasterAdminNavbar active="kelas" />
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

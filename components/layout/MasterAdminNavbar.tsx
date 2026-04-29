@@ -3,24 +3,36 @@
 import Link from "next/link";
 import { School, Users, BookOpen } from "lucide-react";
 
-const MasterAdminNavbar = () => {
+const MasterAdminNavbar = ({ active }: { active: string }) => {
   return (
     <nav className="-mb-px flex gap-6" aria-label="Tabs">
       <Link
         href="/admin/master/kelas"
-        className="flex items-center gap-2 border-b-2 border-transparent px-1 py-3 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
+        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+          active === "kelas"
+            ? "border-teal-600 text-teal-600"
+            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+        }`}
       >
         <School size={18} /> Data Kelas
       </Link>
       <Link
         href="/admin/master/siswa"
-        className="flex items-center gap-2 border-b-2 border-transparent px-1 py-3 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
+        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+          active === "siswa"
+            ? "border-teal-600 text-teal-600"
+            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+        }`}
       >
         <Users size={18} /> Data Siswa
       </Link>
       <Link
         href="/admin/master/mapel"
-        className="flex items-center gap-2 border-b-2 border-teal-600 px-1 py-3 text-sm font-medium text-teal-600"
+        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+          active === "mapel"
+            ? "border-teal-600 text-teal-600"
+            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+        }`}
       >
         <BookOpen size={18} /> Mata Pelajaran
       </Link>
