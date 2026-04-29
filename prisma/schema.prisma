@@ -64,6 +64,15 @@ model User {
   sessions  Session[]
 }
 
+model SchoolProfile {
+  id            String   @id @default("1")
+  name          String
+  npsn          String?
+  address       String?
+  phone         String?
+  updatedAt     DateTime @updatedAt
+}
+
 
 
 model Class {
