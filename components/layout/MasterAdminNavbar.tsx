@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { School, Users, BookOpen } from "lucide-react";
+import { School, Users, BookOpen, Calendar } from "lucide-react";
 
 const MasterAdminNavbar = ({ active }: { active: string }) => {
   return (
@@ -35,6 +35,16 @@ const MasterAdminNavbar = ({ active }: { active: string }) => {
         }`}
       >
         <BookOpen size={18} /> Mata Pelajaran
+      </Link>
+      <Link
+        href="/admin/master/tahun-ajaran"
+        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+          active === "tahun-ajaran"
+            ? "border-teal-600 text-teal-600"
+            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+        }`}
+      >
+        <Calendar size={18} /> Tahun Ajaran
       </Link>
     </nav>
   );
