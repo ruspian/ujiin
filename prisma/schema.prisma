@@ -14,6 +14,11 @@ enum Role {
   GURU
 }
 
+enum Semester {
+  GANJIL
+  GENAP
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -77,6 +82,11 @@ model Student {
   id        String   @id @default(cuid())
   nisn      String   @unique 
   name      String
+
+  password  String?
+  
+  session   String? 
+  room      String?
   
   classId   String
   class     Class    @relation(fields: [classId], references: [id])
@@ -95,6 +105,19 @@ model Subject {
   exams     Exam[]    
 
   teachers  User[] 
+}
+
+
+model AcademicYear {
+  id        String   @id @default(cuid())
+  year      String   
+  semester  Semester @default(GANJIL)
+  active    Boolean  @default(false)
+  
+  exams     Exam[]   
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Question {
@@ -129,6 +152,9 @@ model Exam {
   classes     Class[]     
   questions   Question[]  
   attempts    Attempt[]   
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 }
 
 model Attempt {

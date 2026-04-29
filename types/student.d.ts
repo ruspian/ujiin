@@ -2,6 +2,7 @@ export interface StudentData {
   id: string;
   nisn: string;
   name: string;
+  password?: string | null;
   className: string;
   classId: string;
 }
@@ -53,4 +54,20 @@ export interface RawExcelRow {
   name?: string;
   className?: string;
   [key: string]: unknown;
+}
+
+interface ManageSessionModalProps {
+  classes: ClassData[];
+  setIsModalSessionOpen: (val: boolean) => void;
+  isSubmitting: boolean;
+  setIsSubmitting: (val: boolean) => void;
+}
+
+export interface PrintStudentData {
+  name: string;
+  nisn: string;
+  className: string;
+  password: string;
+  session: string;
+  room: string;
 }

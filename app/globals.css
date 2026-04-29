@@ -128,3 +128,16 @@
     @apply font-mono;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+  body {
+    background: white !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}

@@ -9,6 +9,9 @@ import {
   Plus,
   Users,
   FileSpreadsheet,
+  Dices,
+  Printer,
+  Key,
 } from "lucide-react";
 import { useDebounce } from "use-debounce";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -19,6 +22,9 @@ import DeleteStudentModal from "./DeleteStudentModal";
 import { SiswaClientProps, StudentData } from "@/types/student";
 import ImportStudentModal from "./ImportStudentModal";
 import MasterAdminNavbar from "./MasterAdminNavbar";
+import ManageSessionModal from "./ManageSessionModal";
+import CetakKartuModal from "./CetakKartuModal";
+import ResetPasswordModal from "./ResetPasswordModal";
 
 export default function Siswa({
   students,
@@ -38,6 +44,9 @@ export default function Siswa({
     null,
   );
   const [isModalImportOpen, setIsModalImportOpen] = useState(false);
+  const [isModalSessionOpen, setIsModalSessionOpen] = useState(false);
+  const [isModalCetakOpen, setIsModalCetakOpen] = useState(false);
+  const [isModalResetOpen, setIsModalResetOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -93,6 +102,22 @@ export default function Siswa({
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setIsModalSessionOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-all active:scale-95"
+          >
+            <Dices size={18} />
+            Atur Sesi
+          </button>
+
+          <button
+            onClick={() => setIsModalCetakOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-all active:scale-95"
+          >
+            <Printer size={18} />
+            Cetak Kartu
+          </button>
+
+          <button
             onClick={() => setIsModalImportOpen(true)}
             className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-all active:scale-95"
           >
@@ -145,6 +170,29 @@ export default function Siswa({
         />
       )}
 
+      {isModalSessionOpen && (
+        <ManageSessionModal
+          classes={classes}
+          setIsModalSessionOpen={setIsModalSessionOpen}
+          isSubmitting={isSubmitting}
+          setIsSubmitting={setIsSubmitting}
+        />
+      )}
+
+      {isModalCetakOpen && (
+        <CetakKartuModal
+          classes={classes}
+          setIsModalCetakOpen={setIsModalCetakOpen}
+        />
+      )}
+
+      {isModalResetOpen && selectedStudent && (
+        <ResetPasswordModal
+          studentData={selectedStudent}
+          setIsModalResetOpen={setIsModalResetOpen}
+        />
+      )}
+
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -176,6 +224,17 @@ export default function Siswa({
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedStudent(student);
+                            setIsModalResetOpen(true);
+                          }}
+                          title="Reset Password"
+                          className="p-2 text-gray-400 hover:text-orange-500 transition-colors"
+                        >
+                          <Key size={16} />
+                        </button>
+
                         <button
                           onClick={() => {
                             setSelectedStudent(student);
