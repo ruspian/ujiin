@@ -171,29 +171,42 @@ model ExamType {
   updatedAt DateTime @updatedAt
 }
 
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+}
+
 model Exam {
-  id          String    @id @default(cuid())
-  title       String    
-  token       String    @unique 
-  startTime   DateTime  
-  endTime     DateTime  
-  duration    Int       
+  id              String       @id @default(cuid())
+  title           String    
+  
+  startTime       DateTime  
+  endTime         DateTime  
+  duration        Int       
 
-  authorId    String
-  author      User      @relation(fields: [authorId], references: [id])
+  randomizeQuestions Boolean   @default(true) 
+  showResult         Boolean   @default(false)
+  status             ExamStatus @default(DRAFT)
 
-  subjectId   String
-  subject     Subject   @relation(fields: [subjectId], references: [id])
+  authorId        String
+  author          User         @relation(fields: [authorId], references: [id])
 
-  classes     Class[]     
-  questions   Question[]  
-  attempts    Attempt[]   
+  subjectId       String
+  subject         Subject      @relation(fields: [subjectId], references: [id])
 
-  examTypeId  String
-  examType    ExamType   @relation(fields: [examTypeId], references: [id])
+  examTypeId      String
+  examType        ExamType     @relation(fields: [examTypeId], references: [id])
 
-  academicYearId String
-  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  academicYearId  String
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  classes         Class[]     
+  questions       Question[]  
+  attempts        Attempt[]   
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 }
 
 model Attempt {
