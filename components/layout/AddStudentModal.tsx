@@ -10,6 +10,7 @@ export default function AddStudentModal({
   setIsModalOpen,
   isSubmitting,
   setIsSubmitting,
+  religions,
 }: AddStudentModalProps) {
   const handleAddStudent = async (formData: FormData) => {
     try {
@@ -84,6 +85,24 @@ export default function AddStudentModal({
               {classes.map((cls) => (
                 <option key={cls.id} value={cls.id}>
                   {cls.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Agama
+            </label>
+            <select
+              name="religionId"
+              required
+              className="block w-full rounded-xl border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="">Pilih Agama</option>
+              {religions.map((religion) => (
+                <option key={religion.id} value={religion.id}>
+                  {religion.name}
                 </option>
               ))}
             </select>

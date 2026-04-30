@@ -1,3 +1,5 @@
+import { ReligionData } from "./religion";
+
 export interface StudentData {
   id: string;
   nisn: string;
@@ -5,6 +7,8 @@ export interface StudentData {
   password?: string | null;
   className: string;
   classId: string;
+  religionId?: string | null;
+  religionName?: string | null;
 }
 
 interface ClassData {
@@ -19,6 +23,7 @@ export interface SiswaClientProps {
   totalCount: number;
   totalPages: number;
   currentPage: number;
+  religions: ReligionData[];
 }
 
 export interface AddStudentModalProps {
@@ -26,14 +31,22 @@ export interface AddStudentModalProps {
   setIsModalOpen: (val: boolean) => void;
   isSubmitting: boolean;
   setIsSubmitting: (val: boolean) => void;
+  religions: ReligionData[];
 }
 
 export interface EditStudentModalProps {
-  studentData: { id: string; nisn: string; name: string; classId: string };
+  studentData: {
+    id: string;
+    nisn: string;
+    name: string;
+    classId: string;
+    religionId?: string | null;
+  };
   classes: ClassData[];
   setIsModalEditOpen: (val: boolean) => void;
   isSubmitting: boolean;
   setIsSubmitting: (val: boolean) => void;
+  religions: ReligionData[];
 }
 
 export interface DeleteStudentModalProps {

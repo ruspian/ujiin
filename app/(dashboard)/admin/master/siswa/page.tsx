@@ -22,7 +22,7 @@ export default async function DataSiswaPage({
       }
     : {};
 
-  const [students, totalCount, classes] = await Promise.all([
+  const [students, totalCount, classes, religions] = await Promise.all([
     prisma.student.findMany({
       where: whereCondition,
       skip: (page - 1) * limit,
@@ -30,12 +30,17 @@ export default async function DataSiswaPage({
       orderBy: { createdAt: "desc" },
       include: {
         class: true,
+        religion: true,
       },
     }),
     prisma.student.count({ where: whereCondition }),
     prisma.class.findMany({
       orderBy: [{ level: "asc" }, { name: "asc" }],
       select: { id: true, name: true, level: true },
+    }),
+    prisma.religion.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -47,12 +52,15 @@ export default async function DataSiswaPage({
     name: s.name,
     className: s.class.name,
     classId: s.class.id,
+    religionId: s.religionId,
+    religionName: s.religion?.name,
   }));
 
   return (
     <Siswa
       students={formattedStudents}
       classes={classes}
+      religions={religions}
       totalCount={totalCount}
       totalPages={totalPages}
       currentPage={page}

@@ -32,6 +32,7 @@ export default function Siswa({
   totalCount,
   totalPages,
   currentPage,
+  religions,
 }: SiswaClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch] = useDebounce(searchTerm, 500);
@@ -140,6 +141,7 @@ export default function Siswa({
           classes={classes}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
+          religions={religions}
         />
       )}
 
@@ -150,6 +152,7 @@ export default function Siswa({
           classes={classes}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
+          religions={religions}
         />
       )}
 
@@ -201,6 +204,7 @@ export default function Siswa({
                 <th className="px-6 py-4 font-semibold">NISN</th>
                 <th className="px-6 py-4 font-semibold">Nama Lengkap</th>
                 <th className="px-6 py-4 font-semibold">Kelas</th>
+                <th className="px-6 py-4 font-semibold">Agama</th>
                 <th className="px-6 py-4 font-semibold text-right">Aksi</th>
               </tr>
             </thead>
@@ -220,6 +224,11 @@ export default function Siswa({
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
                         {student.className}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-bold text-green-700">
+                        {student.religionName || " "}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">

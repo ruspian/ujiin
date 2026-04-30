@@ -11,6 +11,7 @@ export default function EditStudentModal({
   setIsModalEditOpen,
   isSubmitting,
   setIsSubmitting,
+  religions,
 }: EditStudentModalProps) {
   const handleEditStudent = async (formData: FormData) => {
     try {
@@ -31,6 +32,8 @@ export default function EditStudentModal({
       setIsSubmitting(false);
     }
   };
+
+  console.log("studentData", studentData);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
@@ -87,6 +90,24 @@ export default function EditStudentModal({
               {classes.map((cls) => (
                 <option key={cls.id} value={cls.id}>
                   {cls.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Agama
+            </label>
+            <select
+              name="religionId"
+              required
+              defaultValue={studentData.religionId || ""}
+              className="block w-full rounded-xl border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500"
+            >
+              {religions.map((religion) => (
+                <option key={religion.id} value={religion.id}>
+                  {religion.name}
                 </option>
               ))}
             </select>

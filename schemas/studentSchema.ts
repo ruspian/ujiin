@@ -4,6 +4,7 @@ export const classSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
   nisn: z.string().min(1, "NISN wajib diisi"),
   classId: z.string().min(1, "Kelas wajib diisi"),
+  religionId: z.string().min(1, "Agama wajib diisi"),
 });
 
 export const updateClassSchema = z.object({
@@ -11,4 +12,5 @@ export const updateClassSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
   nisn: z.string().min(1, "NISN wajib diisi"),
   classId: z.string().min(1, "Kelas wajib diisi"),
+  religionId: z.string().min(1, "Agama wajib diisi"),
 });

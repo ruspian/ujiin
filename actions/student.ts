@@ -18,7 +18,7 @@ export async function createStudent(formData: FormData) {
     };
   }
 
-  const { nisn, name, classId } = studentValidation.data;
+  const { nisn, name, classId, religionId } = studentValidation.data;
 
   try {
     const existingStudent = await prisma.student.findUnique({
@@ -30,7 +30,7 @@ export async function createStudent(formData: FormData) {
     }
 
     await prisma.student.create({
-      data: { nisn, name, classId },
+      data: { nisn, name, classId, religionId },
     });
 
     revalidatePath("/admin/master/siswa");
@@ -54,7 +54,7 @@ export async function updateStudent(formData: FormData) {
     };
   }
 
-  const { id, nisn, name, classId } = studentValidation.data;
+  const { id, nisn, name, classId, religionId } = studentValidation.data;
 
   try {
     const existingStudent = await prisma.student.findUnique({
@@ -70,7 +70,7 @@ export async function updateStudent(formData: FormData) {
 
     await prisma.student.update({
       where: { id },
-      data: { nisn, name, classId },
+      data: { nisn, name, classId, religionId },
     });
 
     revalidatePath("/admin/master/siswa");

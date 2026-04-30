@@ -73,6 +73,16 @@ model SchoolProfile {
   updatedAt     DateTime @updatedAt
 }
 
+model Religion {
+  id        String    @id @default(cuid())
+  name      String    @unique 
+  
+  students  Student[] 
+  subjects  Subject[] 
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
 
 
 model Class {
@@ -102,6 +112,9 @@ model Student {
   
   attempts  Attempt[] 
 
+  religionId String?
+  religion   Religion? @relation(fields: [religionId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -112,6 +125,9 @@ model Subject {
   
   questions Question[] 
   exams     Exam[]    
+
+  religionId String?
+  religion   Religion? @relation(fields: [religionId], references: [id])
 
   teachers  User[] 
 }
