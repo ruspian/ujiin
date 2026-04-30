@@ -160,6 +160,17 @@ model Question {
   exams         Exam[]   
 }
 
+model ExamType {
+  id        String   @id @default(cuid())
+  name      String   
+  code      String   @unique 
+  
+  exams     Exam[]   
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Exam {
   id          String    @id @default(cuid())
   title       String    
@@ -177,6 +188,9 @@ model Exam {
   classes     Class[]     
   questions   Question[]  
   attempts    Attempt[]   
+
+  examTypeId  String
+  examType    ExamType   @relation(fields: [examTypeId], references: [id])
 
   academicYearId String
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])

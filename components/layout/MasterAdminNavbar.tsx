@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { School, Users, BookOpen, Calendar, BookHeart } from "lucide-react";
+import {
+  School,
+  Users,
+  BookOpen,
+  Calendar,
+  BookHeart,
+  ClipboardList,
+} from "lucide-react";
 
 const MasterAdminNavbar = ({ active }: { active: string }) => {
   return (
@@ -56,6 +63,17 @@ const MasterAdminNavbar = ({ active }: { active: string }) => {
         }`}
       >
         <BookHeart size={18} /> Agama
+      </Link>
+
+      <Link
+        href="/admin/master/jenis-ujian"
+        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+          active === "tahun-ajaran"
+            ? "border-teal-600 text-teal-600"
+            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+        }`}
+      >
+        <ClipboardList size={18} /> Jenis Ujian
       </Link>
     </nav>
   );
