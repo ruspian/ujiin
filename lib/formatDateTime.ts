@@ -16,3 +16,11 @@ export const extractDateAndTime = (dateObj: Date | string) => {
     time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
   };
 };
+
+export const formatTime = (isoString: string) => {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(isoString));
+};

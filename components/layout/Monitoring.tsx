@@ -10,27 +10,11 @@ import {
   Search,
   CheckCircle2,
   Timer,
-  XCircle,
+  AlertTriangle,
+  X,
 } from "lucide-react";
-
-// Tipe Data yang strict hasil olahan halaman server
-interface StudentMonitoring {
-  id: string;
-  nisn: string;
-  name: string;
-  className: string;
-  hasStarted: boolean;
-  status: "BELUM" | "ONGOING" | "COMPLETED" | string; // Menyesuaikan enum AttemptStatus lu
-  score: number | null;
-  startTime: Date | null;
-}
-
-interface MonitoringClientProps {
-  examId: string;
-  examTitle: string;
-  subjectName: string;
-  studentsData: StudentMonitoring[];
-}
+import { MonitoringClientProps, ViolationLog } from "@/types/monitoring";
+import { formatTime } from "@/lib/formatDateTime";
 
 export default function Monitoring({
   examId,
@@ -41,6 +25,12 @@ export default function Monitoring({
   const [searchTerm, setSearchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // State untuk Modal Pelanggaran
+  const [selectedCheatLog, setSelectedCheatLog] = useState<{
+    name: string;
+    logs: ViolationLog[];
+  } | null>(null);
 
   const handleRefresh = () => {
     startTransition(() => {
@@ -55,7 +45,6 @@ export default function Monitoring({
       )
     )
       return;
-
     const res = await resetSesiSiswa(examId, studentId);
     if (res.success) {
       toast.success(res.message);
@@ -72,13 +61,10 @@ export default function Monitoring({
   );
 
   const totalStudents = studentsData.length;
-  const countBelum = studentsData.filter((s) => !s.hasStarted).length;
   const countMengerjakan = studentsData.filter(
     (s) => s.status === "ONGOING",
   ).length;
-  const countSelesai = studentsData.filter(
-    (s) => s.hasStarted && s.status !== "ONGOING",
-  ).length;
+  const countCurang = studentsData.filter((s) => s.violationCount > 0).length;
 
   return (
     <div className="space-y-6">
@@ -108,12 +94,6 @@ export default function Monitoring({
             {totalStudents}
           </span>
         </div>
-        <div className="bg-gray-50 border-gray-200 p-4 rounded-xl border flex flex-col justify-center">
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <XCircle size={14} /> Belum Mulai
-          </span>
-          <span className="text-2xl font-bold text-gray-600">{countBelum}</span>
-        </div>
         <div className="bg-yellow-50 border-yellow-200 p-4 rounded-xl border flex flex-col justify-center">
           <span className="text-xs font-bold text-yellow-600 uppercase tracking-wider mb-1 flex items-center gap-1">
             <Timer size={14} /> Mengerjakan
@@ -122,12 +102,18 @@ export default function Monitoring({
             {countMengerjakan}
           </span>
         </div>
-        <div className="bg-teal-50 border-teal-200 p-4 rounded-xl border flex flex-col justify-center">
-          <span className="text-xs font-bold text-teal-600 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <CheckCircle2 size={14} /> Selesai
+        <div
+          className={`p-4 rounded-xl border flex flex-col justify-center ${countCurang > 0 ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"}`}
+        >
+          <span
+            className={`text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1 ${countCurang > 0 ? "text-red-600" : "text-gray-500"}`}
+          >
+            <AlertTriangle size={14} /> Terindikasi Curang
           </span>
-          <span className="text-2xl font-bold text-teal-700">
-            {countSelesai}
+          <span
+            className={`text-2xl font-bold ${countCurang > 0 ? "text-red-700 animate-pulse" : "text-gray-600"}`}
+          >
+            {countCurang} Siswa
           </span>
         </div>
       </div>
@@ -138,7 +124,7 @@ export default function Monitoring({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Cari nama, NISN, atau kelas..."
+              placeholder="Cari nama, NISN..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-gray-50 border-gray-200 rounded-xl text-sm focus:ring-teal-500 focus:border-teal-500"
@@ -150,12 +136,11 @@ export default function Monitoring({
             <thead className="bg-gray-50 text-xs uppercase text-gray-500">
               <tr>
                 <th className="px-6 py-4 font-semibold">Peserta</th>
-                <th className="px-6 py-4 font-semibold">Kelas</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold">Nilai</th>
-                <th className="px-6 py-4 font-semibold text-right">
-                  Aksi Darurat
+                <th className="px-6 py-4 font-semibold text-center">
+                  Pelanggaran
                 </th>
+                <th className="px-6 py-4 font-semibold text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -164,19 +149,18 @@ export default function Monitoring({
                   <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900">{s.name}</div>
-                      <div className="text-xs text-gray-500">{s.nisn}</div>
-                    </td>
-                    <td className="px-6 py-4 font-medium text-gray-700">
-                      {s.className}
+                      <div className="text-xs text-gray-500">
+                        {s.nisn} • {s.className}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       {!s.hasStarted ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                          Belum Mulai
+                          Belum
                         </span>
                       ) : s.status === "ONGOING" ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
-                          <Timer size={12} /> Mengerjakan
+                          <Timer size={12} /> Aktif
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-700">
@@ -184,16 +168,31 @@ export default function Monitoring({
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 font-bold text-gray-900">
-                      {s.score !== null ? s.score : "-"}
+                    <td className="px-6 py-4 text-center">
+                      {s.violationCount > 0 ? (
+                        <button
+                          onClick={() =>
+                            setSelectedCheatLog({
+                              name: s.name,
+                              logs: s.violationLogs,
+                            })
+                          }
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 hover:bg-red-200 transition-colors cursor-pointer ring-1 ring-red-300"
+                        >
+                          <AlertTriangle size={14} /> {s.violationCount}{" "}
+                          Peringatan
+                        </button>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       {s.hasStarted && (
                         <button
                           onClick={() => handleReset(s.id, s.name)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
                         >
-                          <RotateCcw size={14} /> Reset Sesi
+                          <RotateCcw size={14} /> Reset
                         </button>
                       )}
                     </td>
@@ -201,8 +200,8 @@ export default function Monitoring({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
-                    Tidak ada data siswa ditemukan.
+                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                    Tidak ada data.
                   </td>
                 </tr>
               )}
@@ -210,6 +209,52 @@ export default function Monitoring({
           </table>
         </div>
       </div>
+
+      {selectedCheatLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-red-50">
+              <h3 className="font-bold text-red-800 flex items-center gap-2">
+                <AlertTriangle size={18} /> Log Pelanggaran
+              </h3>
+              <button
+                onClick={() => setSelectedCheatLog(null)}
+                className="text-gray-500 hover:text-gray-900 bg-white rounded-full p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-sm font-semibold text-gray-800 mb-4">
+                Siswa: {selectedCheatLog.name}
+              </p>
+              <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
+                {selectedCheatLog.logs.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className="flex gap-3 text-sm border-l-2 border-red-400 pl-3"
+                  >
+                    <div className="text-xs font-mono text-gray-500 pt-0.5">
+                      {formatTime(log.time)}
+                    </div>
+                    <div className="text-gray-800 font-medium">
+                      {log.action}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-gray-50 text-right">
+              <button
+                onClick={() => setSelectedCheatLog(null)}
+                className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-xl text-sm hover:bg-gray-300"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

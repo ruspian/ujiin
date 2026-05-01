@@ -219,6 +219,9 @@ model Attempt {
   
   studentId   String
   student     Student   @relation(fields: [studentId], references: [id]) 
+
+  violationCount  Int       @default(0)
+  violationLogs   Json?
   
   examId      String
   exam        Exam      @relation(fields: [examId], references: [id])

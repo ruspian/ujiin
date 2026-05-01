@@ -1,6 +1,7 @@
-import Monitoring from "@/components/layout/Monitoring";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import Monitoring from "@/components/layout/Monitoring";
+import { ViolationLog } from "@/types/monitoring";
 
 export default async function MonitoringDetailPage({
   params,
@@ -29,8 +30,15 @@ export default async function MonitoringDetailPage({
 
   const allStudents = exam.classes.flatMap((c) =>
     c.students.map((student) => {
-      // cek siswa udah mulai ujian atau belum
       const attempt = exam.attempts.find((a) => a.studentId === student.id);
+
+      let parsedLogs: ViolationLog[] = [];
+
+      if (attempt?.violationLogs) {
+        parsedLogs = Array.isArray(attempt.violationLogs)
+          ? (attempt.violationLogs as unknown as ViolationLog[])
+          : [];
+      }
 
       return {
         id: student.id,
@@ -41,6 +49,8 @@ export default async function MonitoringDetailPage({
         status: attempt?.status || "BELUM",
         score: attempt?.score || null,
         startTime: attempt?.startTime || null,
+        violationCount: attempt?.violationCount || 0,
+        violationLogs: parsedLogs,
       };
     }),
   );

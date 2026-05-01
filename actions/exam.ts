@@ -120,3 +120,35 @@ export async function deleteExam(formData: FormData) {
     return { success: false, message: "Terjadi kesalahan saat menghapus!" };
   }
 }
+
+export async function recordViolation(attemptId: string, logMessage: string) {
+  try {
+    const attempt = await prisma.attempt.findUnique({
+      where: { id: attemptId },
+      select: { violationLogs: true, violationCount: true },
+    });
+
+    if (!attempt) return { success: false, message: "Sesi tidak ditemukan" };
+
+    const currentLogs = Array.isArray(attempt.violationLogs)
+      ? attempt.violationLogs
+      : [];
+    const newLog = {
+      time: new Date().toISOString(),
+      action: logMessage,
+    };
+
+    await prisma.attempt.update({
+      where: { id: attemptId },
+      data: {
+        violationCount: attempt.violationCount + 1,
+        violationLogs: [...currentLogs, newLog],
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Gagal mencatat pelanggaran:", error);
+    return { success: false, message: "Terjadi kesalahan server!" };
+  }
+}
