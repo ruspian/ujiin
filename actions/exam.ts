@@ -5,6 +5,34 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { ExamSchema, examSchema } from "@/schemas/examSchema";
 
+export async function getQuestionsForExam(
+  subjectId: string,
+  examTypeId: string,
+) {
+  try {
+    const questions = await prisma.question.findMany({
+      where: {
+        subjectId: subjectId,
+        examTypeId: examTypeId,
+      },
+      include: {
+        author: {
+          select: { name: true },
+        },
+        class: {
+          select: { name: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return { success: true, data: questions };
+  } catch (error) {
+    console.error("Gagal menarik soal:", error);
+    return { success: false, data: [] };
+  }
+}
+
 export async function createExam(data: ExamSchema) {
   const session = await auth();
   if (!session || !session.user.id)
@@ -26,6 +54,7 @@ export async function createExam(data: ExamSchema) {
     showResult,
     status,
     classes,
+    questions,
   } = validation.data;
 
   try {
@@ -40,10 +69,13 @@ export async function createExam(data: ExamSchema) {
         duration,
         randomizeQuestions,
         showResult,
-        status,
+        status: status || "PUBLISHED",
         authorId: session.user.id,
         classes: {
           connect: classes.map((id) => ({ id })),
+        },
+        questions: {
+          connect: questions.map((id) => ({ id })),
         },
       },
     });
@@ -61,23 +93,48 @@ export async function updateExam(data: ExamSchema & { id: string }) {
   if (!session || session.user.role !== "ADMIN")
     return { success: false, message: "Akses ditolak!" };
 
+  // PERBAIKAN: Tambahin validasi Zod biar aman dari injeksi data kotor
+  const validation = examSchema.safeParse(data);
+  if (!validation.success)
+    return { success: false, message: validation.error.issues[0].message };
+
+  const {
+    title,
+    subjectId,
+    examTypeId,
+    academicYearId,
+    startTime,
+    endTime,
+    duration,
+    randomizeQuestions,
+    showResult,
+    status,
+    classes,
+    questions,
+  } = validation.data;
+
   try {
     await prisma.exam.update({
       where: { id: data.id },
       data: {
-        title: data.title,
-        subjectId: data.subjectId,
-        examTypeId: data.examTypeId,
-        academicYearId: data.academicYearId,
-        startTime: new Date(data.startTime),
-        endTime: new Date(data.endTime),
-        duration: data.duration,
-        randomizeQuestions: data.randomizeQuestions,
-        showResult: data.showResult,
-        status: data.status,
+        title,
+        subjectId,
+        examTypeId,
+        academicYearId,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        duration,
+        randomizeQuestions,
+        showResult,
+        status,
         classes: {
-          set: [], // Hapus relasi lama
-          connect: data.classes.map((id: string) => ({ id })),
+          set: [], // Kosongin dulu relasi kelas yang lama
+          connect: classes.map((id: string) => ({ id })), // Pasang yang baru
+        },
+
+        questions: {
+          set: [],
+          connect: questions.map((id: string) => ({ id })), // Pasang soal yang baru dipilih Admin
         },
       },
     });
@@ -86,7 +143,7 @@ export async function updateExam(data: ExamSchema & { id: string }) {
     return { success: true, message: "Jadwal Ujian berhasil diperbarui!" };
   } catch (error) {
     console.error("UPDATE_EXAM_ERROR:", error);
-    return { success: false, message: "Terjadi kesalahan server!" };
+    return { success: false, message: "Terjadi kesalahan server saat update!" };
   }
 }
 

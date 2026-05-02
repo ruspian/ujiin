@@ -2,7 +2,7 @@ export interface ClassData {
   id: string;
   name: string;
   level: number;
-  studentCount: number;
+  studentCount?: number;
 }
 
 export interface KelasClientProps {

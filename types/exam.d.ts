@@ -1,3 +1,6 @@
+import { AcademicYearData } from "./academic";
+import { ClassData } from "./class";
+
 export interface MasterItem {
   id: string;
   name: string;
@@ -50,4 +53,35 @@ export interface EditJadwalModalProps {
 export interface DeleteJadwalModalProps {
   itemData: { id: string; title: string };
   setIsModalDeleteOpen: (val: boolean) => void;
+}
+
+export interface Question {
+  id: string;
+  text: string;
+  author: { name: string };
+  class: { name: string };
+}
+
+export interface ExamInitialData {
+  id: string;
+  title: string;
+  subjectId: string;
+  examTypeId: string;
+  academicYearId: string;
+  startTime: Date;
+  endTime: Date;
+  duration: number;
+  randomizeQuestions: boolean;
+  showResult: boolean;
+  status: "DRAFT" | "PUBLISHED" | "COMPLETED";
+  classes: { id: string }[];
+  questions: { id: string }[];
+}
+
+export interface JadwalFormProps {
+  subjects: MasterItem[];
+  classes: ClassData[];
+  examTypes: MasterItem[];
+  academicYears: AcademicYearData[];
+  initialData?: ExamInitialData;
 }

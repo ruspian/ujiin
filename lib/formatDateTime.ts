@@ -24,3 +24,15 @@ export const formatTime = (isoString: string) => {
     second: "2-digit",
   }).format(new Date(isoString));
 };
+
+export const formatTimeToInput = (dateString?: string | Date) => {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+export const formatDateToInput = (dateString?: string | Date) => {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};

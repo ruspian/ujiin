@@ -144,14 +144,14 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
               {currentRole === "GURU" && (
                 <>
                   <Link
-                    href="/bank-soal"
+                    href="/guru/soal"
                     className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/bank-soal") ? "text-teal-600" : "text-gray-600"}`}
                   >
-                    Bank Soal
+                    Soal
                   </Link>
 
                   <Link
-                    href="/koreksi"
+                    href="/guru/koreksi"
                     className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/koreksi") ? "text-teal-600" : "text-gray-600"}`}
                   >
                     Koreksi Nilai
@@ -247,19 +247,14 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
             {currentRole === "GURU" && (
               <>
                 <Link
-                  href="/bank-soal"
+                  href="/guru/soal"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Bank Soal
+                  Soal
                 </Link>
+
                 <Link
-                  href="/jadwal"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Jadwal Ujian
-                </Link>
-                <Link
-                  href="/koreksi"
+                  href="/guru/koreksi"
                   className="text-sm font-medium text-gray-700"
                 >
                   Koreksi Nilai

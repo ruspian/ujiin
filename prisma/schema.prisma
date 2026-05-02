@@ -93,6 +93,9 @@ model Class {
   students  Student[] 
   exams     Exam[]   
 
+  questions Question[]
+  subjects Subject[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -130,6 +133,7 @@ model Subject {
   religion   Religion? @relation(fields: [religionId], references: [id])
 
   teachers  User[] 
+  classes   Class[]
 }
 
 
@@ -150,6 +154,12 @@ model Question {
   text          String   @db.Text 
   options       Json     
   correctAnswer String  
+
+  classId       String
+  class         Class    @relation(fields: [classId], references: [id])
+
+  examTypeId    String?  // Dibuat opsional (?) biar fleksibel
+  examType      ExamType? @relation(fields: [examTypeId], references: [id])
   
   authorId      String
   author        User     @relation(fields: [authorId], references: [id])
@@ -158,6 +168,9 @@ model Question {
   subject       Subject  @relation(fields: [subjectId], references: [id])
 
   exams         Exam[]   
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model ExamType {
@@ -165,7 +178,8 @@ model ExamType {
   name      String   
   code      String   @unique 
   
-  exams     Exam[]   
+  exams     Exam[]  
+  questions Question[] 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

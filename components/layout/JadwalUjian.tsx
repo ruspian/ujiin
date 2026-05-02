@@ -87,10 +87,10 @@ export default function JadwalUjian({
           />
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => router.push("/admin/jadwal/buat")}
           className="flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition-all active:scale-95"
         >
-          <Plus size={18} /> Buat Jadwal Ujian
+          <Plus size={18} /> Buat Jadwal
         </button>
       </div>
 
