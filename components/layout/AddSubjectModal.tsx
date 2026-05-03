@@ -2,11 +2,12 @@
 
 import { createSubject } from "@/actions/subject";
 import { AddSubjectModalProps } from "@/types/data.master";
-import { X, Users } from "lucide-react";
+import { X, Users, School } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AddSubjectModal({
   teachers,
+  classes,
   setIsModalOpen,
   isSubmitting,
   setIsSubmitting,
@@ -49,7 +50,7 @@ export default function AddSubjectModal({
         <form action={handleAddSubject} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Nama Mata Pelajaran
+              Nama Mata Pelajaran <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -60,34 +61,67 @@ export default function AddSubjectModal({
             />
           </div>
 
-          <div>
-            <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-              <Users size={16} className="text-teal-600" />
-              Pilih Guru Pengampu
-            </label>
-            <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-2 space-y-1">
-              {teachers.length > 0 ? (
-                teachers.map((teacher) => (
-                  <label
-                    key={teacher.id}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-200/50 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      name="teacherIds" // <-- Name ini yg ditangkep getAll() di Server
-                      value={teacher.id}
-                      className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-600"
-                    />
-                    <span className="text-sm text-gray-800">
-                      {teacher.name}
-                    </span>
-                  </label>
-                ))
-              ) : (
-                <p className="p-3 text-center text-xs text-gray-500">
-                  Belum ada data Guru di sistem.
-                </p>
-              )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Users size={16} className="text-teal-600" />
+                Pilih Guru
+              </label>
+              <div className="h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-2 space-y-1">
+                {teachers.length > 0 ? (
+                  teachers.map((teacher) => (
+                    <label
+                      key={teacher.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-gray-200/50 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        name="teacherIds"
+                        value={teacher.id}
+                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-600"
+                      />
+                      <span className="text-xs text-gray-800 line-clamp-1">
+                        {teacher.name}
+                      </span>
+                    </label>
+                  ))
+                ) : (
+                  <p className="p-3 text-center text-xs text-gray-500">
+                    Kosong.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <School size={16} className="text-indigo-600" />
+                Tersedia di Kelas
+              </label>
+              <div className="h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-2 space-y-1">
+                {classes.length > 0 ? (
+                  classes.map((cls) => (
+                    <label
+                      key={cls.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-gray-200/50 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        name="classIds"
+                        value={cls.id}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                      />
+                      <span className="text-xs font-semibold text-gray-800">
+                        {cls.name}
+                      </span>
+                    </label>
+                  ))
+                ) : (
+                  <p className="p-3 text-center text-xs text-gray-500">
+                    Kosong.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

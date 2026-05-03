@@ -17,7 +17,7 @@ export default async function DataMapelPage({
     ? { name: { contains: search, mode: "insensitive" } }
     : {};
 
-  const [subjects, totalCount, teachers] = await Promise.all([
+  const [subjects, totalCount, teachers, allClasses] = await Promise.all([
     prisma.subject.findMany({
       where: whereCondition,
       skip: (page - 1) * limit,
@@ -25,6 +25,7 @@ export default async function DataMapelPage({
       orderBy: { name: "asc" },
       include: {
         teachers: { select: { id: true, name: true } },
+        classes: { select: { id: true, name: true } },
       },
     }),
     prisma.subject.count({ where: whereCondition }),
@@ -32,6 +33,10 @@ export default async function DataMapelPage({
       where: { role: "GURU" },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    prisma.class.findMany({
+      select: { id: true, name: true },
+      orderBy: [{ level: "asc" }, { name: "asc" }],
     }),
   ]);
 
@@ -41,12 +46,14 @@ export default async function DataMapelPage({
     id: sub.id,
     name: sub.name,
     teachers: sub.teachers,
+    classes: sub.classes,
   }));
 
   return (
     <MataPelajaran
       subjects={formattedSubjects}
       teachers={teachers}
+      classes={allClasses}
       totalCount={totalCount}
       totalPages={totalPages}
       currentPage={page}

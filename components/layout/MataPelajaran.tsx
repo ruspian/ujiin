@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Edit2, Trash2, Plus, BookOpen } from "lucide-react";
+import { Search, Edit2, Trash2, Plus, BookOpen, Users } from "lucide-react";
 import { useDebounce } from "use-debounce";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Pagination from "./Pagination";
@@ -14,6 +14,7 @@ import { MapelClientProps, SubjectData } from "@/types/data.master";
 export default function MataPelajaran({
   subjects,
   teachers,
+  classes,
   totalCount,
   totalPages,
   currentPage,
@@ -91,6 +92,7 @@ export default function MataPelajaran({
       {isModalOpen && (
         <AddSubjectModal
           teachers={teachers}
+          classes={classes}
           setIsModalOpen={setIsModalOpen}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
@@ -101,6 +103,7 @@ export default function MataPelajaran({
         <EditSubjectModal
           subjectData={selectedSubject}
           teachers={teachers}
+          classes={classes}
           setIsModalEditOpen={setIsModalEditOpen}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
@@ -123,6 +126,7 @@ export default function MataPelajaran({
               <tr>
                 <th className="px-6 py-4 font-semibold">Mata Pelajaran</th>
                 <th className="px-6 py-4 font-semibold">Guru Pengampu</th>
+                <th className="px-6 py-4 font-semibold">Tersedia di Kelas</th>
                 <th className="px-6 py-4 font-semibold text-right whitespace-nowrap">
                   Aksi
                 </th>
@@ -144,7 +148,7 @@ export default function MataPelajaran({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {subject.teachers.length > 0 ? (
+                      {subject.teachers && subject.teachers.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {subject.teachers.map((t) => (
                             <span
@@ -158,6 +162,24 @@ export default function MataPelajaran({
                       ) : (
                         <span className="text-xs text-gray-400 italic">
                           Belum ada guru
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {subject.classes && subject.classes.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {subject.classes.map((c) => (
+                            <span
+                              key={c.id}
+                              className="inline-flex items-center rounded-md bg-teal-50 border border-teal-100 px-2 py-1 text-xs font-medium text-teal-700"
+                            >
+                              {c.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-red-400 font-medium flex items-center gap-1">
+                          <Users size={12} /> Belum diatur
                         </span>
                       )}
                     </td>
@@ -187,7 +209,7 @@ export default function MataPelajaran({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="p-10 text-center">
+                  <td colSpan={4} className="p-10 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-gray-50 text-gray-400">
                         <BookOpen size={32} />

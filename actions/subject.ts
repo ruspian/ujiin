@@ -1,11 +1,20 @@
 "use server";
 
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function createSubject(formData: FormData) {
+  const session = await auth();
+
+  if (!session || session.user.role !== "ADMIN") {
+    redirect("/login");
+  }
+
   const name = formData.get("name") as string;
   const teacherIds = formData.getAll("teacherIds") as string[];
+  const classIds = formData.getAll("classIds") as string[];
 
   if (!name || name.trim() === "") {
     return { success: false, message: "Nama mata pelajaran wajib diisi!" };
@@ -23,9 +32,11 @@ export async function createSubject(formData: FormData) {
     await prisma.subject.create({
       data: {
         name: name.trim(),
-        // hubungkan dengan guru
         teachers: {
           connect: teacherIds.map((id) => ({ id })),
+        },
+        classes: {
+          connect: classIds.map((id) => ({ id })),
         },
       },
     });
@@ -39,9 +50,16 @@ export async function createSubject(formData: FormData) {
 }
 
 export async function updateSubject(formData: FormData) {
+  const session = await auth();
+
+  if (!session || session.user.role !== "ADMIN") {
+    redirect("/login");
+  }
+
   const id = formData.get("id") as string;
   const name = formData.get("name") as string;
   const teacherIds = formData.getAll("teacherIds") as string[];
+  const classIds = formData.getAll("classIds") as string[];
 
   if (!id || !name || name.trim() === "") {
     return { success: false, message: "Nama mata pelajaran wajib diisi!" };
@@ -60,9 +78,12 @@ export async function updateSubject(formData: FormData) {
       where: { id },
       data: {
         name: name.trim(),
-        // hapus relasi lama dan ganti dengan yang baru
         teachers: {
           set: teacherIds.map((id) => ({ id })),
+        },
+        // hapus relasi lama dan ganti dengan yang baru
+        classes: {
+          set: classIds.map((id) => ({ id })),
         },
       },
     });
@@ -76,6 +97,11 @@ export async function updateSubject(formData: FormData) {
 }
 
 export async function deleteSubject(formData: FormData) {
+  const session = await auth();
+
+  if (!session || session.user.role !== "ADMIN") {
+    redirect("/login");
+  }
   const id = formData.get("id") as string;
 
   if (!id) return { success: false, message: "ID mapel tidak valid!" };
