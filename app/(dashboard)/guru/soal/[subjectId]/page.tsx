@@ -15,7 +15,7 @@ export default async function DaftarSoalPage({
   searchParams,
 }: {
   params: Promise<{ subjectId: string }>;
-  searchParams: Promise<{ level?: string; type?: string }>;
+  searchParams: Promise<{ classId?: string; type?: string }>;
 }) {
   const session = await auth();
   if (!session || session.user.role !== "GURU") redirect("/login");
@@ -24,22 +24,22 @@ export default async function DaftarSoalPage({
   const resolvedSearchParams = await searchParams;
 
   const subjectId = resolvedParams.subjectId;
-  const level = resolvedSearchParams.level
-    ? parseInt(resolvedSearchParams.level)
-    : 10;
+  const classId = resolvedSearchParams.classId;
   const typeId = resolvedSearchParams.type;
 
-  const [subject, examType] = await Promise.all([
+  const [subject, examType, classTarget] = await Promise.all([
     prisma.subject.findUnique({ where: { id: subjectId } }),
     typeId ? prisma.examType.findUnique({ where: { id: typeId } }) : null,
+    classId ? prisma.class.findUnique({ where: { id: classId } }) : null,
   ]);
 
-  if (!subject || !examType) return <div>Data tidak valid.</div>;
+  if (!subject || !examType || !classTarget)
+    return <div>Data tidak valid.</div>;
 
   const questions = await prisma.question.findMany({
     where: {
       subjectId: subjectId,
-      level: level,
+      classId: classId,
       examTypeId: typeId,
       authorId: session.user.id,
     },
@@ -60,7 +60,7 @@ export default async function DaftarSoalPage({
             <h1 className="text-xl font-bold text-gray-900">{subject.name}</h1>
             <div className="flex items-center gap-2 mt-1 text-sm font-medium">
               <span className="bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-md">
-                Kelas {level}
+                Kelas {classTarget.name}
               </span>
               <span className="text-gray-400">•</span>
               <span className="bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-md">
@@ -71,7 +71,7 @@ export default async function DaftarSoalPage({
         </div>
 
         <Link
-          href={`/guru/soal/${subjectId}/buat?level=${level}&type=${typeId}`}
+          href={`/guru/soal/${subjectId}/buat?classId=${classId}&type=${typeId}`}
           className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
         >
           <PlusCircle size={18} /> Tambah Soal Baru
@@ -124,12 +124,11 @@ export default async function DaftarSoalPage({
           ) : (
             <div className="p-12 text-center flex flex-col items-center">
               <FileQuestion size={48} className="text-gray-200 mb-4" />
-              <h3 className="text-lg font-bold text-gray-800">
-                Bank Soal Kosong
-              </h3>
+              <h3 className="text-lg font-bold text-gray-800">Soal Kosong</h3>
               <p className="text-sm text-gray-500 mt-1 max-w-sm">
-                Belum ada soal untuk Kelas {level} kategori {examType.name}.
-                Klik tombol tambah di atas untuk mulai membuat soal.
+                Belum ada soal untuk Kelas {classTarget.name} kategori{" "}
+                {examType.name}. Klik tombol tambah di atas untuk mulai membuat
+                soal.
               </p>
             </div>
           )}

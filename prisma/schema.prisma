@@ -149,16 +149,27 @@ model AcademicYear {
   updatedAt DateTime @updatedAt
 }
 
+enum QuestionType {
+  MULTIPLE_CHOICE         
+  MULTIPLE_CHOICE_COMPLEX 
+  MATCHING                
+  ESSAY                   
+  SHORT_ANSWER            
+}
+
 model Question {
   id            String   @id @default(cuid())
   text          String   @db.Text 
   options       Json     
   correctAnswer String  
+  type          QuestionType @default(MULTIPLE_CHOICE)
+
+  score         Int          @default(10)
 
   classId       String
   class         Class    @relation(fields: [classId], references: [id])
 
-  examTypeId    String?  // Dibuat opsional (?) biar fleksibel
+  examTypeId    String?  
   examType      ExamType? @relation(fields: [examTypeId], references: [id])
   
   authorId      String
