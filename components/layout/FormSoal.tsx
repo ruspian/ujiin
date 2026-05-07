@@ -6,24 +6,7 @@ import { Save, XCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import RichTextEditor from "./RichTextEditor";
 import { createQuestion } from "@/actions/question";
-
-interface FormSoalProps {
-  subjectId: string;
-  classId: string | null;
-  typeId: string;
-}
-
-type OptionData =
-  | { id: string; text: string }[]
-  | { left: string[]; right: string[] }
-  | never[];
-
-type QuestionType =
-  | "MULTIPLE_CHOICE"
-  | "MULTIPLE_CHOICE_COMPLEX"
-  | "MATCHING"
-  | "ESSAY"
-  | "SHORT_ANSWER";
+import { FormSoalProps, OptionData, QuestionType } from "@/types/question";
 
 export default function FormSoal({
   subjectId,
@@ -45,8 +28,8 @@ export default function FormSoal({
   const [textAnswer, setTextAnswer] = useState("");
 
   const [matchingPairs, setMatchingPairs] = useState([
-    { left: "", right: "" },
-    { left: "", right: "" },
+    { left: "", right: "", point: 5 },
+    { left: "", right: "", point: 5 },
   ]);
 
   const handleToggleMultiple = (opt: string) => {
@@ -56,7 +39,7 @@ export default function FormSoal({
   };
 
   const handleAddMatchingPair = () => {
-    setMatchingPairs([...matchingPairs, { left: "", right: "" }]);
+    setMatchingPairs([...matchingPairs, { left: "", right: "", point: 5 }]);
   };
 
   const handleRemoveMatchingPair = (index: number) => {
@@ -64,6 +47,11 @@ export default function FormSoal({
     newPairs.splice(index, 1);
     setMatchingPairs(newPairs);
   };
+
+  const totalMatchingScore = matchingPairs.reduce(
+    (acc, curr) => acc + (Number(curr.point) || 0),
+    0,
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,8 +62,8 @@ export default function FormSoal({
 
     let finalOptions: OptionData = [];
     let finalCorrectAnswer: string = "";
+    let finalScore = score;
 
-    // Susun format data berdasarkan jenis soal
     if (questionType === "MULTIPLE_CHOICE") {
       if (!options.A || !options.B)
         return toast.error("Minimal Opsi A dan B harus diisi!");
@@ -117,8 +105,9 @@ export default function FormSoal({
           .map((p) => p.right)
           .sort(() => Math.random() - 0.5),
       };
-      // Jadikan string JSON
+
       finalCorrectAnswer = JSON.stringify(matchingPairs);
+      finalScore = totalMatchingScore;
     }
 
     setIsLoading(true);
@@ -129,7 +118,7 @@ export default function FormSoal({
         classId: classId as string,
         typeId,
         type: questionType,
-        score: score,
+        score: finalScore,
         text,
         options: finalOptions,
         correctAnswer: finalCorrectAnswer,
@@ -176,17 +165,29 @@ export default function FormSoal({
           </select>
         </div>
 
-        <div className="w-full md:w-32">
+        <div className="w-full md:w-48">
           <label className="text-sm font-bold text-gray-800 block mb-2">
-            Bobot Nilai
+            {questionType === "MATCHING"
+              ? "Total Skor (Otomatis)"
+              : "Bobot Nilai"}
           </label>
-          <input
-            type="number"
-            min="1"
-            value={score}
-            onChange={(e) => setScore(Number(e.target.value))}
-            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800 text-center shadow-sm"
-          />
+          {questionType === "MATCHING" ? (
+            <input
+              type="number"
+              readOnly
+              value={totalMatchingScore}
+              title="Dijumlahkan otomatis dari poin pasangan"
+              className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm font-bold text-gray-500 text-center shadow-sm cursor-not-allowed"
+            />
+          ) : (
+            <input
+              type="number"
+              min="1"
+              value={score}
+              onChange={(e) => setScore(Number(e.target.value))}
+              className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800 text-center shadow-sm"
+            />
+          )}
         </div>
       </div>
 
@@ -251,7 +252,7 @@ export default function FormSoal({
                     <input
                       type="text"
                       placeholder={`Tulis opsi ${opt}...`}
-                      value={options[opt]}
+                      value={options[opt as keyof typeof options]}
                       onChange={(e) =>
                         setOptions({ ...options, [opt]: e.target.value })
                       }
@@ -294,21 +295,25 @@ export default function FormSoal({
         {questionType === "MATCHING" && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <label className="text-sm font-bold text-gray-800 block">
-              Pasangan Menjodohkan
+              Pasangan Menjodohkan & Poin
             </label>
 
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
-              <div className="grid grid-cols-2 gap-4 mb-2">
-                <span className="text-xs font-bold text-gray-500 uppercase">
-                  Premis
+              <div className="flex gap-3 mb-2 px-1">
+                <span className="flex-1 text-xs font-bold text-gray-500 uppercase">
+                  Premis (Kiri)
                 </span>
-                <span className="text-xs font-bold text-gray-500 uppercase">
-                  Jawaban
+                <span className="flex-1 text-xs font-bold text-gray-500 uppercase">
+                  Jawaban (Kanan)
                 </span>
+                <span className="w-20 text-xs font-bold text-gray-500 uppercase text-center">
+                  Poin
+                </span>
+                <span className="w-10"></span>
               </div>
 
               {matchingPairs.map((pair, index) => (
-                <div key={index} className="flex items-center gap-3">
+                <div key={index} className="flex items-start gap-3">
                   <input
                     type="text"
                     placeholder="Sisi Kiri..."
@@ -318,24 +323,35 @@ export default function FormSoal({
                       newPairs[index].left = e.target.value;
                       setMatchingPairs(newPairs);
                     }}
-                    className="w-1/2 px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
                   />
                   <input
                     type="text"
-                    placeholder="Sisi Kanan (Pasangannya)..."
+                    placeholder="Sisi Kanan..."
                     value={pair.right}
                     onChange={(e) => {
                       const newPairs = [...matchingPairs];
                       newPairs[index].right = e.target.value;
                       setMatchingPairs(newPairs);
                     }}
-                    className="w-1/2 px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    value={pair.point}
+                    onChange={(e) => {
+                      const newPairs = [...matchingPairs];
+                      newPairs[index].point = Number(e.target.value);
+                      setMatchingPairs(newPairs);
+                    }}
+                    className="w-20 px-3 py-2 rounded-lg border border-gray-300 text-sm text-center font-bold focus:ring-blue-500 focus:border-blue-500"
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveMatchingPair(index)}
                     disabled={matchingPairs.length <= 2}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-30 transition-colors"
+                    className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-30 transition-colors shrink-0"
                   >
                     <Trash2 size={18} />
                   </button>

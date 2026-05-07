@@ -1,13 +1,9 @@
 "use client";
 
+import { RichTextEditorProps } from "@/types/question";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Bold, Italic, Strikethrough, List, ListOrdered } from "lucide-react";
-
-interface RichTextEditorProps {
-  content: string;
-  onChange: (content: string) => void;
-}
 
 export default function RichTextEditor({
   content,

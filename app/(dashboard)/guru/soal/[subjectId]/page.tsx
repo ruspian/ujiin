@@ -9,6 +9,7 @@ import {
   Search,
   Settings,
 } from "lucide-react";
+import ImportExcelButton from "@/components/layout/ImportExcelButton";
 
 export default async function DaftarSoalPage({
   params,
@@ -24,8 +25,8 @@ export default async function DaftarSoalPage({
   const resolvedSearchParams = await searchParams;
 
   const subjectId = resolvedParams.subjectId;
-  const classId = resolvedSearchParams.classId;
-  const typeId = resolvedSearchParams.type;
+  const classId = resolvedSearchParams.classId ?? "";
+  const typeId = resolvedSearchParams.type ?? "";
 
   const [subject, examType, classTarget] = await Promise.all([
     prisma.subject.findUnique({ where: { id: subjectId } }),
@@ -70,12 +71,20 @@ export default async function DaftarSoalPage({
           </div>
         </div>
 
-        <Link
-          href={`/guru/soal/${subjectId}/buat?classId=${classId}&type=${typeId}`}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
-        >
-          <PlusCircle size={18} /> Tambah Soal Baru
-        </Link>
+        <div className="flex items-center gap-3">
+          <ImportExcelButton
+            subjectId={subjectId}
+            classId={classId}
+            typeId={typeId}
+          />
+
+          <Link
+            href={`/guru/soal/${subjectId}/buat?classId=${classId}&type=${typeId}`}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
+          >
+            <PlusCircle size={18} /> Tambah Soal Baru
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
