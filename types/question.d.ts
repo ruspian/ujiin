@@ -45,3 +45,14 @@ export interface Props {
   classId: string;
   typeId: string;
 }
+
+export type ReadXlsxOptions = {
+  getSheets?: boolean;
+  sheet?: string;
+};
+
+export type SheetInfoShape = {
+  name?: string;
+  sheet?: string;
+  data?: RowCell[][];
+};

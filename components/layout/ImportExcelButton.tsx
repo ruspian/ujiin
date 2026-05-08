@@ -10,16 +10,24 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { importQuestions } from "@/actions/question";
-import { ExcelRow, Props, RowCell } from "@/types/question";
+import {
+  ExcelRow,
+  Props,
+  ReadXlsxOptions,
+  RowCell,
+  SheetInfoShape,
+} from "@/types/question";
+
+interface CustomWindow extends Window {
+  readXlsxFile?: (file: File, options?: ReadXlsxOptions) => Promise<unknown>;
+}
 
 export default function ImportExcelButton({
   subjectId,
   classId,
   typeId,
 }: Props) {
-  // State buat buka/tutup Modal
   const [isOpen, setIsOpen] = useState(false);
-
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,10 +39,33 @@ export default function ImportExcelButton({
     const toastId = toast.loading("Membaca file Excel...");
 
     try {
-      const readXlsxFile = (await import("read-excel-file")).default;
-      const sheetsInfo = (await readXlsxFile(file, { getSheets: true })) as {
-        name: string;
-      }[];
+      const browserWindow = window as unknown as CustomWindow;
+
+      // Inject Script kalau library belum ada di browser
+      if (!browserWindow.readXlsxFile) {
+        const script = document.createElement("script");
+        script.src =
+          "https://unpkg.com/read-excel-file@9.0.9/bundle/read-excel-file.min.js";
+        document.head.appendChild(script);
+
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = () =>
+            reject(new Error("Gagal memuat library Excel dari internet"));
+        });
+      }
+
+      // Ambil fungsinya
+      const readXlsxFile = browserWindow.readXlsxFile;
+
+      if (!readXlsxFile) {
+        throw new Error("Library readXlsxFile tidak tersedia.");
+      }
+
+      // Mulai proses baca Excel (Pake array generic biar aman)
+      const sheetsInfo = (await readXlsxFile(file, {
+        getSheets: true,
+      })) as unknown[];
 
       if (!sheetsInfo || sheetsInfo.length === 0) {
         toast.error("File Excel tidak valid!", { id: toastId });
@@ -45,7 +76,15 @@ export default function ImportExcelButton({
       let allJsonData: ExcelRow[] = [];
 
       for (const sheet of sheetsInfo) {
-        const sheetName = sheet.name.toUpperCase();
+        const sheetObj = sheet as SheetInfoShape;
+
+        const rawName =
+          typeof sheet === "string" ? sheet : sheetObj?.name || sheetObj?.sheet;
+
+        if (!rawName) continue;
+
+        // Pastikan jadi string lalu ubah ke huruf besar
+        const sheetName = String(rawName).toUpperCase();
 
         let defaultType = "MULTIPLE_CHOICE";
         if (sheetName.includes("KOMPLEKS"))
@@ -55,10 +94,18 @@ export default function ImportExcelButton({
         else if (sheetName.includes("ESAI") || sheetName.includes("URAIAN"))
           defaultType = "ESSAY";
 
-        const rows = (await readXlsxFile(file, {
-          sheet: sheet.name,
-        })) as RowCell[][];
-        if (!rows || rows.length <= 1) continue;
+        // Kalau datanya ada, pake! Kalau nggak, baca lagi.
+        const rows = sheetObj?.data
+          ? sheetObj.data
+          : ((await readXlsxFile(file, { sheet: rawName })) as RowCell[][]);
+
+        if (!rows) {
+          continue;
+        }
+
+        if (rows.length <= 1) {
+          continue;
+        }
 
         const headers = rows[0] as string[];
 
@@ -67,10 +114,8 @@ export default function ImportExcelButton({
 
           row.forEach((cell: RowCell, index: number) => {
             const header = headers[index];
-            if (
-              header &&
-              (typeof cell === "string" || typeof cell === "number")
-            ) {
+            // Pastikan selnya tidak kosong
+            if (header && cell !== undefined && cell !== null) {
               obj[header] = cell;
             }
           });
@@ -106,11 +151,15 @@ export default function ImportExcelButton({
       } else {
         toast.error(result.message, { id: toastId });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error("Format Excel tidak valid. Pastikan sesuai template.", {
-        id: toastId,
-      });
+      if (error instanceof Error) {
+        toast.error(error.message, { id: toastId });
+      } else {
+        toast.error("Format Excel tidak valid. Pastikan sesuai template.", {
+          id: toastId,
+        });
+      }
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

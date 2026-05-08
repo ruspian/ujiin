@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+
 import {
   ArrowLeft,
   FileQuestion,
@@ -9,7 +10,7 @@ import {
   Search,
   Settings,
 } from "lucide-react";
-import ImportExcelButton from "@/components/layout/ImportExcelButton";
+import ImportExcelWrapper from "@/components/layout/ImportExcelWrapper";
 
 export default async function DaftarSoalPage({
   params,
@@ -72,7 +73,7 @@ export default async function DaftarSoalPage({
         </div>
 
         <div className="flex items-center gap-3">
-          <ImportExcelButton
+          <ImportExcelWrapper
             subjectId={subjectId}
             classId={classId}
             typeId={typeId}
