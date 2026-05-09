@@ -11,6 +11,7 @@ import {
   Settings,
 } from "lucide-react";
 import ImportExcelWrapper from "@/components/layout/ImportExcelWrapper";
+import DeleteQuestionModal from "@/components/layout/DeleteQuestionModal";
 
 export default async function DaftarSoalPage({
   params,
@@ -122,7 +123,7 @@ export default async function DaftarSoalPage({
 
                   <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
                     <span className="font-semibold text-green-600">
-                      Kunci: {q.correctAnswer}
+                      Jawaban: {q.correctAnswer}
                     </span>
                   </div>
                 </div>
@@ -133,6 +134,8 @@ export default async function DaftarSoalPage({
                 >
                   <Settings size={18} />
                 </Link>
+
+                <DeleteQuestionModal questionId={q.id} />
               </div>
             ))
           ) : (

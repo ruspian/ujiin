@@ -272,3 +272,55 @@ export async function updateQuestion(
     };
   }
 }
+
+export async function deleteQuestion(questionId: string) {
+  try {
+    const session = await auth();
+    if (!session || session.user.role !== "GURU") {
+      return {
+        success: false,
+        message: "Akses ditolak. Hanya Guru yang dapat menghapus soal.",
+      };
+    }
+
+    const existingQuestion = await prisma.question.findUnique({
+      where: { id: questionId },
+      select: {
+        authorId: true,
+        subjectId: true,
+        classId: true,
+        examTypeId: true,
+      },
+    });
+
+    if (!existingQuestion) {
+      return { success: false, message: "Soal tidak ditemukan." };
+    }
+
+    if (existingQuestion.authorId !== session.user.id) {
+      return {
+        success: false,
+        message: "Akses ditolak. Anda tidak berhak menghapus soal ini.",
+      };
+    }
+
+    await prisma.question.delete({
+      where: { id: questionId },
+    });
+
+    revalidatePath(
+      `/guru/soal/${existingQuestion.subjectId}?classId=${existingQuestion.classId}&type=${existingQuestion.examTypeId}`,
+    );
+
+    return { success: true, message: "Soal berhasil dihapus!" };
+  } catch (error: unknown) {
+    console.error("DELETE_QUESTION_ERROR:", error);
+    if (error instanceof Error) {
+      return { success: false, message: error.message };
+    }
+    return {
+      success: false,
+      message: "Terjadi kesalahan pada server saat menghapus soal.",
+    };
+  }
+}
