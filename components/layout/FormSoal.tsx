@@ -2,35 +2,99 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, XCircle, Plus, Trash2 } from "lucide-react";
+import { Save, XCircle, Plus, Trash2, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import RichTextEditor from "./RichTextEditor";
-import { createQuestion } from "@/actions/question";
-import { FormSoalProps, OptionData, QuestionType } from "@/types/question";
+import { createQuestion, updateQuestion } from "@/actions/question";
+import {
+  ExtendedFormSoalProps,
+  OptionData,
+  QuestionType,
+} from "@/types/question";
 
 export default function FormSoal({
   subjectId,
   classId,
   typeId,
-}: FormSoalProps) {
+  questionId,
+  initialData,
+}: ExtendedFormSoalProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const [questionType, setQuestionType] =
-    useState<QuestionType>("MULTIPLE_CHOICE");
-  const [text, setText] = useState("");
+  const [questionType, setQuestionType] = useState<QuestionType>(
+    initialData?.type || "MULTIPLE_CHOICE",
+  );
 
-  const [options, setOptions] = useState({ A: "", B: "", C: "", D: "", E: "" });
-  const [correctSingle, setCorrectSingle] = useState<string>("A");
-  const [correctMultiple, setCorrectMultiple] = useState<string[]>([]);
-  const [score, setScore] = useState<number>(10);
+  const [text, setText] = useState(initialData?.text || "");
+  const [score, setScore] = useState<number>(initialData?.score || 10);
 
-  const [textAnswer, setTextAnswer] = useState("");
+  const [options, setOptions] = useState(() => {
+    const defaultOpts = { A: "", B: "", C: "", D: "", E: "" };
+    if (
+      initialData &&
+      (initialData.type === "MULTIPLE_CHOICE" ||
+        initialData.type === "MULTIPLE_CHOICE_COMPLEX")
+    ) {
+      const optsArr = initialData.options as unknown;
+      if (Array.isArray(optsArr)) {
+        optsArr.forEach((opt: unknown) => {
+          if (
+            typeof opt === "object" &&
+            opt !== null &&
+            "id" in opt &&
+            "text" in opt
+          ) {
+            const typedOpt = opt as { id: string; text: string };
+            if (["A", "B", "C", "D", "E"].includes(typedOpt.id)) {
+              defaultOpts[typedOpt.id as keyof typeof defaultOpts] =
+                typedOpt.text;
+            }
+          }
+        });
+      }
+    }
+    return defaultOpts;
+  });
 
-  const [matchingPairs, setMatchingPairs] = useState([
-    { left: "", right: "", point: 5 },
-    { left: "", right: "", point: 5 },
-  ]);
+  const [correctSingle, setCorrectSingle] = useState<string>(() => {
+    if (initialData?.type === "MULTIPLE_CHOICE")
+      return initialData.correctAnswer;
+    return "A";
+  });
+
+  const [correctMultiple, setCorrectMultiple] = useState<string[]>(() => {
+    if (initialData?.type === "MULTIPLE_CHOICE_COMPLEX") {
+      return initialData.correctAnswer.split(",").filter(Boolean);
+    }
+    return [];
+  });
+
+  const [textAnswer, setTextAnswer] = useState(() => {
+    if (initialData?.type === "ESSAY" || initialData?.type === "SHORT_ANSWER") {
+      return initialData.correctAnswer;
+    }
+    return "";
+  });
+
+  const [matchingPairs, setMatchingPairs] = useState(() => {
+    if (initialData?.type === "MATCHING") {
+      try {
+        // simpan json
+        return JSON.parse(initialData.correctAnswer) as {
+          left: string;
+          right: string;
+          point: number;
+        }[];
+      } catch (e) {
+        console.error("Gagal parse pasangan menjodohkan", e);
+      }
+    }
+    return [
+      { left: "", right: "", point: 5 },
+      { left: "", right: "", point: 5 },
+    ];
+  });
 
   const handleToggleMultiple = (opt: string) => {
     setCorrectMultiple((prev) =>
@@ -113,7 +177,7 @@ export default function FormSoal({
     setIsLoading(true);
 
     try {
-      const result = await createQuestion({
+      const payload = {
         subjectId,
         classId: classId as string,
         typeId,
@@ -122,7 +186,14 @@ export default function FormSoal({
         text,
         options: finalOptions,
         correctAnswer: finalCorrectAnswer,
-      });
+      };
+
+      let result;
+      if (questionId) {
+        result = await updateQuestion(questionId, payload);
+      } else {
+        result = await createQuestion(payload);
+      }
 
       if (result.success) {
         toast.success(result.message);
@@ -153,7 +224,8 @@ export default function FormSoal({
           <select
             value={questionType}
             onChange={(e) => setQuestionType(e.target.value as QuestionType)}
-            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 font-medium text-blue-700 shadow-sm"
+            disabled={!!questionId} // Kunci jenis soal kalau lagi mode Edit biar aman
+            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 font-medium text-blue-700 shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
           >
             <option value="MULTIPLE_CHOICE">Pilihan Ganda</option>
             <option value="MULTIPLE_CHOICE_COMPLEX">
@@ -383,7 +455,15 @@ export default function FormSoal({
           disabled={isLoading}
           className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
         >
-          <Save size={18} /> Simpan Soal
+          {questionId ? (
+            <>
+              <Edit3 size={18} /> Update Soal
+            </>
+          ) : (
+            <>
+              <Save size={18} /> Simpan Soal
+            </>
+          )}
         </button>
       </div>
     </form>

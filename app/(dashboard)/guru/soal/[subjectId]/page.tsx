@@ -126,9 +126,13 @@ export default async function DaftarSoalPage({
                     </span>
                   </div>
                 </div>
-                <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <Link
+                  href={`/guru/soal/${subjectId}/edit/${q.id}?classId=${classId}&type=${typeId}`}
+                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center"
+                  title="Edit Soal"
+                >
                   <Settings size={18} />
-                </button>
+                </Link>
               </div>
             ))
           ) : (

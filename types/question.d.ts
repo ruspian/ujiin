@@ -56,3 +56,14 @@ export type SheetInfoShape = {
   sheet?: string;
   data?: RowCell[][];
 };
+
+export interface ExtendedFormSoalProps extends FormSoalProps {
+  questionId?: string;
+  initialData?: {
+    type: QuestionType;
+    text: string;
+    score: number;
+    options: Prisma.JsonValue;
+    correctAnswer: string;
+  };
+}

@@ -192,3 +192,83 @@ export async function importQuestions(payload: {
     };
   }
 }
+
+export async function updateQuestion(
+  questionId: string,
+  payload: QuestionFormValues,
+) {
+  try {
+    const session = await auth();
+    if (!session || session.user.role !== "GURU") {
+      return {
+        success: false,
+        message: "Akses ditolak. Hanya Guru yang dapat mengedit soal.",
+      };
+    }
+
+    const questionValidation = questionSchema.safeParse(payload);
+    if (!questionValidation.success) {
+      return {
+        success: false,
+        message: questionValidation.error.issues[0].message,
+      };
+    }
+
+    const data = questionValidation.data;
+
+    // Pastikan soal ada dan milik guru yang sedang login
+    const existingQuestion = await prisma.question.findUnique({
+      where: { id: questionId },
+      select: { authorId: true },
+    });
+
+    if (!existingQuestion) {
+      return {
+        success: false,
+        message: "Soal tidak ditemukan di database.",
+      };
+    }
+
+    if (existingQuestion.authorId !== session.user.id) {
+      return {
+        success: false,
+        message: "Akses ditolak. Anda tidak berhak mengedit soal ini.",
+      };
+    }
+
+    await prisma.question.update({
+      where: { id: questionId },
+      data: {
+        type: data.type,
+        text: data.text,
+        score: data.score,
+        options: data.options,
+        correctAnswer: data.correctAnswer,
+        classId: data.classId,
+        examTypeId: data.typeId,
+        subjectId: data.subjectId,
+      },
+    });
+
+    revalidatePath(
+      `/guru/soal/${data.subjectId}?classId=${data.classId}&type=${data.typeId}`,
+    );
+
+    return {
+      success: true,
+      message: "Soal berhasil diperbarui!",
+    };
+  } catch (error: unknown) {
+    console.error("UPDATE_QUESTION_ERROR:", error);
+    if (error instanceof Error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+    return {
+      success: false,
+      message: "Terjadi kesalahan pada server saat memperbarui soal.",
+    };
+  }
+}
