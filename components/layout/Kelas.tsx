@@ -45,12 +45,6 @@ export default function Kelas({
     }
   }, [debouncedSearch, pathname, router, searchParams]);
 
-  const handleChangePage = (page: number) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("page", page.toString());
-    router.replace(`${pathname}?${params.toString()}`);
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -196,7 +190,6 @@ export default function Kelas({
           currentPage={currentPage}
           totalCount={totalCount}
           totalPages={totalPages}
-          handlePageChange={handleChangePage}
           data="Kelas"
         />
       </div>

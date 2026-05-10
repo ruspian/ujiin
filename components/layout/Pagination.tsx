@@ -1,12 +1,20 @@
-import { PaginationProps } from "@/types/pagination";
+"use client";
 
-const Pagination = ({
-  currentPage,
-  totalPages,
-  handlePageChange,
-}: PaginationProps) => {
+import { PaginationProps } from "@/types/pagination";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+const Pagination = ({ currentPage, totalPages }: PaginationProps) => {
   const current = Number(currentPage);
   const total = Number(totalPages);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const handlePageChange = (pageNumber: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", pageNumber.toString());
+
+    router.push(`${pathname}?${params.toString()}`, { scroll: true });
+  };
 
   return (
     <div className="py-4 px-12 border-t border-slate-100 flex items-center justify-end">

@@ -12,7 +12,7 @@ export const examSchema = z.object({
   showResult: z.boolean().default(false),
   status: z.enum(["DRAFT", "PUBLISHED", "COMPLETED"]).default("DRAFT"),
   classes: z.array(z.string()).min(1, "Minimal pilih satu kelas!"),
-  questions: z.array(z.string()).min(1, "Minimal pilih satu soal!"),
+  questions: z.array(z.string()).optional(),
 });
 
 export type ExamSchema = z.infer<typeof examSchema>;

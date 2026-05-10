@@ -67,3 +67,11 @@ export interface ExtendedFormSoalProps extends FormSoalProps {
     correctAnswer: string;
   };
 }
+
+export interface QuestionListTableProps {
+  questions: Question[];
+  subjectId: string;
+  classId: string;
+  typeId: string;
+  totalOnPage: number;
+}

@@ -61,12 +61,6 @@ export default function TahunAjaran({
     }
   }, [debouncedSearch, pathname, router, searchParams]);
 
-  const handleChangePage = (page: number) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("page", page.toString());
-    router.replace(`${pathname}?${params.toString()}`);
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -232,7 +226,6 @@ export default function TahunAjaran({
           currentPage={currentPage}
           totalCount={totalCount}
           totalPages={totalPages}
-          handlePageChange={handleChangePage}
           data="Tahun Ajaran"
         />
       </div>

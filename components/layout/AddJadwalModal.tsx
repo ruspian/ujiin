@@ -64,6 +64,7 @@ export default function AddJadwalModal({
       showResult: formData.get("showResult") === "true",
       status: formData.get("status") as "DRAFT" | "PUBLISHED" | "COMPLETED",
       classes: selectedClasses,
+      questions: [],
     };
 
     try {

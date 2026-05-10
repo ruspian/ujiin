@@ -324,3 +324,22 @@ export async function deleteQuestion(questionId: string) {
     };
   }
 }
+
+export async function deleteManyQuestions(ids: string[]) {
+  try {
+    const result = await prisma.question.deleteMany({
+      where: {
+        id: { in: ids },
+      },
+    });
+
+    revalidatePath("/guru/soal");
+    return {
+      success: true,
+      message: `${result.count} soal berhasil dihapus sekaligus!`,
+    };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: "Gagal menghapus beberapa soal." };
+  }
+}

@@ -60,12 +60,6 @@ export default function DataPenggunaPage({
     }
   }, [debouncedSearch, pathname, router, searchParams]);
 
-  const handleChangePage = (page: number) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("page", page.toString());
-    router.replace(`${pathname}?${params.toString()}`);
-  };
-
   const onClickDeleteButton = (id: string, name: string | null) => {
     setUserToDelete({ id, name });
     setIsModalDeleteOpen(true);
@@ -248,7 +242,6 @@ export default function DataPenggunaPage({
           currentPage={currentPage}
           totalCount={totalCount}
           totalPages={totalPages}
-          handlePageChange={handleChangePage}
           data="Penguna"
         />
       </div>

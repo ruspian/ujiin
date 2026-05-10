@@ -75,7 +75,7 @@ export async function createExam(data: ExamSchema) {
           connect: classes.map((id) => ({ id })),
         },
         questions: {
-          connect: questions.map((id) => ({ id })),
+          connect: questions?.map((id) => ({ id })),
         },
       },
     });
@@ -134,7 +134,7 @@ export async function updateExam(data: ExamSchema & { id: string }) {
 
         questions: {
           set: [],
-          connect: questions.map((id: string) => ({ id })), // Pasang soal yang baru dipilih Admin
+          connect: questions?.map((id: string) => ({ id })), // Pasang soal yang baru dipilih Admin
         },
       },
     });
