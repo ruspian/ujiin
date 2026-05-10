@@ -10,6 +10,7 @@ import QuestionSearchFilter from "@/components/layout/QuestionSearchFilter";
 import Pagination from "@/components/layout/Pagination";
 import QuestionListTable from "@/components/layout/QuestionListTable";
 import ExamSimulationModal from "@/components/layout/ExamSimulationModal";
+import ExportWordButton from "@/components/layout/ExportWordButton";
 
 export default async function DaftarSoalPage({
   params,
@@ -116,6 +117,13 @@ export default async function DaftarSoalPage({
             subjectId={subjectId}
             classId={classId}
             typeId={typeId}
+          />
+
+          <ExportWordButton
+            questions={questions}
+            subjectName={subject.name}
+            className={classTarget.name}
+            examName={examType.name}
           />
 
           <Link
