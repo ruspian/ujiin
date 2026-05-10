@@ -3,22 +3,23 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-import {
-  ArrowLeft,
-  FileQuestion,
-  PlusCircle,
-  Search,
-  Settings,
-} from "lucide-react";
+import { ArrowLeft, FileQuestion, PlusCircle, Settings } from "lucide-react";
 import ImportExcelWrapper from "@/components/layout/ImportExcelWrapper";
 import DeleteQuestionModal from "@/components/layout/DeleteQuestionModal";
+import { Prisma, QuestionType } from "@prisma/client";
+import QuestionSearchFilter from "@/components/layout/QuestionSearchFilter";
 
 export default async function DaftarSoalPage({
   params,
   searchParams,
 }: {
   params: Promise<{ subjectId: string }>;
-  searchParams: Promise<{ classId?: string; type?: string }>;
+  searchParams: Promise<{
+    classId?: string;
+    type?: string;
+    q?: string;
+    qType?: string;
+  }>;
 }) {
   const session = await auth();
   if (!session || session.user.role !== "GURU") redirect("/login");
@@ -30,6 +31,26 @@ export default async function DaftarSoalPage({
   const classId = resolvedSearchParams.classId ?? "";
   const typeId = resolvedSearchParams.type ?? "";
 
+  const searchQuery = resolvedSearchParams.q ?? "";
+  const filterType = resolvedSearchParams.qType ?? "";
+
+  const whereClause: Prisma.QuestionWhereInput = {
+    subjectId: subjectId,
+    classId: classId,
+    examTypeId: typeId,
+  };
+
+  if (searchQuery) {
+    whereClause.text = {
+      contains: searchQuery,
+      mode: "insensitive",
+    };
+  }
+
+  if (filterType && filterType !== "ALL") {
+    whereClause.type = filterType as QuestionType;
+  }
+
   const [subject, examType, classTarget] = await Promise.all([
     prisma.subject.findUnique({ where: { id: subjectId } }),
     typeId ? prisma.examType.findUnique({ where: { id: typeId } }) : null,
@@ -40,12 +61,7 @@ export default async function DaftarSoalPage({
     return <div>Data tidak valid.</div>;
 
   const questions = await prisma.question.findMany({
-    where: {
-      subjectId: subjectId,
-      classId: classId,
-      examTypeId: typeId,
-      authorId: session.user.id,
-    },
+    where: whereClause,
     orderBy: { createdAt: "desc" },
   });
 
@@ -89,20 +105,14 @@ export default async function DaftarSoalPage({
         </div>
       </div>
 
+      <QuestionSearchFilter />
+
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <h2 className="font-bold text-gray-800 flex items-center gap-2">
             <FileQuestion size={18} className="text-blue-500" /> Total{" "}
             {questions.length} Soal
           </h2>
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Cari soal..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
         </div>
 
         <div className="divide-y divide-gray-100">
@@ -127,25 +137,32 @@ export default async function DaftarSoalPage({
                     </span>
                   </div>
                 </div>
-                <Link
-                  href={`/guru/soal/${subjectId}/edit/${q.id}?classId=${classId}&type=${typeId}`}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center"
-                  title="Edit Soal"
-                >
-                  <Settings size={18} />
-                </Link>
 
-                <DeleteQuestionModal questionId={q.id} />
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    href={`/guru/soal/${subjectId}/edit/${q.id}?classId=${classId}&type=${typeId}`}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center"
+                    title="Edit Soal"
+                  >
+                    <Settings size={18} />
+                  </Link>
+
+                  <DeleteQuestionModal questionId={q.id} />
+                </div>
               </div>
             ))
           ) : (
             <div className="p-12 text-center flex flex-col items-center">
               <FileQuestion size={48} className="text-gray-200 mb-4" />
-              <h3 className="text-lg font-bold text-gray-800">Soal Kosong</h3>
+              <h3 className="text-lg font-bold text-gray-800">
+                {searchQuery || (filterType && filterType !== "ALL")
+                  ? "Soal Tidak Ditemukan"
+                  : "Soal Kosong"}
+              </h3>
               <p className="text-sm text-gray-500 mt-1 max-w-sm">
-                Belum ada soal untuk Kelas {classTarget.name} kategori{" "}
-                {examType.name}. Klik tombol tambah di atas untuk mulai membuat
-                soal.
+                {searchQuery || (filterType && filterType !== "ALL")
+                  ? "Tidak ada soal yang cocok dengan filter pencarian Anda. Coba kata kunci lain atau reset filter."
+                  : `Belum ada soal untuk Kelas ${classTarget.name} kategori ${examType.name}. Klik tombol tambah di atas untuk mulai membuat soal.`}
               </p>
             </div>
           )}
