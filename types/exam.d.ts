@@ -1,5 +1,6 @@
 import { AcademicYearData } from "./academic";
 import { ClassData } from "./class";
+import { Question as PrismaQuestion } from "@prisma/client";
 
 export interface MasterItem {
   id: string;
@@ -84,4 +85,19 @@ export interface JadwalFormProps {
   examTypes: MasterItem[];
   academicYears: AcademicYearData[];
   initialData?: ExamInitialData;
+}
+export interface OptionMC {
+  id: string;
+  text: string;
+}
+
+export interface OptionMatching {
+  left: string[];
+  right: string[];
+}
+
+export interface ExamSimulationModalProps {
+  questions: PrismaQuestion[];
+  subjectName: string;
+  examName: string;
 }

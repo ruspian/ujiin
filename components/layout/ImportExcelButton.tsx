@@ -173,7 +173,7 @@ export default function ImportExcelButton({
         className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-green-700 bg-green-100 hover:bg-green-200 rounded-xl transition-colors"
       >
         <FileSpreadsheet size={18} />
-        Import Excel
+        Import
       </button>
 
       <input

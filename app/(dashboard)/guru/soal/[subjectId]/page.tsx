@@ -9,6 +9,7 @@ import { Prisma, QuestionType } from "@prisma/client";
 import QuestionSearchFilter from "@/components/layout/QuestionSearchFilter";
 import Pagination from "@/components/layout/Pagination";
 import QuestionListTable from "@/components/layout/QuestionListTable";
+import ExamSimulationModal from "@/components/layout/ExamSimulationModal";
 
 export default async function DaftarSoalPage({
   params,
@@ -105,6 +106,12 @@ export default async function DaftarSoalPage({
         </div>
 
         <div className="flex items-center gap-3">
+          <ExamSimulationModal
+            questions={questions}
+            subjectName={subject.name}
+            examName={examType.name}
+          />
+
           <ImportExcelWrapper
             subjectId={subjectId}
             classId={classId}
@@ -115,7 +122,7 @@ export default async function DaftarSoalPage({
             href={`/guru/soal/${subjectId}/buat?classId=${classId}&type=${typeId}`}
             className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
           >
-            <PlusCircle size={18} /> Tambah Soal Baru
+            <PlusCircle size={18} /> Buat Soal
           </Link>
         </div>
       </div>
