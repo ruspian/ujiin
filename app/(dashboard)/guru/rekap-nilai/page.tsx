@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth"; // Sesuaikan path auth lu
 import { redirect } from "next/navigation";
-import { Calculator, Download, FileSpreadsheet, Filter } from "lucide-react";
+import { Calculator, FileSpreadsheet, Filter } from "lucide-react";
 import FilterRekap from "@/components/layout/FilterRekap";
 import { PageProps } from "@/types/rekap-nilai";
+import ExportNilaiExcel from "@/components/layout/ExportNilaiExcel";
 
 export default async function RekapNilaiPage({ searchParams }: PageProps) {
   const session = await auth();
@@ -67,6 +68,9 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
     });
   }
 
+  const selectedSubject = subjects.find((s) => s.id === subjectId);
+  const availableClasses = selectedSubject?.classes || [];
+
   return (
     <div className="space-y-6">
       <div>
@@ -90,9 +94,22 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
               <FileSpreadsheet size={20} className="text-emerald-600" /> Tabel
               Nilai
             </h2>
-            <button className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-lg hover:bg-emerald-100 flex items-center gap-2">
-              <Download size={16} /> Export Excel
-            </button>
+            <ExportNilaiExcel
+              students={students}
+              exams={exams}
+              attemptsMap={attemptsMap}
+              subjectName={selectedSubject?.name || "Mapel"}
+              className={
+                availableClasses.find((c) => c.id === classId)?.name || "Kelas"
+              }
+              academicYear={
+                academicYears.find((y) => y.id === yearId)
+                  ? `${academicYears.find((y) => y.id === yearId)?.year} - ${
+                      academicYears.find((y) => y.id === yearId)?.semester
+                    }`
+                  : "Tahun Ajaran"
+              }
+            />
           </div>
 
           {exams.length === 0 ? (
