@@ -33,7 +33,7 @@ type QuestionType =
   | "MULTIPLE_CHOICE_COMPLEX"
   | "MATCHING"
   | "ESSAY"
-  | "SHORT_ANSWER";
+  | "TRUE_FALSE";
 
 export interface RichTextEditorProps {
   content: string;

@@ -24,7 +24,7 @@ const TYPE_ORDER: Record<string, number> = {
   MULTIPLE_CHOICE: 1,
   MULTIPLE_CHOICE_COMPLEX: 2,
   MATCHING: 3,
-  SHORT_ANSWER: 4,
+  TRUE_FALSE: 4,
   ESSAY: 5,
 };
 
@@ -186,8 +186,8 @@ export default function ExamSimulationModal({
                           "Pilihan Ganda Kompleks"}
                         {currentQuestion.type === "MATCHING" && "Menjodohkan"}
                         {currentQuestion.type === "ESSAY" && "Uraian / Esai"}
-                        {currentQuestion.type === "SHORT_ANSWER" &&
-                          "Isian Singkat"}
+                        {currentQuestion.type === "TRUE_FALSE" &&
+                          "Benar / Salah"}
                       </div>
                     </div>
 
@@ -367,8 +367,7 @@ export default function ExamSimulationModal({
                         );
                       })()}
 
-                    {(currentQuestion.type === "ESSAY" ||
-                      currentQuestion.type === "SHORT_ANSWER") && (
+                    {currentQuestion.type === "ESSAY" && (
                       <textarea
                         className="w-full p-4 sm:p-6 bg-gray-50 border-2 border-gray-100 rounded-2xl sm:rounded-3xl text-sm focus:bg-white focus:border-blue-500 transition-all outline-none min-h-37.5 sm:min-h-50"
                         placeholder="Ketik jawaban Anda..."
@@ -379,6 +378,34 @@ export default function ExamSimulationModal({
                           (simulatedAnswers[currentQuestion.id] as string) || ""
                         }
                       />
+                    )}
+
+                    {currentQuestion.type === "TRUE_FALSE" && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {["BENAR", "SALAH"].map((opt) => {
+                          const isSelected =
+                            simulatedAnswers[currentQuestion.id] === opt;
+                          const isTrue = opt === "BENAR";
+
+                          return (
+                            <button
+                              key={opt}
+                              onClick={() =>
+                                handleSelectAnswer(currentQuestion.id, opt)
+                              }
+                              className={`py-4 rounded-2xl border-2 font-bold text-lg transition-all ${
+                                isSelected
+                                  ? isTrue
+                                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md"
+                                    : "border-red-500 bg-red-50 text-red-700 shadow-md"
+                                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>

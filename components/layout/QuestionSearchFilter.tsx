@@ -80,8 +80,8 @@ export default function QuestionSearchFilter() {
             <option value="MULTIPLE_CHOICE_COMPLEX">
               Pilihan Ganda Kompleks
             </option>
+            <option value="TRUE_FALSE">Benar / Salah</option>
             <option value="MATCHING">Menjodohkan</option>
-            <option value="SHORT_ANSWER">Isian Singkat</option>
             <option value="ESSAY">Uraian / Esai</option>
           </select>
         </div>

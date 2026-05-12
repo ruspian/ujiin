@@ -22,18 +22,18 @@ interface ExportProps {
 }
 
 const TYPE_LABELS: Record<QuestionType, string> = {
-  MULTIPLE_CHOICE: "SOAL PILIHAN GANDA",
-  MULTIPLE_CHOICE_COMPLEX: "SOAL PILIHAN GANDA KOMPLEKS",
-  MATCHING: "SOAL MENJODOHKAN",
-  SHORT_ANSWER: "SOAL ISIAN SINGKAT",
-  ESSAY: "SOAL URAIAN / ESAI",
+  MULTIPLE_CHOICE: "I. SOAL PILIHAN GANDA",
+  MULTIPLE_CHOICE_COMPLEX: "II. SOAL PILIHAN GANDA KOMPLEKS",
+  MATCHING: "III. SOAL MENJODOHKAN",
+  TRUE_FALSE: "IV. SOAL BENAR / SALAH",
+  ESSAY: "V. SOAL URAIAN / ESAI",
 };
 
 const TYPE_ORDER: QuestionType[] = [
   "MULTIPLE_CHOICE",
   "MULTIPLE_CHOICE_COMPLEX",
   "MATCHING",
-  "SHORT_ANSWER",
+  "TRUE_FALSE",
   "ESSAY",
 ];
 
@@ -45,7 +45,7 @@ export const exportQuestionsToWord = async ({
 }: ExportProps) => {
   const children: Array<Paragraph | Table> = [];
 
-  // kop
+  // KOP
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -74,14 +74,12 @@ export const exportQuestionsToWord = async ({
     }),
   );
 
-  let globalIndex = 1;
-
-  //   urutan jenis soal
   TYPE_ORDER.forEach((type) => {
     const groupQuestions = questions.filter((q) => q.type === type);
 
-    // Judul
     if (groupQuestions.length > 0) {
+      let sectionIndex = 1;
+
       children.push(
         new Paragraph({
           heading: HeadingLevel.HEADING_2,
@@ -90,114 +88,198 @@ export const exportQuestionsToWord = async ({
             new TextRun({
               text: TYPE_LABELS[type],
               bold: true,
-              underline: {},
-              size: 24,
+              size: 12,
               color: "2563eb",
             }),
           ],
         }),
       );
 
-      // kelompokkan soal sesuai TIPE
-      groupQuestions.forEach((q) => {
-        const cleanText = q.text.replace(/<[^>]*>?/gm, "");
-
-        children.push(
-          new Paragraph({
+      if (type === "TRUE_FALSE") {
+        const tableRows = [
+          new TableRow({
             children: [
-              new TextRun({ text: `${globalIndex}. `, bold: true }),
-              new TextRun({ text: cleanText }),
-            ],
-            spacing: { before: 200, after: 100 },
-          }),
-        );
-
-        if (
-          q.type === "MULTIPLE_CHOICE" ||
-          q.type === "MULTIPLE_CHOICE_COMPLEX"
-        ) {
-          const options = q.options as unknown as OptionMC[];
-          options.forEach((opt) => {
-            children.push(
-              new Paragraph({
-                indent: { left: 720 },
-                children: [new TextRun({ text: `${opt.id}. ${opt.text}` })],
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: "No", bold: true })],
+                  }),
+                ],
+                width: { size: 5, type: WidthType.PERCENTAGE },
               }),
-            );
-          });
-        } else if (q.type === "MATCHING") {
-          const matchOpts = q.options as unknown as OptionMatching;
-          const tableRows = matchOpts.left.map((l, i) => {
-            return new TableRow({
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: "Pernyataan", bold: true })],
+                  }),
+                ],
+                width: { size: 65, type: WidthType.PERCENTAGE },
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: "Benar", bold: true })],
+                  }),
+                ],
+                width: { size: 15, type: WidthType.PERCENTAGE },
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: "Salah", bold: true })],
+                  }),
+                ],
+                width: { size: 15, type: WidthType.PERCENTAGE },
+              }),
+            ],
+          }),
+        ];
+
+        groupQuestions.forEach((q) => {
+          const cleanText = q.text.replace(/<[^>]*>?/gm, "");
+          tableRows.push(
+            new TableRow({
               children: [
                 new TableCell({
                   children: [
                     new Paragraph({
-                      children: [new TextRun({ text: l, size: 20 })],
+                      alignment: AlignmentType.CENTER,
+                      children: [new TextRun({ text: `${sectionIndex}` })],
                     }),
                   ],
-                  width: { size: 45, type: WidthType.PERCENTAGE },
+                }),
+                new TableCell({
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: cleanText })],
+                    }),
+                  ],
                 }),
                 new TableCell({
                   children: [
                     new Paragraph({
                       alignment: AlignmentType.CENTER,
-                      children: [new TextRun({ text: "....." })],
+                      children: [new TextRun({ text: "........" })],
                     }),
                   ],
-                  width: { size: 10, type: WidthType.PERCENTAGE },
                 }),
                 new TableCell({
                   children: [
                     new Paragraph({
-                      children: [
-                        new TextRun({
-                          text: matchOpts.right[i] || "",
-                          size: 20,
-                        }),
-                      ],
+                      alignment: AlignmentType.CENTER,
+                      children: [new TextRun({ text: "........" })],
                     }),
                   ],
-                  width: { size: 45, type: WidthType.PERCENTAGE },
                 }),
               ],
-            });
-          });
-
-          children.push(
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              rows: tableRows,
             }),
           );
-        } else {
-          // Garis jawaban untuk Esai
-          const lines = q.type === "ESSAY" ? 3 : 1;
-          for (let i = 0; i < lines; i++) {
-            children.push(
-              new Paragraph({
-                indent: { left: 720 },
+          sectionIndex++;
+        });
+
+        children.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: tableRows,
+          }),
+        );
+      } else {
+        groupQuestions.forEach((q) => {
+          const cleanText = q.text.replace(/<[^>]*>?/gm, "");
+
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${sectionIndex}. `, bold: true }),
+                new TextRun({ text: cleanText }),
+              ],
+              spacing: { before: 200, after: 100 },
+            }),
+          );
+
+          if (
+            q.type === "MULTIPLE_CHOICE" ||
+            q.type === "MULTIPLE_CHOICE_COMPLEX"
+          ) {
+            const options = q.options as unknown as OptionMC[];
+            options.forEach((opt) => {
+              children.push(
+                new Paragraph({
+                  indent: { left: 720 },
+                  children: [new TextRun({ text: `${opt.id}. ${opt.text}` })],
+                }),
+              );
+            });
+          } else if (q.type === "MATCHING") {
+            const matchOpts = q.options as unknown as OptionMatching;
+            const matchingRows = matchOpts.left.map((l, i) => {
+              return new TableRow({
                 children: [
-                  new TextRun({
-                    text: "....................................................................................................................................",
-                    color: "a1a1aa",
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [new TextRun({ text: l, size: 20 })],
+                      }),
+                    ],
+                    width: { size: 45, type: WidthType.PERCENTAGE },
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [new TextRun({ text: "....." })],
+                      }),
+                    ],
+                    width: { size: 10, type: WidthType.PERCENTAGE },
+                  }),
+                  new TableCell({
+                    children: [
+                      new Paragraph({
+                        children: [
+                          new TextRun({
+                            text: matchOpts.right[i] || "",
+                            size: 20,
+                          }),
+                        ],
+                      }),
+                    ],
+                    width: { size: 45, type: WidthType.PERCENTAGE },
                   }),
                 ],
+              });
+            });
+            children.push(
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: matchingRows,
               }),
             );
+          } else if (q.type === "ESSAY") {
+            for (let i = 0; i < 3; i++) {
+              children.push(
+                new Paragraph({
+                  indent: { left: 720 },
+                  children: [
+                    new TextRun({
+                      text: "....................................................................................................................................",
+                      color: "a1a1aa",
+                    }),
+                  ],
+                }),
+              );
+            }
           }
-        }
-
-        globalIndex++;
-      });
+          sectionIndex++;
+        });
+      }
     }
   });
 
-  // GENERATE
-  const doc = new Document({
-    sections: [{ children }],
-  });
-
+  const doc = new Document({ sections: [{ children }] });
   const blob = await Packer.toBlob(doc);
   saveAs(blob, `Soal_${subjectName}_${className}.docx`);
 };

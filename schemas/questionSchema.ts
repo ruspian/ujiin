@@ -5,7 +5,7 @@ const questionTypeEnum = z.enum([
   "MULTIPLE_CHOICE_COMPLEX",
   "MATCHING",
   "ESSAY",
-  "SHORT_ANSWER",
+  "TRUE_FALSE",
 ]);
 
 export const questionSchema = z.object({

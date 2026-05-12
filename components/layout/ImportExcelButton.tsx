@@ -93,6 +93,8 @@ export default function ImportExcelButton({
           defaultType = "MATCHING";
         else if (sheetName.includes("ESAI") || sheetName.includes("URAIAN"))
           defaultType = "ESSAY";
+        else if (sheetName.includes("BENAR") || sheetName.includes("SALAH"))
+          defaultType = "TRUE_FALSE";
 
         // Kalau datanya ada, pake! Kalau nggak, baca lagi.
         const rows = sheetObj?.data

@@ -8,6 +8,7 @@ import {
   MultipleChoiceOption,
   MatchingOption,
 } from "@/types/question";
+import { Prisma, QuestionType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function createQuestion(payload: QuestionFormValues) {
@@ -88,12 +89,11 @@ export async function importQuestions(payload: {
     }
 
     const dataToInsert = payload.questions.map((row) => {
-      const tipeSoalExcel = String(row.Tipe_Soal || "").toUpperCase();
-      let type:
-        | "MULTIPLE_CHOICE"
-        | "MULTIPLE_CHOICE_COMPLEX"
-        | "ESSAY"
-        | "MATCHING" = "MULTIPLE_CHOICE";
+      const tipeSoalExcel = String(row.Tipe_Soal || "")
+        .toUpperCase()
+        .trim();
+
+      let type: QuestionType = "MULTIPLE_CHOICE";
 
       const optionsPG: MultipleChoiceOption[] = [];
       let optionsMenjodohkan: MatchingOption | null = null;
@@ -103,6 +103,12 @@ export async function importQuestions(payload: {
 
       if (tipeSoalExcel === "ESSAY") {
         type = "ESSAY";
+      } else if (
+        tipeSoalExcel === "TRUE_FALSE" ||
+        tipeSoalExcel === "BENAR_SALAH" ||
+        tipeSoalExcel === "BENAR SALAH"
+      ) {
+        type = "TRUE_FALSE";
       } else if (tipeSoalExcel === "MATCHING") {
         type = "MATCHING";
         const pairs: { left: string; right: string; point: number }[] = [];
@@ -155,16 +161,23 @@ export async function importQuestions(payload: {
 
       const finalOptions =
         optionsMenjodohkan !== null ? optionsMenjodohkan : optionsPG;
-      const finalCorrectAnswer =
+
+      let finalCorrectAnswer =
         matchingCorrectAnswer !== null
           ? matchingCorrectAnswer
-          : String(row.Kunci_Jawaban || "");
+          : String(row.Kunci_Jawaban || "")
+              .trim()
+              .toUpperCase();
+
+      if (type === "TRUE_FALSE") {
+        finalCorrectAnswer = finalCorrectAnswer === "SALAH" ? "SALAH" : "BENAR";
+      }
 
       return {
         type: type,
         score: finalScore,
         text: `<p>${row.Teks_Soal}</p>`,
-        options: finalOptions,
+        options: finalOptions as unknown as Prisma.InputJsonValue,
         correctAnswer: finalCorrectAnswer,
         classId: payload.classId,
         examTypeId: payload.typeId,
@@ -180,6 +193,7 @@ export async function importQuestions(payload: {
     revalidatePath(
       `/guru/soal/${payload.subjectId}?classId=${payload.classId}&type=${payload.typeId}`,
     );
+
     return {
       success: true,
       message: `${dataToInsert.length} soal berhasil di-import!`,

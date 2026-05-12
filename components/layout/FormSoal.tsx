@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, XCircle, Plus, Trash2, Edit3 } from "lucide-react";
+import {
+  Save,
+  XCircle,
+  Plus,
+  Trash2,
+  Edit3,
+  CheckCircle2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import RichTextEditor from "./RichTextEditor";
 import { createQuestion, updateQuestion } from "@/actions/question";
@@ -71,16 +79,22 @@ export default function FormSoal({
   });
 
   const [textAnswer, setTextAnswer] = useState(() => {
-    if (initialData?.type === "ESSAY" || initialData?.type === "SHORT_ANSWER") {
-      return initialData.correctAnswer;
-    }
+    if (initialData?.type === "ESSAY") return initialData.correctAnswer;
     return "";
   });
+
+  const [trueFalseAnswer, setTrueFalseAnswer] = useState<"BENAR" | "SALAH">(
+    () => {
+      if (initialData?.type === "TRUE_FALSE") {
+        return initialData.correctAnswer as "BENAR" | "SALAH";
+      }
+      return "BENAR";
+    },
+  );
 
   const [matchingPairs, setMatchingPairs] = useState(() => {
     if (initialData?.type === "MATCHING") {
       try {
-        // simpan json
         return JSON.parse(initialData.correctAnswer) as {
           left: string;
           right: string;
@@ -152,7 +166,10 @@ export default function FormSoal({
         ...(options.E ? [{ id: "E", text: options.E }] : []),
       ];
       finalCorrectAnswer = correctMultiple.join(",");
-    } else if (questionType === "ESSAY" || questionType === "SHORT_ANSWER") {
+    } else if (questionType === "TRUE_FALSE") {
+      finalOptions = [];
+      finalCorrectAnswer = trueFalseAnswer;
+    } else if (questionType === "ESSAY") {
       if (!textAnswer)
         return toast.error("Kunci jawaban / rubrik penilaian wajib diisi!");
       finalOptions = [];
@@ -224,16 +241,16 @@ export default function FormSoal({
           <select
             value={questionType}
             onChange={(e) => setQuestionType(e.target.value as QuestionType)}
-            disabled={!!questionId} // Kunci jenis soal kalau lagi mode Edit biar aman
+            disabled={!!questionId}
             className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 font-medium text-blue-700 shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
           >
             <option value="MULTIPLE_CHOICE">Pilihan Ganda</option>
             <option value="MULTIPLE_CHOICE_COMPLEX">
               Pilihan Ganda Kompleks
             </option>
+            <option value="TRUE_FALSE">Benar / Salah</option>
             <option value="MATCHING">Menjodohkan</option>
-            <option value="SHORT_ANSWER">Isian Singkat </option>
-            <option value="ESSAY">Uraian / Esai </option>
+            <option value="ESSAY">Esai</option>
           </select>
         </div>
 
@@ -290,7 +307,6 @@ export default function FormSoal({
                 questionType === "MULTIPLE_CHOICE"
                   ? correctSingle === opt
                   : correctMultiple.includes(opt);
-
               return (
                 <div
                   key={opt}
@@ -314,7 +330,6 @@ export default function FormSoal({
                       />
                     )}
                   </div>
-
                   <div className="flex-1 flex gap-3">
                     <div
                       className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center font-bold text-lg ${isChecked ? "bg-green-500 text-white" : "bg-gray-100 text-gray-600"}`}
@@ -337,29 +352,75 @@ export default function FormSoal({
           </div>
         )}
 
-        {(questionType === "ESSAY" || questionType === "SHORT_ANSWER") && (
+        {questionType === "TRUE_FALSE" && (
+          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <label className="text-sm font-bold text-gray-800">
+              Kunci Jawaban<span className="text-red-500">*</span>
+            </label>
+
+            <div className="flex gap-3 max-w-md">
+              <button
+                type="button"
+                onClick={() => setTrueFalseAnswer("BENAR")}
+                className={`flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                  trueFalseAnswer === "BENAR"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm"
+                    : "border-gray-200 bg-white text-gray-500 hover:border-emerald-200 hover:bg-emerald-50/50 hover:text-emerald-600"
+                }`}
+              >
+                <CheckCircle2
+                  size={18}
+                  className={
+                    trueFalseAnswer === "BENAR"
+                      ? "text-emerald-500"
+                      : "text-gray-400"
+                  }
+                />
+                BENAR
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTrueFalseAnswer("SALAH")}
+                className={`flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                  trueFalseAnswer === "SALAH"
+                    ? "border-red-500 bg-red-50 text-red-700 shadow-sm"
+                    : "border-gray-200 bg-white text-gray-500 hover:border-red-200 hover:bg-red-50/50 hover:text-red-600"
+                }`}
+              >
+                <X
+                  size={18}
+                  className={
+                    trueFalseAnswer === "SALAH"
+                      ? "text-red-500"
+                      : "text-gray-400"
+                  }
+                />
+                SALAH
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Sistem otomatis memberikan poin jika siswa memilih jawaban yang
+              sama dengan pilihan di atas.
+            </p>
+          </div>
+        )}
+
+        {questionType === "ESSAY" && (
           <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <label className="text-sm font-bold text-gray-800">
-              {questionType === "ESSAY"
-                ? "Rubrik Penilaian / Kunci Jawaban"
-                : "Kunci Jawaban Pasti"}{" "}
-              <span className="text-red-500">*</span>
+              Kunci Jawaban <span className="text-red-500">*</span>
             </label>
             <textarea
               rows={4}
-              placeholder={
-                questionType === "ESSAY"
-                  ? "Contoh: Siswa menjawab A mendapat skor 5..."
-                  : "Tulis jawaban singkat yang benar..."
-              }
+              placeholder="Contoh: Siswa menjawab A mendapat skor 5..."
               value={textAnswer}
               onChange={(e) => setTextAnswer(e.target.value)}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-green-500 focus:border-green-500"
             />
             <p className="text-xs text-gray-500">
-              {questionType === "ESSAY"
-                ? "Ditampilkan ke guru saat proses koreksi manual."
-                : "Sistem akan menilai benar jika jawaban siswa sama persis dengan ini."}
+              Ditampilkan ke guru saat proses koreksi manual.
             </p>
           </div>
         )}
@@ -369,14 +430,13 @@ export default function FormSoal({
             <label className="text-sm font-bold text-gray-800 block">
               Pasangan Menjodohkan & Poin
             </label>
-
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
               <div className="flex gap-3 mb-2 px-1">
                 <span className="flex-1 text-xs font-bold text-gray-500 uppercase">
-                  Premis (Kiri)
+                  Premis
                 </span>
                 <span className="flex-1 text-xs font-bold text-gray-500 uppercase">
-                  Jawaban (Kanan)
+                  Jawaban
                 </span>
                 <span className="w-20 text-xs font-bold text-gray-500 uppercase text-center">
                   Poin
@@ -429,7 +489,6 @@ export default function FormSoal({
                   </button>
                 </div>
               ))}
-
               <button
                 type="button"
                 onClick={handleAddMatchingPair}

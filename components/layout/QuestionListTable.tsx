@@ -128,7 +128,7 @@ export default function QuestionListTable({
                   "Pilihan Ganda Kompleks"}
                 {q.type === "MATCHING" && "Menjodohkan"}
                 {q.type === "ESSAY" && "Uraian / Esai"}
-                {q.type === "SHORT_ANSWER" && "Isian Singkat"}
+                {q.type === "TRUE_FALSE" && "Benar / Salah"}
               </span>
 
               <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px]">
