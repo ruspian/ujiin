@@ -151,10 +151,17 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
                   </Link>
 
                   <Link
-                    href="/guru/koreksi"
+                    href="/guru/penilaian"
                     className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/koreksi") ? "text-teal-600" : "text-gray-600"}`}
                   >
-                    Koreksi Nilai
+                    Penilaian
+                  </Link>
+
+                  <Link
+                    href="/guru/rekap-nilai"
+                    className={`text-sm font-medium transition-colors hover:text-teal-600 ${pathname.startsWith("/rakap-nilai") ? "text-teal-600" : "text-gray-600"}`}
+                  >
+                    Rekap
                   </Link>
                 </>
               )}
