@@ -4,33 +4,46 @@ import { KeyRound, UserSquare2, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { masukUjian } from "@/actions/ujian";
 
 export default function StudentPortal() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handleExamLogin = async (formData: FormData) => {
+  const handleExamLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setLoading(true);
 
-    const nisn = formData.get("nisn");
-    const token = formData.get("token");
+    const formData = new FormData(e.currentTarget);
+    const nisn = formData.get("nisn")?.toString();
+    const token = formData.get("token")?.toString();
 
-    // Nanti di sini kita hit API khusus untuk validasi Token & NISN
-    // Simulasi sementara:
-    setTimeout(() => {
-      if (token === "X7B9K") {
-        toast.success("Token valid! Mengalihkan ke ruang ujian...");
-        // router.push("/ujian/mulai");
-      } else {
-        toast.error("Token ujian tidak valid atau jadwal belum dimulai!");
-      }
+    if (!nisn || !token) {
+      toast.error("NISN dan Token wajib diisi!");
       setLoading(false);
-    }, 1500);
+      return;
+    }
+
+    try {
+      const result = await masukUjian(nisn, token);
+
+      if (result.success && result.attemptId) {
+        toast.success(result.message);
+        router.push(`/ujian/${result.attemptId}`);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Terjadi kesalahan!",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
-      {/* Branding App */}
       <div className="mb-8 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md">
           <BookOpen size={24} />
@@ -40,7 +53,6 @@ export default function StudentPortal() {
         </h1>
       </div>
 
-      {/* Form Card */}
       <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl ring-1 ring-gray-100">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-600 ring-8 ring-teal-50/50">
@@ -52,7 +64,7 @@ export default function StudentPortal() {
           </p>
         </div>
 
-        <form action={handleExamLogin} className="space-y-5">
+        <form onSubmit={handleExamLogin} className="space-y-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Nomor Induk Siswa (NISN)
