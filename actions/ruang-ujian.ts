@@ -69,3 +69,48 @@ export async function submitUjianSiswa(attemptId: string, answers: AnswersMap) {
     return { success: false, message: "Terjadi kesalahan sistem saat submit." };
   }
 }
+
+export async function catatPelanggaran(
+  attemptId: string,
+  jenisPelanggaran: string,
+) {
+  try {
+    const attempt = await prisma.attempt.findUnique({
+      where: { id: attemptId },
+      select: { violationCount: true, violationLogs: true },
+    });
+
+    if (!attempt) throw new Error("Attempt tidak ditemukan");
+
+    // Ambil log lama kalau ada, lalu tambahin log baru
+    const currentLogs = Array.isArray(attempt.violationLogs)
+      ? attempt.violationLogs
+      : [];
+    const newLog = {
+      waktu: new Date().toISOString(),
+      jenis: jenisPelanggaran,
+    };
+
+    const newCount = attempt.violationCount + 1;
+    const isCheated = newCount >= 3;
+
+    await prisma.attempt.update({
+      where: { id: attemptId },
+      data: {
+        violationCount: newCount,
+        violationLogs: [...currentLogs, newLog] as object,
+        status: isCheated ? "CHEATED" : undefined,
+        endTime: isCheated ? new Date() : undefined,
+      },
+    });
+
+    return {
+      success: true,
+      violationCount: newCount,
+      isKicked: isCheated,
+    };
+  } catch (error) {
+    console.error("Gagal catat pelanggaran:", error);
+    return { success: false };
+  }
+}

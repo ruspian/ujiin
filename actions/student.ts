@@ -292,20 +292,13 @@ export async function prepareExamCards(classId: string) {
     const studentsWithRawPassword = [];
 
     for (const student of students) {
-      let rawPassword = "";
+      const rawPassword = generateRandomPassword(6);
+      const hashedPassword = await bcryptjs.hash(rawPassword, 10);
 
-      if (!student.password) {
-        // Generate password baru jika belum punya
-        rawPassword = generateRandomPassword(6);
-        const hashedPassword = await bcryptjs.hash(rawPassword, 10);
-
-        await prisma.student.update({
-          where: { id: student.id },
-          data: { password: hashedPassword },
-        });
-      } else {
-        rawPassword = "******";
-      }
+      await prisma.student.update({
+        where: { id: student.id },
+        data: { password: hashedPassword },
+      });
 
       studentsWithRawPassword.push({
         name: student.name,
@@ -320,7 +313,7 @@ export async function prepareExamCards(classId: string) {
     return {
       success: true,
       data: studentsWithRawPassword,
-      message: "Kartu ujian berhasil disiapkan!",
+      message: "Kartu ujian berhasil disiapkan dengan PIN baru!",
     };
   } catch (error) {
     console.error("PREPARE_EXAM_CARDS_ERROR:", error);

@@ -10,6 +10,8 @@ import {
   Menu,
   Timer,
   Loader2,
+  AlertTriangle,
+  HelpCircle,
 } from "lucide-react";
 import { getSafeHTML } from "@/lib/getSafeHTML";
 import { toast } from "sonner";
@@ -17,34 +19,11 @@ import { QuestionType } from "@prisma/client";
 
 import { useRouter } from "next/navigation";
 import { AnswersMap, AnswerValue } from "@/types/ruang-ujian";
-import { autoSaveJawaban, submitUjianSiswa } from "@/actions/ruang-ujian";
-
-export interface OptionMC {
-  id: string;
-  text: string;
-}
-
-export interface OptionMatching {
-  left: string[];
-  right: string[];
-}
-
-export interface ClientQuestion {
-  id: string;
-  type: QuestionType;
-  text: string;
-  score: number;
-  options: unknown;
-}
-
-interface RuangUjianProps {
-  attemptId: string;
-  examName: string;
-  subjectName: string;
-  questions: ClientQuestion[];
-  endTime: Date;
-  initialAnswers: AnswersMap;
-}
+import {
+  autoSaveJawaban,
+  submitUjianSiswa,
+  catatPelanggaran,
+} from "@/actions/ruang-ujian";
 
 const TYPE_ORDER: Record<QuestionType, number> = {
   MULTIPLE_CHOICE: 1,
@@ -77,16 +56,95 @@ export default function RuangUjian({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [violationData, setViolationData] = useState<{
+    jenis: string;
+    count: number;
+    isKicked: boolean;
+  } | null>(null);
+  const isProcessingViolation = useRef(false);
+  const MAX_VIOLATION = 3;
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleSelesaiUjian = async (isAutoSubmit = false) => {
-    if (!isAutoSubmit) {
-      const isSure = confirm(
-        "Apakah Anda yakin ingin mengumpulkan ujian? Anda tidak bisa kembali lagi.",
-      );
-      if (!isSure) return;
-    }
+  const handlePelanggaran = async (jenis: string) => {
+    if (isProcessingViolation.current) return;
+    isProcessingViolation.current = true;
 
+    try {
+      const result = await catatPelanggaran(attemptId, jenis);
+      if (result && result.success) {
+        setViolationData({
+          jenis,
+          count: result.violationCount as number,
+          isKicked: result.isKicked as boolean,
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setTimeout(() => {
+        isProcessingViolation.current = false;
+      }, 2000);
+    }
+  };
+
+  // anti cheat
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handlePelanggaran("Meninggalkan tab browser / Membuka aplikasi lain");
+      }
+    };
+
+    const handleWindowBlur = () => {
+      handlePelanggaran("Kehilangan fokus layar (Mungkin membuka contekan)");
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      toast.warning("Klik kanan dinonaktifkan!");
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+        e.preventDefault();
+        handlePelanggaran("Mencoba menginspeksi elemen (F12)");
+      }
+      if (
+        e.ctrlKey &&
+        (e.key === "c" || e.key === "v" || e.key === "C" || e.key === "V")
+      ) {
+        e.preventDefault();
+        toast.warning("Fitur Copy-Paste dimatikan!");
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSelesaiUjian = (isAutoSubmit = false) => {
+    if (!isAutoSubmit) {
+      // Tampilkan custom modal alih-alih confirm() bawaan
+      setShowConfirmModal(true);
+      return;
+    }
+    executeSubmit();
+  };
+
+  const executeSubmit = async () => {
+    setShowConfirmModal(false);
     setIsSubmitting(true);
     const toastId = toast.loading("Sedang mengumpulkan jawaban...");
 
@@ -101,13 +159,15 @@ export default function RuangUjian({
     } catch (error: unknown) {
       toast.error(
         error instanceof Error ? error.message : "Terjadi kesalahan!",
-        { id: toastId },
+        {
+          id: toastId,
+        },
       );
-    } finally {
       setIsSubmitting(false);
     }
   };
 
+  // timer
   useEffect(() => {
     const calculateTimeLeft = () => {
       const difference = new Date(endTime).getTime() - new Date().getTime();
@@ -118,7 +178,6 @@ export default function RuangUjian({
       const newTime = calculateTimeLeft();
       setTimeLeft(newTime);
 
-      // Auto-submit jika waktu habis
       if (newTime <= 0) {
         if (timerRef.current) clearInterval(timerRef.current);
         handleSelesaiUjian(true);
@@ -155,7 +214,6 @@ export default function RuangUjian({
 
   const currentQuestion = sortedQuestions[currentIndex];
 
-  // autosave
   const saveToServer = async (newAnswers: AnswersMap) => {
     setIsSaving(true);
     await autoSaveJawaban(attemptId, newAnswers);
@@ -169,7 +227,6 @@ export default function RuangUjian({
   ) => {
     setAnswers((prev) => {
       let newValue: AnswerValue;
-
       if (isComplex) {
         const currentVals = (prev[questionId] as string[]) || [];
         if (currentVals.includes(value)) {
@@ -180,7 +237,6 @@ export default function RuangUjian({
       } else {
         newValue = value;
       }
-
       const updatedAnswers = { ...prev, [questionId]: newValue };
       saveToServer(updatedAnswers);
       return updatedAnswers;
@@ -196,7 +252,6 @@ export default function RuangUjian({
       const currentMatches = (prev[questionId] as Record<string, string>) || {};
       const newValue = { ...currentMatches, [left]: right };
       const updatedAnswers = { ...prev, [questionId]: newValue };
-
       saveToServer(updatedAnswers);
       return updatedAnswers;
     });
@@ -210,7 +265,6 @@ export default function RuangUjian({
       };
       delete currentMatches[left];
       const updatedAnswers = { ...prev, [questionId]: currentMatches };
-
       saveToServer(updatedAnswers);
       return updatedAnswers;
     });
@@ -365,7 +419,6 @@ export default function RuangUjian({
 
                 {currentQuestion.type === "MATCHING" &&
                   (() => {
-                    // Safe Cast
                     const matchOpts =
                       currentQuestion.options as unknown as OptionMatching;
                     const currentMatches =
@@ -470,7 +523,6 @@ export default function RuangUjian({
                     className="w-full p-4 sm:p-6 bg-gray-50 border-2 border-gray-100 rounded-2xl sm:rounded-3xl text-sm focus:bg-white focus:border-blue-500 transition-all outline-none min-h-37.5 sm:min-h-50"
                     placeholder="Ketik jawaban Anda..."
                     onBlur={(e) => {
-                      // Simpan ke DB hanya ketika siswa selesai mengetik (kehilangan fokus)
                       const updatedAnswers = {
                         ...answers,
                         [currentQuestion.id]: e.target.value,
@@ -579,27 +631,12 @@ export default function RuangUjian({
               );
             })}
           </div>
-
-          <div className="mt-auto pt-6 border-t border-gray-100 space-y-3">
-            <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase">
-              <div className="w-4 h-4 bg-emerald-500 rounded-md"></div> Sudah
-              Dijawab
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase">
-              <div className="w-4 h-4 bg-blue-600 rounded-md"></div> Sedang
-              Dibuka
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase">
-              <div className="w-4 h-4 bg-gray-100 border-2 border-gray-200 rounded-md"></div>{" "}
-              Belum Dijawab
-            </div>
-          </div>
         </div>
       </div>
 
       {showMobileNav && (
         <div
-          className={`fixed inset-x-0 bottom-0 bg-white border-t rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.15)] p-5 z-50 transition-transform duration-300 lg:hidden ${
+          className={`fixed inset-x-0 bottom-0 bg-white border-t rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.15)] p-5 z-90 transition-transform duration-300 lg:hidden ${
             showMobileNav ? "translate-y-0" : "translate-y-full"
           }`}
         >
@@ -641,6 +678,91 @@ export default function RuangUjian({
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md animate-in fade-in zoom-in-95 rounded-3xl bg-white p-6 shadow-2xl text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 mb-4">
+              <HelpCircle size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Kumpulkan Jawaban?
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Apakah Anda yakin ingin menyelesaikan ujian ini? Anda{" "}
+              <b>tidak bisa</b> mengubah jawaban lagi setelah ini.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={executeSubmit}
+                className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+              >
+                Ya, Kumpulkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {violationData && (
+        <div className="fixed inset-0 z-200 flex items-center justify-center bg-red-950/80 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md animate-in zoom-in rounded-3xl bg-white p-8 shadow-2xl text-center border-4 border-red-500">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 mb-4 ring-8 ring-red-50">
+              <AlertTriangle size={40} />
+            </div>
+
+            {violationData.isKicked ? (
+              <>
+                <h2 className="text-2xl font-black text-gray-900 mb-2 uppercase">
+                  Ujian Dibatalkan!
+                </h2>
+                <p className="text-gray-600 font-medium mb-6">
+                  Anda telah melakukan pelanggaran berat sebanyak{" "}
+                  <span className="font-bold text-red-600">
+                    {MAX_VIOLATION} kali
+                  </span>
+                  .
+                </p>
+                <button
+                  onClick={() => router.push("/siswa?error=pelanggaran")}
+                  className="w-full py-4 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                >
+                  Kembali ke Dashboard
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-black text-gray-900 mb-1 uppercase">
+                  Peringatan Kecurangan!
+                </h2>
+                <p className="text-sm text-red-600 font-bold mb-4">
+                  Pelanggaran ke: {violationData.count} dari {MAX_VIOLATION}
+                </p>
+                <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100 text-left">
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">
+                    Aktivitas Terdeteksi:
+                  </p>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {violationData.jenis}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setViolationData(null)}
+                  className="w-full py-3.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition-colors"
+                >
+                  Saya Mengerti & Lanjutkan Ujian
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
