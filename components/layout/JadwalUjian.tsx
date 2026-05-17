@@ -11,6 +11,10 @@ import {
   Clock,
   Users,
   CheckCircle2,
+  KeyRound,
+  Copy,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { useDebounce } from "use-debounce";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -20,6 +24,8 @@ import AddJadwalModal from "./AddJadwalModal";
 import EditJadwalModal from "./EditJadwalModal";
 import DeleteJadwalModal from "./DeleteJadwalModal";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { toast } from "sonner";
+import { generateExamToken } from "@/actions/ujian"; // Pastikan path ini benar
 
 export default function JadwalUjian({
   exams,
@@ -39,6 +45,9 @@ export default function JadwalUjian({
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExamData | null>(null);
 
+  const [loadingTokenId, setLoadingTokenId] = useState<string | null>(null);
+  const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null);
+
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -57,6 +66,31 @@ export default function JadwalUjian({
       router.push(`${pathname}?${params.toString()}`);
     }
   }, [debouncedSearch, pathname, router, searchParams]);
+
+  const handleGenerateToken = async (examId: string) => {
+    setLoadingTokenId(examId);
+    try {
+      const result = await generateExamToken(examId);
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Terjadi kesalahan!",
+      );
+    } finally {
+      setLoadingTokenId(null);
+    }
+  };
+
+  const handleCopyToken = (token: string, examId: string) => {
+    navigator.clipboard.writeText(token);
+    setCopiedTokenId(examId);
+    toast.success("Token berhasil disalin!");
+    setTimeout(() => setCopiedTokenId(null), 2000);
+  };
 
   return (
     <div className="space-y-6">
@@ -121,7 +155,9 @@ export default function JadwalUjian({
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
               <tr>
-                <th className="px-6 py-4 font-semibold">Informasi Ujian</th>
+                <th className="px-6 py-4 font-semibold w-[35%]">
+                  Informasi Ujian
+                </th>
                 <th className="px-6 py-4 font-semibold">Pelaksanaan</th>
                 <th className="px-6 py-4 font-semibold">Kelas & Status</th>
                 <th className="px-6 py-4 font-semibold text-right">Aksi</th>
@@ -135,69 +171,139 @@ export default function JadwalUjian({
                     className="hover:bg-gray-50/50 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900 mb-1">
+                      <div className="font-bold text-gray-900 mb-1 text-base">
                         {item.title}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                         <span className="inline-flex items-center rounded bg-indigo-50 px-1.5 py-0.5 font-medium text-indigo-700">
                           {item.examType.code}
                         </span>
                         <span>•</span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 font-medium">
                           <BookOpen size={12} /> {item.subject.name}
                         </span>
                       </div>
+
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          Token:
+                        </span>
+                        {item.token ? (
+                          <div className="flex items-center gap-1.5">
+                            <code className="bg-teal-50 text-teal-700 font-black tracking-[0.15em] px-2 py-0.5 rounded text-xs border border-teal-100">
+                              {item.token}
+                            </code>
+                            <button
+                              onClick={() =>
+                                handleCopyToken(item.token!, item.id)
+                              }
+                              className="p-1 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded transition-colors"
+                              title="Salin Token"
+                            >
+                              {copiedTokenId === item.id ? (
+                                <CheckCircle2
+                                  size={14}
+                                  className="text-emerald-500"
+                                />
+                              ) : (
+                                <Copy size={14} />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleGenerateToken(item.id)}
+                              disabled={loadingTokenId === item.id}
+                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
+                              title="Generate Ulang Token"
+                            >
+                              <RefreshCw
+                                size={14}
+                                className={
+                                  loadingTokenId === item.id
+                                    ? "animate-spin"
+                                    : ""
+                                }
+                              />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleGenerateToken(item.id)}
+                            disabled={loadingTokenId === item.id}
+                            className="flex items-center gap-1 text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold transition-colors disabled:opacity-50"
+                          >
+                            {loadingTokenId === item.id ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <KeyRound size={12} />
+                            )}
+                            Generate
+                          </button>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <CalendarClock size={14} className="text-teal-600" />
+
+                    <td className="px-6 py-4 text-gray-600 align-top">
+                      <div className="flex flex-col gap-2 mt-1">
+                        <div className="flex items-center gap-1.5 text-xs font-medium">
+                          <CalendarClock
+                            size={14}
+                            className="text-teal-600 shrink-0"
+                          />
                           <span>{formatDateTime(item.startTime)}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-red-500">
-                          <Clock size={14} />
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+                          <Clock size={14} className="shrink-0" />
                           <span>Batas: {formatDateTime(item.endTime)}</span>
                         </div>
-                        <div className="mt-1 text-xs font-semibold text-gray-900">
+                        <div className="inline-flex items-center justify-center rounded-lg bg-gray-100 px-2 py-1 text-xs font-bold text-gray-700 w-max mt-1 border border-gray-200">
                           Durasi: {item.duration} Menit
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-1 text-xs text-gray-600">
-                          <Users size={14} />
-                          <span
-                            className="truncate max-w-37.5"
-                            title={item.classes.map((c) => c.name).join(", ")}
-                          >
-                            {item.classes.map((c) => c.name).join(", ")}
-                          </span>
+
+                    <td className="px-6 py-4 align-top">
+                      <div className="flex flex-col gap-3 mt-1">
+                        <div className="flex items-start gap-1.5 text-xs text-gray-600">
+                          <Users
+                            size={14}
+                            className="mt-0.5 shrink-0 text-gray-400"
+                          />
+                          <div className="flex flex-wrap gap-1">
+                            {item.classes.map((c) => (
+                              <span
+                                key={c.id}
+                                className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-600 border border-gray-200"
+                              >
+                                {c.name}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                         <div>
                           {item.status === "DRAFT" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                              <Edit2 size={10} /> Draft
+                            <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700 border border-orange-100">
+                              <Edit2 size={10} /> DRAFT
                             </span>
                           )}
                           {item.status === "PUBLISHED" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2 py-1 text-xs font-medium text-teal-700">
-                              <CheckCircle2 size={10} /> Published
+                            <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-bold text-teal-700 border border-teal-100">
+                              <CheckCircle2 size={10} /> PUBLISHED
                             </span>
                           )}
                           {item.status === "COMPLETED" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
-                              <CheckCircle2 size={10} /> Selesai
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-100">
+                              <CheckCircle2 size={10} /> SELESAI
                             </span>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right align-middle">
-                      <div className="flex justify-end gap-2">
+
+                    <td className="px-6 py-4 text-right align-top">
+                      <div className="flex justify-end gap-2 mt-1">
                         <button
                           title="Input Soal"
-                          className="rounded-lg border border-teal-600 px-3 py-1.5 text-xs font-semibold text-teal-600 hover:bg-teal-50 transition-colors"
+                          className="rounded-lg border-2 border-teal-100 bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700 hover:bg-teal-100 transition-colors"
                         >
                           {item._count.questions} Soal
                         </button>
@@ -206,7 +312,7 @@ export default function JadwalUjian({
                             setSelectedItem(item);
                             setIsModalEditOpen(true);
                           }}
-                          className="p-1.5 text-gray-400 hover:text-teal-600 transition-colors"
+                          className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-colors"
                         >
                           <Edit2 size={16} />
                         </button>
@@ -215,7 +321,7 @@ export default function JadwalUjian({
                             setSelectedItem(item);
                             setIsModalDeleteOpen(true);
                           }}
-                          className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                          className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -225,8 +331,16 @@ export default function JadwalUjian({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="p-10 text-center text-gray-500">
-                    Belum ada jadwal ujian.
+                  <td colSpan={4} className="p-16 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <CalendarClock size={40} className="text-gray-300 mb-3" />
+                      <p className="text-gray-500 font-medium">
+                        Belum ada jadwal ujian.
+                      </p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Klik &quot;Buat Jadwal&quot; untuk menambahkan.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               )}

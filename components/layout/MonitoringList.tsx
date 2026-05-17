@@ -64,12 +64,6 @@ export default function MonitoringList({
     }
   }, [debouncedSearch, pathname, router, searchParams]);
 
-  const handleChangePage = (page: number) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("page", page.toString());
-    router.replace(`${pathname}?${params.toString()}`);
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -82,7 +76,6 @@ export default function MonitoringList({
         </p>
       </div>
 
-      {/* Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="relative w-full sm:max-w-md">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -98,7 +91,6 @@ export default function MonitoringList({
         </div>
       </div>
 
-      {/* Tabel */}
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -195,7 +187,6 @@ export default function MonitoringList({
           currentPage={currentPage}
           totalCount={totalCount}
           totalPages={totalPages}
-          handlePageChange={handleChangePage}
           data="Ujian"
         />
       </div>

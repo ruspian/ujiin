@@ -210,6 +210,8 @@ model Exam {
   endTime         DateTime  
   duration        Int       
 
+  token           String?       @unique
+
   randomizeQuestions Boolean   @default(true) 
   showResult         Boolean   @default(false)
   status             ExamStatus @default(DRAFT)

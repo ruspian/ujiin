@@ -21,6 +21,7 @@ export interface ExamData {
   showResult: boolean;
   status: "DRAFT" | "PUBLISHED" | "COMPLETED";
   _count: { questions: number; attempts: number };
+  token?: string | null;
 }
 
 export interface JadwalUjianClientProps {
