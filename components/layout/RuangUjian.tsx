@@ -23,6 +23,7 @@ import {
   autoSaveJawaban,
   submitUjianSiswa,
   catatPelanggaran,
+  cekStatusAttempt,
 } from "@/actions/ruang-ujian";
 
 const TYPE_ORDER: Record<QuestionType, number> = {
@@ -91,21 +92,46 @@ export default function RuangUjian({
 
   // anti cheat
   useEffect(() => {
+    //  Cek status pas pertama masuk
+    const validasiStatusSiswa = async () => {
+      const res = await cekStatusAttempt(attemptId);
+      if (
+        res.success &&
+        (res.status === "CHEATED" || res.status === "SUBMITTED")
+      ) {
+        // Kalau di database statusnya cheated, langsung tendang seketika
+        router.replace("/siswa?error=pelanggaran");
+      }
+    };
+    validasiStatusSiswa();
+
+    // Kunci Tombol Back Browser Paksa
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+      toast.error("Tidak diperkenankan untuk kembali ke halaman sebelumnya!");
+    };
+    window.addEventListener("popstate", handlePopState);
+
+    // Deteksi Pindah Tab
     const handleVisibilityChange = () => {
       if (document.hidden) {
         handlePelanggaran("Meninggalkan tab browser / Membuka aplikasi lain");
       }
     };
 
+    //  Deteksi Fokus Window
     const handleWindowBlur = () => {
-      handlePelanggaran("Kehilangan fokus layar (Mungkin membuka contekan)");
+      handlePelanggaran("Meninggalkan tab browser");
     };
 
+    // Blokir Klik Kanan
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       toast.warning("Klik kanan dinonaktifkan!");
     };
 
+    // blokir shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
         e.preventDefault();
@@ -120,12 +146,15 @@ export default function RuangUjian({
       }
     };
 
+    // Pasang anti cheat
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleWindowBlur);
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      // Bersihkan anti cheat
+      window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleWindowBlur);
       document.removeEventListener("contextmenu", handleContextMenu);
@@ -225,22 +254,26 @@ export default function RuangUjian({
     value: string,
     isComplex: boolean = false,
   ) => {
-    setAnswers((prev) => {
-      let newValue: AnswerValue;
-      if (isComplex) {
-        const currentVals = (prev[questionId] as string[]) || [];
-        if (currentVals.includes(value)) {
-          newValue = currentVals.filter((v) => v !== value);
-        } else {
-          newValue = [...currentVals, value];
-        }
+    // Ambil state jawaban saat ini
+    const currentAnswers = { ...answers };
+    let newValue: AnswerValue;
+
+    if (isComplex) {
+      const currentVals = (currentAnswers[questionId] as string[]) || [];
+      if (currentVals.includes(value)) {
+        newValue = currentVals.filter((v) => v !== value);
       } else {
-        newValue = value;
+        newValue = [...currentVals, value];
       }
-      const updatedAnswers = { ...prev, [questionId]: newValue };
-      saveToServer(updatedAnswers);
-      return updatedAnswers;
-    });
+    } else {
+      newValue = value;
+    }
+
+    //  objek jawaban baru
+    const updatedAnswers = { ...currentAnswers, [questionId]: newValue };
+
+    setAnswers(updatedAnswers);
+    saveToServer(updatedAnswers);
   };
 
   const handleSelectMatch = (
@@ -248,26 +281,29 @@ export default function RuangUjian({
     left: string,
     right: string,
   ) => {
-    setAnswers((prev) => {
-      const currentMatches = (prev[questionId] as Record<string, string>) || {};
-      const newValue = { ...currentMatches, [left]: right };
-      const updatedAnswers = { ...prev, [questionId]: newValue };
-      saveToServer(updatedAnswers);
-      return updatedAnswers;
-    });
+    const currentAnswers = { ...answers };
+    const currentMatches =
+      (currentAnswers[questionId] as Record<string, string>) || {};
+    const newValue = { ...currentMatches, [left]: right };
+
+    const updatedAnswers = { ...currentAnswers, [questionId]: newValue };
+
+    setAnswers(updatedAnswers);
+    saveToServer(updatedAnswers);
     setActiveLeftMatch(null);
   };
 
   const removeMatch = (questionId: string, left: string) => {
-    setAnswers((prev) => {
-      const currentMatches = {
-        ...((prev[questionId] as Record<string, string>) || {}),
-      };
-      delete currentMatches[left];
-      const updatedAnswers = { ...prev, [questionId]: currentMatches };
-      saveToServer(updatedAnswers);
-      return updatedAnswers;
-    });
+    const currentAnswers = { ...answers };
+    const currentMatches = {
+      ...((currentAnswers[questionId] as Record<string, string>) || {}),
+    };
+    delete currentMatches[left];
+
+    const updatedAnswers = { ...currentAnswers, [questionId]: currentMatches };
+
+    setAnswers(updatedAnswers);
+    saveToServer(updatedAnswers);
   };
 
   if (!sortedQuestions.length) return null;

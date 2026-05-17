@@ -114,3 +114,16 @@ export async function catatPelanggaran(
     return { success: false };
   }
 }
+
+export async function cekStatusAttempt(attemptId: string) {
+  try {
+    const attempt = await prisma.attempt.findUnique({
+      where: { id: attemptId },
+      select: { status: true },
+    });
+    return { success: true, status: attempt?.status };
+  } catch (error) {
+    console.error("Gagal cek status:", error);
+    return { success: false };
+  }
+}

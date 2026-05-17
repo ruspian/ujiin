@@ -2,18 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createExam, updateExam, getQuestionsForExam } from "@/actions/exam";
+import { createExam, updateExam } from "@/actions/exam";
 import {
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
   Calendar,
   Users,
-  FileText,
   Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { JadwalFormProps, Question } from "@/types/exam";
+import { JadwalFormProps } from "@/types/exam";
 import { formatDateToInput, formatTimeToInput } from "@/lib/formatDateTime";
 
 export default function JadwalForm({
@@ -21,14 +20,12 @@ export default function JadwalForm({
   classes,
   examTypes,
   academicYears,
-  initialData, // Tangkap data lama (kalau ada)
+  initialData,
 }: JadwalFormProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
 
-  // 1. STATE DASAR: Otomatis keisi kalau initialData ada (Mode Edit)
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     subjectId: initialData?.subjectId || "",
@@ -51,9 +48,6 @@ export default function JadwalForm({
 
   const [selectedClasses, setSelectedClasses] = useState<string[]>(
     initialData?.classes?.map((c) => c.id) || [],
-  );
-  const [selectedQuestions, setSelectedQuestions] = useState<string[]>(
-    initialData?.questions?.map((q) => q.id) || [],
   );
 
   // Fungsi buat ngitung durasi otomatis
@@ -79,12 +73,13 @@ export default function JadwalForm({
     setFormData(newFormData);
   };
 
-  const nextStep = async () => {
+  const nextStep = () => {
     if (step === 1) {
       if (
         !formData.title ||
         !formData.subjectId ||
         !formData.examTypeId ||
+        !formData.academicYearId ||
         !formData.examDate ||
         !formData.startTime ||
         !formData.endTime
@@ -92,21 +87,6 @@ export default function JadwalForm({
         return toast.error("Harap isi semua kolom informasi dasar!");
       }
       setStep(2);
-    } else if (step === 2) {
-      if (selectedClasses.length === 0) {
-        return toast.error("Pilih minimal 1 kelas peserta!");
-      }
-
-      setIsLoading(true);
-      const res = await getQuestionsForExam(
-        formData.subjectId,
-        formData.examTypeId,
-      );
-      if (res.success) {
-        setAvailableQuestions(res.data);
-      }
-      setIsLoading(false);
-      setStep(3);
     }
   };
 
@@ -118,29 +98,17 @@ export default function JadwalForm({
     );
   };
 
-  const toggleQuestion = (id: string) => {
-    setSelectedQuestions((prev) =>
-      prev.includes(id) ? prev.filter((q) => q !== id) : [...prev, id],
-    );
-  };
-
-  const handleSelectAllQuestions = () => {
-    if (selectedQuestions.length === availableQuestions.length) {
-      setSelectedQuestions([]);
-    } else {
-      setSelectedQuestions(availableQuestions.map((q) => q.id));
-    }
-  };
-
   const handleSubmit = async () => {
-    if (selectedQuestions.length === 0)
-      return toast.error("Pilih minimal 1 soal untuk diujikan!");
+    if (selectedClasses.length === 0) {
+      return toast.error("Pilih minimal 1 kelas peserta!");
+    }
 
     setIsLoading(true);
 
     const combinedStartTime = `${formData.examDate}T${formData.startTime}:00`;
     const combinedEndTime = `${formData.examDate}T${formData.endTime}:00`;
 
+    // Payload
     const payload = {
       title: formData.title,
       subjectId: formData.subjectId,
@@ -156,7 +124,6 @@ export default function JadwalForm({
         | "PUBLISHED"
         | "COMPLETED",
       classes: selectedClasses,
-      questions: selectedQuestions,
     };
 
     let res;
@@ -184,7 +151,6 @@ export default function JadwalForm({
         {[
           { num: 1, title: "Info Dasar", icon: Calendar },
           { num: 2, title: "Pilih Kelas", icon: Users },
-          { num: 3, title: "Pilih Soal", icon: FileText },
         ].map((s) => {
           const Icon = s.icon;
           const isActive = step === s.num;
@@ -200,7 +166,7 @@ export default function JadwalForm({
                 {isDone ? (
                   <CheckCircle2 size={14} />
                 ) : (
-                  <Icon size={16} className="nline-block" />
+                  <Icon size={16} className="inline-block" />
                 )}
               </div>
               <span className="font-semibold text-sm hidden sm:block">
@@ -220,7 +186,7 @@ export default function JadwalForm({
               </label>
               <input
                 type="text"
-                placeholder="Misal: Penilaian Tengah Semester Ganjil"
+                placeholder="PTS Bahasa Indonesia X TKJ 2025/2026"
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
@@ -241,7 +207,7 @@ export default function JadwalForm({
                   }
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-800 focus:bg-white focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none"
                 >
-                  <option value="">-- Pilih Mata Pelajaran --</option>
+                  <option value="">Pilih Mata Pelajaran</option>
                   {subjects.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -261,7 +227,7 @@ export default function JadwalForm({
                   }
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-800 focus:bg-white focus:ring-purple-500 focus:border-purple-500 transition-colors appearance-none"
                 >
-                  <option value="">-- Pilih Kategori --</option>
+                  <option value="">Pilih Kategori</option>
                   {examTypes.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
@@ -387,7 +353,12 @@ export default function JadwalForm({
         {step === 2 && (
           <div className="animate-in slide-in-from-right-4 duration-200">
             <p className="text-sm font-medium text-gray-500 mb-4">
-              Centang kelas mana saja yang akan mengikuti jadwal ujian ini.
+              Centang kelas mana saja yang akan mengikuti jadwal ujian ini.{" "}
+              <br />
+              <span className="text-teal-600 font-bold">
+                *Sistem akan otomatis memilih soal yang sesuai dengan kelas dan
+                mata pelajaran ini.
+              </span>
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-100 overflow-y-auto pr-2">
               {classes.map((cls) => (
@@ -414,91 +385,10 @@ export default function JadwalForm({
             </div>
           </div>
         )}
-
-        {step === 3 && (
-          <div className="animate-in slide-in-from-right-4 duration-200">
-            <div className="flex justify-between items-end mb-4">
-              <div>
-                <h3 className="font-bold text-gray-900">Pilih Paket Soal</h3>
-                <p className="text-sm text-gray-500">
-                  Pilih soal yang akan ditampilkan ke siswa saat ujian.
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-teal-700 bg-teal-100 px-3 py-1.5 rounded-full border border-teal-200 shadow-sm">
-                  {selectedQuestions.length} Soal Terpilih
-                </span>
-              </div>
-            </div>
-
-            {isLoading ? (
-              <div className="py-20 text-center text-gray-400">
-                <div className="animate-spin w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full mx-auto mb-3"></div>
-                <p className="font-medium">Memproses data soal...</p>
-              </div>
-            ) : availableQuestions.length === 0 ? (
-              <div className="py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
-                <FileText size={48} className="mx-auto text-gray-300 mb-3" />
-                <p className="font-bold text-gray-800 text-lg">
-                  Bank Soal Kosong!
-                </p>
-                <p className="text-sm font-medium text-gray-500 mt-1 max-w-sm mx-auto">
-                  Tidak ada soal yang ditemukan untuk Mata Pelajaran dan
-                  Kategori Ujian ini.
-                </p>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={handleSelectAllQuestions}
-                  className="mb-4 text-sm font-bold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-teal-100"
-                >
-                  <CheckCircle2 size={16} />{" "}
-                  {selectedQuestions.length === availableQuestions.length
-                    ? "Batalkan Semua Pilihan"
-                    : "Pilih Semua Soal"}
-                </button>
-                <div className="space-y-3 max-h-100 overflow-y-auto pr-2">
-                  {availableQuestions.map((q) => (
-                    <div
-                      key={q.id}
-                      onClick={() => toggleQuestion(q.id)}
-                      className={`flex gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedQuestions.includes(q.id) ? "border-teal-500 bg-teal-50 shadow-sm" : "border-gray-200 hover:border-teal-300 bg-white"}`}
-                    >
-                      <div className="pt-1">
-                        <div
-                          className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${selectedQuestions.includes(q.id) ? "bg-teal-500 text-white" : "bg-white border-2 border-gray-300"}`}
-                        >
-                          {selectedQuestions.includes(q.id) && (
-                            <CheckCircle2 size={14} />
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div
-                          className="text-sm font-semibold text-gray-800 line-clamp-2"
-                          dangerouslySetInnerHTML={{ __html: q.text }}
-                        />
-                        <div className="flex gap-3 mt-3 text-xs font-medium text-gray-500">
-                          <span className="bg-white px-2.5 py-1 rounded-md border border-gray-200 flex items-center gap-1">
-                            🎯 Kelas: {q.class?.name || "-"}
-                          </span>
-                          <span className="bg-white px-2.5 py-1 rounded-md border border-gray-200 flex items-center gap-1">
-                            ✍️ Oleh: {q.author.name}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center rounded-b-2xl">
-        {step > 1 ? (
+        {step === 2 ? (
           <button
             onClick={prevStep}
             disabled={isLoading}
@@ -510,7 +400,7 @@ export default function JadwalForm({
           <div></div>
         )}
 
-        {step < 3 ? (
+        {step === 1 ? (
           <button
             onClick={nextStep}
             className="px-6 py-2.5 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
@@ -520,7 +410,7 @@ export default function JadwalForm({
         ) : (
           <button
             onClick={handleSubmit}
-            disabled={availableQuestions.length === 0 || isLoading}
+            disabled={isLoading}
             className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors flex items-center gap-2 shadow-sm"
           >
             {isLoading ? (

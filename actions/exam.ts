@@ -54,10 +54,26 @@ export async function createExam(data: ExamSchema) {
     showResult,
     status,
     classes,
-    questions,
   } = validation.data;
 
   try {
+    const autoQuestions = await prisma.question.findMany({
+      where: {
+        subjectId: subjectId,
+        examTypeId: examTypeId,
+        classId: { in: classes },
+      },
+      select: { id: true },
+    });
+
+    if (autoQuestions.length === 0) {
+      return {
+        success: false,
+        message:
+          "Gagal! Tidak ada soal di Bank Soal yang cocok dengan Mapel, Tipe Ujian, dan Kelas ini.",
+      };
+    }
+
     await prisma.exam.create({
       data: {
         title,
@@ -74,14 +90,18 @@ export async function createExam(data: ExamSchema) {
         classes: {
           connect: classes.map((id) => ({ id })),
         },
+
         questions: {
-          connect: questions?.map((id) => ({ id })),
+          connect: autoQuestions.map((q) => ({ id: q.id })),
         },
       },
     });
 
     revalidatePath("/admin/jadwal");
-    return { success: true, message: "Jadwal Ujian berhasil dibuat!" };
+    return {
+      success: true,
+      message: `Jadwal Ujian dibuat! Berhasil memasukkan ${autoQuestions.length} soal.`,
+    };
   } catch (error) {
     console.error("CREATE_EXAM_ERROR:", error);
     return { success: false, message: "Terjadi kesalahan server!" };
@@ -93,7 +113,6 @@ export async function updateExam(data: ExamSchema & { id: string }) {
   if (!session || session.user.role !== "ADMIN")
     return { success: false, message: "Akses ditolak!" };
 
-  // PERBAIKAN: Tambahin validasi Zod biar aman dari injeksi data kotor
   const validation = examSchema.safeParse(data);
   if (!validation.success)
     return { success: false, message: validation.error.issues[0].message };
@@ -110,7 +129,6 @@ export async function updateExam(data: ExamSchema & { id: string }) {
     showResult,
     status,
     classes,
-    questions,
   } = validation.data;
 
   try {
@@ -128,13 +146,8 @@ export async function updateExam(data: ExamSchema & { id: string }) {
         showResult,
         status,
         classes: {
-          set: [], // Kosongin dulu relasi kelas yang lama
-          connect: classes.map((id: string) => ({ id })), // Pasang yang baru
-        },
-
-        questions: {
           set: [],
-          connect: questions?.map((id: string) => ({ id })), // Pasang soal yang baru dipilih Admin
+          connect: classes.map((id: string) => ({ id })),
         },
       },
     });
