@@ -1,7 +1,5 @@
-// src/app/(dashboard)/admin/master/kelas/page.tsx
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-// Nanti kita bikin komponen Client-nya
 import Kelas from "@/components/layout/Kelas";
 
 export default async function DataKelasPage({

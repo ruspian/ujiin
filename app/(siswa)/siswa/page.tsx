@@ -13,17 +13,24 @@ export default async function StudentPortal() {
   }
 
   const now = new Date();
+
   const activeExam = await prisma.exam.findFirst({
     where: {
       status: "PUBLISHED",
       classes: { some: { id: student.classId } },
       startTime: { lte: now },
       endTime: { gte: now },
+
+      OR: [
+        { subject: { religionId: null } },
+        { subject: { religionId: student.religionId } },
+      ],
     },
     include: {
       subject: true,
       examType: true,
     },
+    orderBy: { startTime: "asc" },
   });
 
   if (!activeExam) {
@@ -80,7 +87,7 @@ export default async function StudentPortal() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12 animate-in fade-in zoom-in-95 duration-500">
       <div className="mb-8 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md">
           <BookOpen size={24} />
@@ -90,7 +97,7 @@ export default async function StudentPortal() {
         </h1>
       </div>
 
-      <div className="w-full max-w-md mb-4 flex items-center gap-3 rounded-2xl bg-white p-4 border border-gray-200 shadow-sm">
+      <div className="w-full max-w-md mb-4 flex items-center gap-3 rounded-2xl bg-white p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
           <User size={20} />
         </div>

@@ -2,12 +2,13 @@
 
 import { createSubject } from "@/actions/subject";
 import { AddSubjectModalProps } from "@/types/data.master";
-import { X, Users, School } from "lucide-react";
+import { X, Users, School, BookHeart } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AddSubjectModal({
   teachers,
   classes,
+  religions,
   setIsModalOpen,
   isSubmitting,
   setIsSubmitting,
@@ -47,18 +48,49 @@ export default function AddSubjectModal({
           </button>
         </div>
 
-        <form action={handleAddSubject} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Nama Mata Pelajaran <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              required
-              className="block w-full rounded-xl border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500"
-              placeholder="Contoh: Matematika"
-            />
+        <form action={handleAddSubject} className="space-y-5">
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Nama Mata Pelajaran <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                required
+                className="block w-full rounded-xl border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500"
+                placeholder="Contoh: Matematika"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                <BookHeart size={16} className="text-orange-500" />
+                Kategori Agama{" "}
+                <span className="text-xs text-gray-400 font-normal">
+                  (Opsional)
+                </span>
+              </label>
+              <select
+                name="religionId"
+                className="block w-full rounded-xl border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500 appearance-none"
+              >
+                <option value="">Umum</option>
+                {religions && religions.length > 0 ? (
+                  religions.map((religion) => (
+                    <option key={religion.id} value={religion.id}>
+                      {religion.name}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>Data agama kosong</option>
+                )}
+              </select>
+              <p className="text-[8px] text-gray-500 mt-1.5">
+                Note: Pilih jika mapel ini khusus untuk siswa dengan agama
+                tertentu.
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -96,7 +128,7 @@ export default function AddSubjectModal({
             <div>
               <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
                 <School size={16} className="text-indigo-600" />
-                Tersedia di Kelas
+                Pilih Kelas
               </label>
               <div className="h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-2 space-y-1">
                 {classes.length > 0 ? (

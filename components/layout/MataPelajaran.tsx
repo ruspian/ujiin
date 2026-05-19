@@ -18,6 +18,7 @@ export default function MataPelajaran({
   totalCount,
   totalPages,
   currentPage,
+  religions,
 }: MapelClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch] = useDebounce(searchTerm, 500);
@@ -88,6 +89,7 @@ export default function MataPelajaran({
           teachers={teachers}
           classes={classes}
           setIsModalOpen={setIsModalOpen}
+          religions={religions}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
         />

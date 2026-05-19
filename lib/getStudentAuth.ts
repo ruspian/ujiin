@@ -10,7 +10,7 @@ export async function getStudentAuth() {
 
   const student = await prisma.student.findUnique({
     where: { id: studentId },
-    include: { class: true },
+    include: { class: true, religion: true },
   });
 
   return student;

@@ -17,6 +17,7 @@ export interface MapelClientProps {
   totalPages: number;
   currentPage: number;
   classes: { id: string; name: string }[];
+  religions: { id: string; name: string }[];
 }
 
 export interface AddSubjectModalProps {
@@ -25,6 +26,7 @@ export interface AddSubjectModalProps {
   isSubmitting: boolean;
   setIsSubmitting: (val: boolean) => void;
   classes: { id: string; name: string }[];
+  religions: { id: string; name: string }[];
 }
 
 export interface EditSubjectModalProps {

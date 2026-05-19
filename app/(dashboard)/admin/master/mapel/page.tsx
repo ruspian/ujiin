@@ -17,28 +17,34 @@ export default async function DataMapelPage({
     ? { name: { contains: search, mode: "insensitive" } }
     : {};
 
-  const [subjects, totalCount, teachers, allClasses] = await Promise.all([
-    prisma.subject.findMany({
-      where: whereCondition,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { name: "asc" },
-      include: {
-        teachers: { select: { id: true, name: true } },
-        classes: { select: { id: true, name: true } },
-      },
-    }),
-    prisma.subject.count({ where: whereCondition }),
-    prisma.user.findMany({
-      where: { role: "GURU" },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.class.findMany({
-      select: { id: true, name: true },
-      orderBy: [{ level: "asc" }, { name: "asc" }],
-    }),
-  ]);
+  const [subjects, totalCount, teachers, allClasses, religions] =
+    await Promise.all([
+      prisma.subject.findMany({
+        where: whereCondition,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { name: "asc" },
+        include: {
+          teachers: { select: { id: true, name: true } },
+          classes: { select: { id: true, name: true } },
+          religion: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.subject.count({ where: whereCondition }),
+      prisma.user.findMany({
+        where: { role: "GURU" },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.class.findMany({
+        select: { id: true, name: true },
+        orderBy: [{ level: "asc" }, { name: "asc" }],
+      }),
+      prisma.religion.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
 
   const totalPages = Math.ceil(totalCount / limit);
 
@@ -57,6 +63,7 @@ export default async function DataMapelPage({
       totalCount={totalCount}
       totalPages={totalPages}
       currentPage={page}
+      religions={religions}
     />
   );
 }

@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { subjectSchema, updateSubjectSchema } from "@/schemas/subjectSchema";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -12,13 +13,22 @@ export async function createSubject(formData: FormData) {
     redirect("/login");
   }
 
-  const name = formData.get("name") as string;
-  const teacherIds = formData.getAll("teacherIds") as string[];
-  const classIds = formData.getAll("classIds") as string[];
+  const rawData = {
+    name: formData.get("name"),
+    religionId: formData.get("religionId"),
+    teacherIds: formData.getAll("teacherIds"),
+    classIds: formData.getAll("classIds"),
+  };
 
-  if (!name || name.trim() === "") {
-    return { success: false, message: "Nama mata pelajaran wajib diisi!" };
+  const subjectValidation = subjectSchema.safeParse(rawData);
+  if (!subjectValidation.success) {
+    return {
+      success: false,
+      message: subjectValidation.error.issues[0].message,
+    };
   }
+
+  const { name, religionId, teacherIds, classIds } = subjectValidation.data;
 
   try {
     const existingSubject = await prisma.subject.findFirst({
@@ -32,6 +42,7 @@ export async function createSubject(formData: FormData) {
     await prisma.subject.create({
       data: {
         name: name.trim(),
+        religionId,
         teachers: {
           connect: teacherIds.map((id) => ({ id })),
         },
@@ -56,14 +67,23 @@ export async function updateSubject(formData: FormData) {
     redirect("/login");
   }
 
-  const id = formData.get("id") as string;
-  const name = formData.get("name") as string;
-  const teacherIds = formData.getAll("teacherIds") as string[];
-  const classIds = formData.getAll("classIds") as string[];
+  const rawData = {
+    id: formData.get("id"),
+    name: formData.get("name"),
+    religionId: formData.get("religionId"),
+    teacherIds: formData.getAll("teacherIds"),
+    classIds: formData.getAll("classIds"),
+  };
 
-  if (!id || !name || name.trim() === "") {
-    return { success: false, message: "Nama mata pelajaran wajib diisi!" };
+  const subjectValidation = updateSubjectSchema.safeParse(rawData);
+  if (!subjectValidation.success) {
+    return {
+      success: false,
+      message: subjectValidation.error.issues[0].message,
+    };
   }
+
+  const { id, name, religionId, teacherIds, classIds } = subjectValidation.data;
 
   try {
     const existingSubject = await prisma.subject.findFirst({
@@ -78,6 +98,7 @@ export async function updateSubject(formData: FormData) {
       where: { id },
       data: {
         name: name.trim(),
+        religionId,
         teachers: {
           set: teacherIds.map((id) => ({ id })),
         },
