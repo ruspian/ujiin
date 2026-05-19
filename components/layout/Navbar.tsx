@@ -129,13 +129,6 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
                           Jadwal Ujian
                         </Link>
                         <div className="my-1 border-t border-gray-100" />
-                        <Link
-                          href="/admin/monitoring"
-                          onClick={() => setIsDataMenuOpen(false)}
-                          className="block rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-teal-50 hover:text-teal-600 transition-colors"
-                        >
-                          Monitoring
-                        </Link>
                       </div>
                     )}
                   </div>
@@ -266,12 +259,6 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
                   className="text-sm font-bold text-gray-600 pl-2"
                 >
                   Jadwal Ujian
-                </Link>
-                <Link
-                  href="/admin/monitoring"
-                  className="text-sm font-bold text-gray-600 pl-2"
-                >
-                  Monitoring
                 </Link>
               </div>
             )}

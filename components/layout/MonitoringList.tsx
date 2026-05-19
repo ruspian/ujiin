@@ -85,7 +85,7 @@ export default function MonitoringList({ exams }: MonitoringListProps) {
                   {exam.subject.name}
                 </p>
 
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-sm text-gray-400">
                   {`Pengawas: ${exam.supervisor?.name}`}
                 </p>
               </div>

@@ -25,8 +25,6 @@ export default async function DaftarMonitoringPage() {
     orderBy: { startTime: "asc" },
   });
 
-  console.log("supervisor", supervisedExams);
-
   return (
     <div className="space-y-6">
       <div>

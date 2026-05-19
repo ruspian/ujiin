@@ -4,14 +4,24 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 
-export async function resetSesiSiswa(examId: string, studentId: string) {
+export async function resetSesiSiswa(formData: FormData) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
-    return { success: false, message: "Akses ditolak!" };
+
+  // Validasi Role
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "GURU")
+  ) {
+    throw new Error("Akses ditolak!");
   }
 
+  // Tarik data dari hidden input
+  const examId = formData.get("examId") as string;
+  const studentId = formData.get("studentId") as string;
+
+  if (!examId || !studentId) return;
+
   try {
-    // hapus data attempt berdasarkan studentId dan examId
     await prisma.attempt.delete({
       where: {
         studentId_examId: {
@@ -22,13 +32,8 @@ export async function resetSesiSiswa(examId: string, studentId: string) {
     });
 
     // Refresh halaman secara real-time
-    revalidatePath(`/admin/monitoring/${examId}`);
-    return { success: true, message: "Sesi ujian berhasil direset!" };
+    revalidatePath(`/guru/monitoring/${examId}`);
   } catch (error) {
     console.error("Error resetting session:", error);
-    return {
-      success: false,
-      message: "Terjadi kesalahan server!",
-    };
   }
 }
