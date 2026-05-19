@@ -36,3 +36,26 @@ export interface DeleteUserModalProps {
   setIsSubmitting: (val: boolean) => void;
   name: string;
 }
+
+export interface ResetPasswordModalProps {
+  user: {
+    id: string;
+    name: string | null;
+  };
+  setIsModalResetOpen: (isOpen: boolean) => void;
+  isSubmitting: boolean;
+  setIsSubmitting: (isSubmitting: boolean) => void;
+}
+
+export interface ImportUserModalProps {
+  setIsModalOpen: (isOpen: boolean) => void;
+  isSubmitting: boolean;
+  setIsSubmitting: (isSubmitting: boolean) => void;
+}
+
+export interface ImportUserData {
+  name: string;
+  username: string;
+  password: string | number; // Jaga-jaga kalau Excel baca password angka (misal "123456") sebagai number
+  role: string;
+}

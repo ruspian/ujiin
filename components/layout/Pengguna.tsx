@@ -8,6 +8,8 @@ import {
   Trash2,
   ShieldCheck,
   UserCircle,
+  Upload,
+  Key, // 🔥 Import icon kunci buat reset password
 } from "lucide-react";
 import { PenggunaProps } from "@/types/user.admin";
 import { useDebounce } from "use-debounce";
@@ -16,6 +18,8 @@ import Pagination from "./Pagination";
 import AddUserModal from "./AddUserModal";
 import EditUserModal from "./EditUserModal";
 import DeleteUserModal from "./DeleteUserModal";
+import ResetPasswordUserModal from "./ResetPasswordUserModal";
+import ImportUserModal from "./ImportUserModal";
 
 export default function DataPenggunaPage({
   users,
@@ -25,9 +29,17 @@ export default function DataPenggunaPage({
 }: PenggunaProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalImportOpen, setIsModalImportOpen] = useState(false);
+  const [isModalResetOpen, setIsModalResetOpen] = useState(false); // 🔥 State Modal Reset
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
+
+  const [userToReset, setUserToReset] = useState<{
+    id: string;
+    name: string | null;
+  } | null>(null); // 🔥 State data yang mau direset
   const [userToDelete, setUserToDelete] = useState<{
     id: string;
     name: string | null;
@@ -40,7 +52,6 @@ export default function DataPenggunaPage({
   } | null>(null);
 
   const [debouncedSearch] = useDebounce(searchTerm, 500);
-
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -74,6 +85,13 @@ export default function DataPenggunaPage({
     setSelectedUser({ id, name, username, role });
     setIsModalEditOpen(true);
   };
+
+  // 🔥 Fungsi buat buka modal reset
+  const onClickResetButton = (id: string, name: string | null) => {
+    setUserToReset({ id, name });
+    setIsModalResetOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -85,18 +103,37 @@ export default function DataPenggunaPage({
             Kelola akses akun Admin dan Guru untuk dashboard ini.
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition-all active:scale-95"
-        >
-          <UserPlus size={18} />
-          Tambah Pengguna
-        </button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setIsModalImportOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-all active:scale-95"
+          >
+            <Upload size={18} className="text-blue-600" />
+            <span className="hidden sm:inline">Import</span>
+          </button>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition-all active:scale-95"
+          >
+            <UserPlus size={18} />
+            Tambah Pengguna
+          </button>
+        </div>
       </div>
 
       {isModalOpen && (
         <AddUserModal
           setIsModalOpen={setIsModalOpen}
+          isSubmitting={isSubmitting}
+          setIsSubmitting={setIsSubmitting}
+        />
+      )}
+
+      {isModalImportOpen && (
+        <ImportUserModal
+          setIsModalOpen={setIsModalImportOpen}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
         />
@@ -121,6 +158,15 @@ export default function DataPenggunaPage({
         />
       )}
 
+      {isModalResetOpen && userToReset && (
+        <ResetPasswordUserModal
+          user={userToReset}
+          setIsModalResetOpen={setIsModalResetOpen}
+          isSubmitting={isSubmitting}
+          setIsSubmitting={setIsSubmitting}
+        />
+      )}
+
       <div className="grid grid-cols-1 gap-4">
         <div className="relative md:col-span-8">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -128,7 +174,7 @@ export default function DataPenggunaPage({
           </div>
           <input
             type="text"
-            className="block w-full rounded-sm border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm placeholder-gray-400  focus:border-teal-500 focus:ring-teal-500 shadow-sm transition-all"
+            className="block w-full rounded-sm border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm placeholder-gray-400 focus:border-teal-500 focus:ring-teal-500 shadow-sm transition-all"
             placeholder="Cari nama atau Username..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -157,11 +203,7 @@ export default function DataPenggunaPage({
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-full text-white shadow-sm ${
-                            user.role === "ADMIN"
-                              ? "bg-indigo-500"
-                              : "bg-amber-500"
-                          }`}
+                          className={`flex h-10 w-10 items-center justify-center rounded-full text-white shadow-sm ${user.role === "ADMIN" ? "bg-indigo-500" : "bg-amber-500"}`}
                         >
                           {user.role === "ADMIN" ? (
                             <ShieldCheck size={20} />
@@ -179,11 +221,7 @@ export default function DataPenggunaPage({
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          user.role === "ADMIN"
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "bg-amber-50 text-amber-700"
-                        }`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.role === "ADMIN" ? "bg-indigo-50 text-indigo-700" : "bg-amber-50 text-amber-700"}`}
                       >
                         {user.role}
                       </span>
@@ -191,22 +229,30 @@ export default function DataPenggunaPage({
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => {
+                          onClick={() => onClickResetButton(user.id, user.name)}
+                          title="Reset Password"
+                          className="p-2 text-gray-400 hover:text-amber-500 transition-colors"
+                        >
+                          <Key size={16} />
+                        </button>
+
+                        <button
+                          onClick={() =>
                             onClickEditButton(
                               user.id,
                               user.name,
                               user.username,
                               user.role,
-                            );
-                          }}
+                            )
+                          }
                           className="p-2 text-gray-400 hover:text-teal-600 transition-colors"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button
-                          onClick={() => {
-                            onClickDeleteButton(user.id, user.name);
-                          }}
+                          onClick={() =>
+                            onClickDeleteButton(user.id, user.name)
+                          }
                           className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 size={16} />
@@ -219,11 +265,11 @@ export default function DataPenggunaPage({
                 <tr>
                   <td colSpan={4} className="p-10 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
-                      <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-[2rem] flex items-center justify-center text-gray-400">
+                      <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center text-gray-400">
                         <Search size={32} />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xl font-black text-gray-900 dark:text-white">
+                        <p className="text-xl font-black text-gray-900">
                           Pengguna tidak ditemukan
                         </p>
                         <p className="text-sm text-gray-500 font-medium">

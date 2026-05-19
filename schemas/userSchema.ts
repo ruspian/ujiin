@@ -16,3 +16,8 @@ export const UpdateUserSchema = z.object({
     message: "Role harus ADMIN atau GURU",
   }),
 });
+
+export const ResetPasswordSchema = z.object({
+  id: z.string(),
+  newPassword: z.string().min(6, "Password minimal 6 karakter"),
+});
