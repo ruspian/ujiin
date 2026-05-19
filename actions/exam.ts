@@ -54,6 +54,7 @@ export async function createExam(data: ExamSchema) {
     showResult,
     status,
     classes,
+    supervisorId, // 🔥 Tarik supervisorId dari data validasi
   } = validation.data;
 
   try {
@@ -87,10 +88,10 @@ export async function createExam(data: ExamSchema) {
         showResult,
         status: status || "PUBLISHED",
         authorId: session.user.id,
+        supervisorId: supervisorId || null,
         classes: {
           connect: classes.map((id) => ({ id })),
         },
-
         questions: {
           connect: autoQuestions.map((q) => ({ id: q.id })),
         },
@@ -129,6 +130,7 @@ export async function updateExam(data: ExamSchema & { id: string }) {
     showResult,
     status,
     classes,
+    supervisorId, // 🔥 Tarik supervisorId dari data validasi
   } = validation.data;
 
   try {
@@ -145,6 +147,7 @@ export async function updateExam(data: ExamSchema & { id: string }) {
         randomizeQuestions,
         showResult,
         status,
+        supervisorId: supervisorId || null,
         classes: {
           set: [],
           connect: classes.map((id: string) => ({ id })),
@@ -169,7 +172,6 @@ export async function deleteExam(formData: FormData) {
   if (!id) return { success: false, message: "ID tidak valid!" };
 
   try {
-    // Cek apakah udah ada siswa yang ngerjain
     const linkedAttempts = await prisma.attempt.count({
       where: { examId: id },
     });
@@ -180,7 +182,6 @@ export async function deleteExam(formData: FormData) {
       };
     }
 
-    // Kalau aman, hapus jadwal ujiannya
     await prisma.exam.delete({ where: { id } });
 
     revalidatePath("/admin/jadwal");

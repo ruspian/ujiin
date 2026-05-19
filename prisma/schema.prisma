@@ -56,7 +56,8 @@ model User {
 
   
   questions Question[] 
-  exams     Exam[]     
+  exams     Exam[]     @relation("ExamAuthor")
+  supervisedExams Exam[]  @relation("ExamSupervisor")
 
   subjects  Subject[]
 
@@ -217,7 +218,10 @@ model Exam {
   status             ExamStatus @default(DRAFT)
 
   authorId        String
-  author          User         @relation(fields: [authorId], references: [id])
+  author          User         @relation("ExamAuthor", fields: [authorId], references: [id])
+  
+  supervisorId    String?      
+  supervisor      User?        @relation("ExamSupervisor", fields: [supervisorId], references: [id])
 
   subjectId       String
   subject         Subject      @relation(fields: [subjectId], references: [id])

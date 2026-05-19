@@ -23,12 +23,17 @@ export default async function EditJadwalAdminPage({
 
   if (!exam) return <div>Data Jadwal Ujian tidak ditemukan.</div>;
 
-  const [subjects, classes, examTypes, academicYears] = await Promise.all([
-    prisma.subject.findMany({ orderBy: { name: "asc" } }),
-    prisma.class.findMany({ orderBy: [{ level: "asc" }, { name: "asc" }] }),
-    prisma.examType.findMany({ orderBy: { name: "asc" } }),
-    prisma.academicYear.findMany({ orderBy: { year: "desc" } }),
-  ]);
+  const [subjects, classes, examTypes, academicYears, teachers] =
+    await Promise.all([
+      prisma.subject.findMany({ orderBy: { name: "asc" } }),
+      prisma.class.findMany({ orderBy: [{ level: "asc" }, { name: "asc" }] }),
+      prisma.examType.findMany({ orderBy: { name: "asc" } }),
+      prisma.academicYear.findMany({ orderBy: { year: "desc" } }),
+      await prisma.user.findMany({
+        where: { role: "GURU" },
+        select: { id: true, name: true },
+      }),
+    ]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -45,6 +50,7 @@ export default async function EditJadwalAdminPage({
         examTypes={examTypes}
         academicYears={academicYears}
         initialData={exam}
+        teachers={teachers}
       />
     </div>
   );

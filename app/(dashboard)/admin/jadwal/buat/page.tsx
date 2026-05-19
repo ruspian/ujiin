@@ -7,12 +7,17 @@ export default async function BuatJadwalAdminPage() {
   const session = await auth();
   if (!session || session.user.role !== "ADMIN") redirect("/login");
 
-  const [subjects, classes, examTypes, academicYears] = await Promise.all([
-    prisma.subject.findMany({ orderBy: { name: "asc" } }),
-    prisma.class.findMany({ orderBy: [{ level: "asc" }, { name: "asc" }] }),
-    prisma.examType.findMany({ orderBy: { name: "asc" } }),
-    prisma.academicYear.findMany({ orderBy: { year: "desc" } }),
-  ]);
+  const [subjects, classes, examTypes, academicYears, teachers] =
+    await Promise.all([
+      prisma.subject.findMany({ orderBy: { name: "asc" } }),
+      prisma.class.findMany({ orderBy: [{ level: "asc" }, { name: "asc" }] }),
+      prisma.examType.findMany({ orderBy: { name: "asc" } }),
+      prisma.academicYear.findMany({ orderBy: { year: "desc" } }),
+      await prisma.user.findMany({
+        where: { role: "GURU" },
+        select: { id: true, name: true },
+      }),
+    ]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -31,6 +36,7 @@ export default async function BuatJadwalAdminPage() {
         classes={classes}
         examTypes={examTypes}
         academicYears={academicYears}
+        teachers={teachers}
       />
     </div>
   );

@@ -22,6 +22,7 @@ export interface ExamData {
   status: "DRAFT" | "PUBLISHED" | "COMPLETED";
   _count: { questions: number; attempts: number };
   token?: string | null;
+  supervisor: { id: string; name: string } | null;
 }
 
 export interface JadwalUjianClientProps {
@@ -78,6 +79,7 @@ export interface ExamInitialData {
   status: "DRAFT" | "PUBLISHED" | "COMPLETED";
   classes: { id: string }[];
   questions: { id: string }[];
+  supervisorId?: string | null;
 }
 
 export interface JadwalFormProps {

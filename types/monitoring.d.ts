@@ -22,3 +22,35 @@ export interface MonitoringClientProps {
   subjectName: string;
   studentsData: StudentMonitoring[];
 }
+
+export interface SupervisedExam {
+  id: string;
+  title: string;
+  startTime: Date | string;
+  endTime: Date | string;
+  token: string | null;
+  subject: {
+    name: string;
+  };
+  examType: {
+    name: string;
+  };
+  classes: {
+    id: string;
+    name: string;
+  }[];
+  _count: {
+    attempts: number;
+  };
+  academicYear: {
+    year: string;
+    semester: string;
+  };
+  supervisor: {
+    name: string;
+  } | null;
+}
+
+export interface MonitoringListProps {
+  exams: SupervisedExam[];
+}

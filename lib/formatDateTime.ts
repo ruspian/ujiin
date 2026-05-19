@@ -8,6 +8,13 @@ export const formatDateTime = (date: Date) => {
   }).format(new Date(date));
 };
 
+export const formatDayMonth = (date: Date) => {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(date));
+};
+
 export const extractDateAndTime = (dateObj: Date | string) => {
   const d = new Date(dateObj);
   const pad = (n: number) => n.toString().padStart(2, "0");
@@ -22,6 +29,13 @@ export const formatTime = (isoString: string) => {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+  }).format(new Date(isoString));
+};
+
+export const formatTimeWithOutSeconds = (isoString: string) => {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(isoString));
 };
 

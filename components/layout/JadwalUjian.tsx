@@ -15,33 +15,26 @@ import {
   Copy,
   RefreshCw,
   Loader2,
+  UserCheck,
 } from "lucide-react";
 import { useDebounce } from "use-debounce";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Pagination from "./Pagination";
 import { ExamData, JadwalUjianClientProps } from "@/types/exam";
-import AddJadwalModal from "./AddJadwalModal";
-import EditJadwalModal from "./EditJadwalModal";
 import DeleteJadwalModal from "./DeleteJadwalModal";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { toast } from "sonner";
-import { generateExamToken } from "@/actions/ujian"; // Pastikan path ini benar
+import { generateExamToken } from "@/actions/ujian";
 
 export default function JadwalUjian({
   exams,
   totalCount,
   totalPages,
   currentPage,
-  subjects,
-  examTypes,
-  classes,
-  academicYears,
 }: JadwalUjianClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch] = useDebounce(searchTerm, 500);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isModalEditOpen, setIsModalEditOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExamData | null>(null);
 
@@ -114,6 +107,7 @@ export default function JadwalUjian({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
         <button
           onClick={() => router.push("/admin/jadwal/buat")}
           className="flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 transition-all active:scale-95"
@@ -121,27 +115,6 @@ export default function JadwalUjian({
           <Plus size={18} /> Buat Jadwal
         </button>
       </div>
-
-      {isModalOpen && (
-        <AddJadwalModal
-          setIsModalOpen={setIsModalOpen}
-          subjects={subjects}
-          examTypes={examTypes}
-          classes={classes}
-          academicYears={academicYears}
-        />
-      )}
-
-      {isModalEditOpen && selectedItem && (
-        <EditJadwalModal
-          itemData={selectedItem}
-          setIsModalEditOpen={setIsModalEditOpen}
-          subjects={subjects}
-          examTypes={examTypes}
-          classes={classes}
-          academicYears={academicYears}
-        />
-      )}
 
       {isModalDeleteOpen && selectedItem && (
         <DeleteJadwalModal
@@ -255,6 +228,23 @@ export default function JadwalUjian({
                           <Clock size={14} className="shrink-0" />
                           <span>Batas: {formatDateTime(item.endTime)}</span>
                         </div>
+
+                        <div className=" flex items-center gap-1.5 text-xs">
+                          <div className="flex items-center justify-center ">
+                            <UserCheck size={14} />
+                          </div>
+                          <span className="text-gray-500">Pengawas:</span>
+                          {item.supervisor ? (
+                            <span className="font-bold text-gray-800">
+                              {item.supervisor.name}
+                            </span>
+                          ) : (
+                            <span className="font-medium italic text-orange-500">
+                              Belum Ditugaskan
+                            </span>
+                          )}
+                        </div>
+
                         <div className="inline-flex items-center justify-center rounded-lg bg-gray-100 px-2 py-1 text-xs font-bold text-gray-700 w-max mt-1 border border-gray-200">
                           Durasi: {item.duration} Menit
                         </div>
@@ -307,15 +297,16 @@ export default function JadwalUjian({
                         >
                           {item._count.questions} Soal
                         </button>
+
                         <button
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setIsModalEditOpen(true);
-                          }}
+                          onClick={() =>
+                            router.push(`/admin/jadwal/edit/${item.id}`)
+                          }
                           className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-colors"
                         >
                           <Edit2 size={16} />
                         </button>
+
                         <button
                           onClick={() => {
                             setSelectedItem(item);

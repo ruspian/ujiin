@@ -1,195 +1,183 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Activity, Clock, Users, BookOpen } from "lucide-react";
-import { useDebounce } from "use-debounce";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
-import Pagination from "@/components/layout/Pagination";
+import { toast } from "sonner";
+import {
+  Monitor,
+  Calendar,
+  Clock,
+  MapPin,
+  KeyRound,
+  Copy,
+  CheckCircle2,
+  RefreshCw,
+  Loader2,
+  Users,
+} from "lucide-react";
+import { generateExamToken } from "@/actions/ujian";
+import { MonitoringListProps } from "@/types/monitoring";
+import { formatDayMonth, formatTimeWithOutSeconds } from "@/lib/formatDateTime";
 
-interface ExamListItem {
-  id: string;
-  title: string;
-  subjectName: string;
-  examTypeCode: string;
-  startTime: Date;
-  endTime: Date;
-  status: "DRAFT" | "PUBLISHED" | "COMPLETED";
-  classesCount: number;
-  attemptsCount: number;
-}
+export default function MonitoringList({ exams }: MonitoringListProps) {
+  const [loadingTokenId, setLoadingTokenId] = useState<string | null>(null);
+  const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null);
 
-interface MonitoringListClientProps {
-  exams: ExamListItem[];
-  totalCount: number;
-  totalPages: number;
-  currentPage: number;
-}
-
-const formatDateTime = (date: Date) => {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
-};
-
-export default function MonitoringList({
-  exams,
-  totalCount,
-  totalPages,
-  currentPage,
-}: MonitoringListClientProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearch] = useDebounce(searchTerm, 500);
-
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    const currentSearch = params.get("search") || "";
-
-    if (debouncedSearch !== currentSearch) {
-      if (debouncedSearch) {
-        params.set("search", debouncedSearch);
+  const handleGenerateToken = async (examId: string) => {
+    setLoadingTokenId(examId);
+    try {
+      const result = await generateExamToken(examId);
+      if (result.success) {
+        toast.success(result.message);
       } else {
-        params.delete("search");
+        throw new Error(result.message);
       }
-      params.delete("page");
-      router.push(`${pathname}?${params.toString()}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Terjadi kesalahan!",
+      );
+    } finally {
+      setLoadingTokenId(null);
     }
-  }, [debouncedSearch, pathname, router, searchParams]);
+  };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Pilih Ujian untuk Dipantau
-        </h1>
-        <p className="text-sm text-gray-500">
-          Pilih jadwal ujian yang sedang atau akan berlangsung untuk melihat
-          aktivitas siswa secara real-time.
+  const handleCopyToken = (token: string, examId: string) => {
+    navigator.clipboard.writeText(token);
+    setCopiedTokenId(examId);
+    toast.success("Token berhasil disalin!");
+    setTimeout(() => setCopiedTokenId(null), 2000);
+  };
+
+  if (exams.length === 0) {
+    return (
+      <div className="py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+        <Monitor size={48} className="mx-auto text-gray-300 mb-4" />
+        <p className="text-gray-500 font-bold text-lg">
+          Anda tidak memiliki tugas pengawasan.
+        </p>
+        <p className="text-gray-400 text-sm mt-1">
+          Silakan hubungi Admin jika terdapat kesalahan jadwal.
         </p>
       </div>
+    );
+  }
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="relative w-full sm:max-w-md">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-5 w-5 text-gray-400" />
+  return (
+    <div className="grid grid-cols-1 gap-5">
+      {exams.map((exam) => (
+        <div
+          key={exam.id}
+          className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 shadow-sm hover:shadow-md transition-all"
+        >
+          <div className="flex items-start gap-4 w-full xl:w-auto">
+            <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0">
+              <Monitor size={32} />
+            </div>
+            <div className="space-y-2 w-full">
+              <div>
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] font-black uppercase tracking-wider">
+                  {`${exam.examType.name} -  ${exam.academicYear.semester} ${exam.academicYear.year}`}
+                </span>
+                <h3 className="text-xl font-black text-gray-900 leading-tight mt-1">
+                  {exam.title}
+                </h3>
+                <p className="text-sm font-bold text-teal-600">
+                  {exam.subject.name}
+                </p>
+
+                <p className="text-xs text-gray-400 mt-2">
+                  {`Pengawas: ${exam.supervisor?.name}`}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-4 text-xs font-bold text-gray-500 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-1.5">
+                  <Calendar size={14} className="text-blue-500" />
+                  {formatDayMonth(exam.startTime as Date)}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Clock size={14} className="text-orange-500" />
+                  {formatTimeWithOutSeconds(exam.startTime as string)} -{" "}
+                  {formatTimeWithOutSeconds(exam.endTime as string)}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <MapPin size={14} className="text-red-500" />
+                  {exam.classes.map((c) => c.name).join(", ")}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Users size={14} className="text-purple-500" />
+                  {exam._count.attempts} Siswa Aktif
+                </div>
+              </div>
+            </div>
           </div>
-          <input
-            type="text"
-            className="block w-full rounded-xl border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm placeholder-gray-400 focus:border-teal-500 focus:ring-teal-500 shadow-sm transition-all"
-            placeholder="Cari judul ujian atau mapel..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
-              <tr>
-                <th className="px-6 py-4 font-semibold">
-                  Ujian & Mata Pelajaran
-                </th>
-                <th className="px-6 py-4 font-semibold">Pelaksanaan (WITA)</th>
-                <th className="px-6 py-4 font-semibold">Status & Peserta</th>
-                <th className="px-6 py-4 font-semibold text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {exams.length > 0 ? (
-                exams.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900 mb-1">
-                        {item.title}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span className="inline-flex items-center rounded bg-indigo-50 px-1.5 py-0.5 font-medium text-indigo-700">
-                          {item.examTypeCode}
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <BookOpen size={12} /> {item.subjectName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <Clock size={14} className="text-teal-600" />
-                          <span>Mulai: {formatDateTime(item.startTime)}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <Clock size={14} className="text-red-500" />
-                          <span>Tutup: {formatDateTime(item.endTime)}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1 text-xs text-gray-700 font-semibold">
-                          <Users size={14} className="text-blue-500" />
-                          {item.classesCount} Kelas ({item.attemptsCount} Sesi
-                          Aktif)
-                        </div>
-                        <div>
-                          {item.status === "DRAFT" && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600">
-                              DRAFT
-                            </span>
-                          )}
-                          {item.status === "PUBLISHED" && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-700">
-                              PUBLISHED
-                            </span>
-                          )}
-                          {item.status === "COMPLETED" && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
-                              SELESAI
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right align-middle">
-                      <Link
-                        href={`/admin/monitoring/${item.id}`}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-50 text-teal-600 border border-teal-200 px-4 py-2 text-xs font-bold hover:bg-teal-600 hover:text-white transition-all active:scale-95"
-                      >
-                        <Activity size={14} /> Pantau Ujian
-                      </Link>
-                    </td>
-                  </tr>
-                ))
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto bg-gray-50 p-4 rounded-xl border border-gray-100 xl:bg-transparent xl:border-none xl:p-0">
+            <div className="flex-1 sm:flex-none w-full sm:w-auto">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                Token Ruangan
+              </p>
+              {exam.token ? (
+                <div className="flex items-center gap-2">
+                  <code className="bg-teal-50 text-teal-700 font-black tracking-[0.2em] px-4 py-2.5 rounded-xl text-lg border border-teal-200 shadow-inner">
+                    {exam.token}
+                  </code>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() =>
+                        handleCopyToken(exam.token as string, exam.id)
+                      }
+                      className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors border border-transparent hover:border-teal-100"
+                      title="Salin Token"
+                    >
+                      {copiedTokenId === exam.id ? (
+                        <CheckCircle2 size={16} className="text-emerald-500" />
+                      ) : (
+                        <Copy size={16} />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleGenerateToken(exam.id)}
+                      disabled={loadingTokenId === exam.id}
+                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100 disabled:opacity-50"
+                      title="Generate Ulang Token"
+                    >
+                      <RefreshCw
+                        size={16}
+                        className={
+                          loadingTokenId === exam.id ? "animate-spin" : ""
+                        }
+                      />
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <tr>
-                  <td colSpan={4} className="p-10 text-center text-gray-500">
-                    Belum ada ujian yang tersedia untuk dipantau.
-                  </td>
-                </tr>
+                <button
+                  onClick={() => handleGenerateToken(exam.id)}
+                  disabled={loadingTokenId === exam.id}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl font-bold transition-all disabled:opacity-50 shadow-sm"
+                >
+                  {loadingTokenId === exam.id ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <KeyRound size={18} />
+                  )}
+                  Buat Token
+                </button>
               )}
-            </tbody>
-          </table>
+            </div>
+
+            <div className="w-full sm:w-auto h-full border-t sm:border-t-0 sm:border-l border-gray-200 pt-4 sm:pt-0 sm:pl-4">
+              <Link
+                href={`/guru/monitoring/${exam.id}`}
+                className="flex items-center justify-center w-full px-6 py-4 bg-teal-600 text-white rounded-xl font-black hover:bg-teal-700 transition-all shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap"
+              >
+                Mulai Monitoring
+              </Link>
+            </div>
+          </div>
         </div>
-        <Pagination
-          currentPage={currentPage}
-          totalCount={totalCount}
-          totalPages={totalPages}
-          data="Ujian"
-        />
-      </div>
+      ))}
     </div>
   );
 }

@@ -10,10 +10,15 @@ import {
   Calendar,
   Users,
   Clock,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { JadwalFormProps } from "@/types/exam";
 import { formatDateToInput, formatTimeToInput } from "@/lib/formatDateTime";
+
+interface ExtendedJadwalFormProps extends JadwalFormProps {
+  teachers: { id: string; name: string }[];
+}
 
 export default function JadwalForm({
   subjects,
@@ -21,7 +26,8 @@ export default function JadwalForm({
   examTypes,
   academicYears,
   initialData,
-}: JadwalFormProps) {
+  teachers,
+}: ExtendedJadwalFormProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +40,7 @@ export default function JadwalForm({
       initialData?.academicYearId ||
       academicYears.find((y) => y.active)?.id ||
       "",
+    supervisorId: initialData?.supervisorId || "",
     examDate: initialData?.startTime
       ? formatDateToInput(initialData.startTime)
       : "",
@@ -50,7 +57,6 @@ export default function JadwalForm({
     initialData?.classes?.map((c) => c.id) || [],
   );
 
-  // Fungsi buat ngitung durasi otomatis
   const handleTimeChange = (field: "startTime" | "endTime", value: string) => {
     const newFormData = { ...formData, [field]: value };
 
@@ -84,7 +90,9 @@ export default function JadwalForm({
         !formData.startTime ||
         !formData.endTime
       ) {
-        return toast.error("Harap isi semua kolom informasi dasar!");
+        return toast.error(
+          "Harap isi semua kolom informasi dasar (yang ber-bintang)!",
+        );
       }
       setStep(2);
     }
@@ -108,7 +116,6 @@ export default function JadwalForm({
     const combinedStartTime = `${formData.examDate}T${formData.startTime}:00`;
     const combinedEndTime = `${formData.examDate}T${formData.endTime}:00`;
 
-    // Payload
     const payload = {
       title: formData.title,
       subjectId: formData.subjectId,
@@ -119,6 +126,9 @@ export default function JadwalForm({
       duration: formData.duration,
       randomizeQuestions: formData.randomizeQuestions,
       showResult: formData.showResult,
+
+      supervisorId:
+        formData.supervisorId === "" ? undefined : formData.supervisorId,
       status: (initialData?.status || "PUBLISHED") as
         | "DRAFT"
         | "PUBLISHED"
@@ -127,11 +137,9 @@ export default function JadwalForm({
     };
 
     let res;
-    // EDIT
     if (initialData?.id) {
       res = await updateExam({ ...payload, id: initialData.id });
     } else {
-      // CREATE
       res = await createExam(payload);
     }
 
@@ -195,7 +203,7 @@ export default function JadwalForm({
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg inline-block border border-blue-100">
                   Mata Pelajaran <span className="text-red-500">*</span>
@@ -229,6 +237,26 @@ export default function JadwalForm({
                 >
                   <option value="">Pilih Kategori</option>
                   {examTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 border border-emerald-100">
+                  <UserCheck size={14} /> Guru Pengawas (Opsional)
+                </label>
+                <select
+                  value={formData.supervisorId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, supervisorId: e.target.value })
+                  }
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-800 focus:bg-white focus:ring-emerald-500 focus:border-emerald-500 transition-colors appearance-none"
+                >
+                  <option value="">Pilih Pengawas</option>
+                  {teachers.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
                     </option>

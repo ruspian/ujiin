@@ -34,6 +34,7 @@ export default async function JadwalUjianPage({
           examType: true,
           academicYear: true,
           classes: true,
+          supervisor: true,
           _count: {
             select: { questions: true, attempts: true },
           },
