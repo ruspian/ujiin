@@ -33,6 +33,7 @@ export default async function PilihUjianMapelPage({
         include: {
           examType: true,
           classes: true,
+          academicYear: { select: { year: true, semester: true } },
           _count: {
             select: {
               attempts: {
@@ -99,8 +100,8 @@ export default async function PilihUjianMapelPage({
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                 <ClipboardCheck size={24} />
               </div>
-              <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-                {exam.examType.name}
+              <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[8px] font-bold uppercase tracking-wider">
+                {`${exam.examType.name} - ${exam.academicYear.semester} ${exam.academicYear.year} `}
               </span>
             </div>
 
@@ -111,15 +112,15 @@ export default async function PilihUjianMapelPage({
               {exam.title}
             </h3>
 
-            <div className="mb-4">
-              <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+            <div className="mb-4 flex gap-2">
+              <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider text-center">
                 Kelas Peserta:
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {exam.classes.map((cls) => (
                   <span
                     key={cls.id}
-                    className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-100"
+                    className=" text-xs font-bold text-emerald-700"
                   >
                     {cls.name}
                   </span>

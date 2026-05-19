@@ -165,7 +165,7 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
                         onClick={() => setIsGuruMenuOpen(false)}
                         className="block rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-teal-50 hover:text-teal-600 transition-colors"
                       >
-                        Bank Soal
+                        Soal
                       </Link>
                       <Link
                         href="/guru/penilaian"
@@ -273,7 +273,7 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
                   href="/guru/soal"
                   className="text-sm font-bold text-gray-600 pl-2"
                 >
-                  Bank Soal
+                  Soal
                 </Link>
                 <Link
                   href="/guru/penilaian"
