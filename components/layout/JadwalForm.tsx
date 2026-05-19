@@ -46,8 +46,10 @@ export default function JadwalForm({
       : "",
     startTime: initialData?.startTime
       ? formatTimeToInput(initialData.startTime)
-      : "",
-    endTime: initialData?.endTime ? formatTimeToInput(initialData.endTime) : "",
+      : "07:00",
+    endTime: initialData?.endTime
+      ? formatTimeToInput(initialData.endTime)
+      : "09:00",
     duration: initialData?.duration || 0,
     randomizeQuestions: initialData?.randomizeQuestions ?? true,
     showResult: initialData?.showResult ?? false,
@@ -289,28 +291,94 @@ export default function JadwalForm({
                   <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
                     Jam Mulai <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="time"
-                    value={formData.startTime}
-                    onChange={(e) =>
-                      handleTimeChange("startTime", e.target.value)
-                    }
-                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-800 focus:ring-teal-500 focus:border-teal-500 shadow-sm"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={formData.startTime.split(":")[0]}
+                      onChange={(e) =>
+                        handleTimeChange(
+                          "startTime",
+                          `${e.target.value}:${formData.startTime.split(":")[1]}`,
+                        )
+                      }
+                      className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-800 focus:ring-teal-500 focus:border-teal-500 shadow-sm text-center cursor-pointer"
+                    >
+                      {Array.from({ length: 24 }).map((_, i) => {
+                        const val = i.toString().padStart(2, "0");
+                        return (
+                          <option key={val} value={val}>
+                            {val}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <span className="font-bold text-gray-400">:</span>
+                    <select
+                      value={formData.startTime.split(":")[1]}
+                      onChange={(e) =>
+                        handleTimeChange(
+                          "startTime",
+                          `${formData.startTime.split(":")[0]}:${e.target.value}`,
+                        )
+                      }
+                      className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-800 focus:ring-teal-500 focus:border-teal-500 shadow-sm text-center cursor-pointer"
+                    >
+                      {Array.from({ length: 60 }).map((_, i) => {
+                        const val = i.toString().padStart(2, "0");
+                        return (
+                          <option key={val} value={val}>
+                            {val}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
                     Jam Selesai <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="time"
-                    value={formData.endTime}
-                    onChange={(e) =>
-                      handleTimeChange("endTime", e.target.value)
-                    }
-                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-800 focus:ring-teal-500 focus:border-teal-500 shadow-sm"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={formData.endTime.split(":")[0]}
+                      onChange={(e) =>
+                        handleTimeChange(
+                          "endTime",
+                          `${e.target.value}:${formData.endTime.split(":")[1]}`,
+                        )
+                      }
+                      className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-800 focus:ring-teal-500 focus:border-teal-500 shadow-sm text-center cursor-pointer"
+                    >
+                      {Array.from({ length: 24 }).map((_, i) => {
+                        const val = i.toString().padStart(2, "0");
+                        return (
+                          <option key={val} value={val}>
+                            {val}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <span className="font-bold text-gray-400">:</span>
+                    <select
+                      value={formData.endTime.split(":")[1]}
+                      onChange={(e) =>
+                        handleTimeChange(
+                          "endTime",
+                          `${formData.endTime.split(":")[0]}:${e.target.value}`,
+                        )
+                      }
+                      className="px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-semibold text-gray-800 focus:ring-teal-500 focus:border-teal-500 shadow-sm text-center cursor-pointer"
+                    >
+                      {Array.from({ length: 60 }).map((_, i) => {
+                        const val = i.toString().padStart(2, "0");
+                        return (
+                          <option key={val} value={val}>
+                            {val}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
                 </div>
               </div>
 

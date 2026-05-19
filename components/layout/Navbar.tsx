@@ -199,7 +199,7 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
               <div className="flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 shadow-sm bg-gray-50/50">
                 <UserIcon size={16} className="text-teal-600" />
                 <span className="text-xs font-bold text-gray-700">
-                  {userName} ({currentRole})
+                  {userName}
                 </span>
               </div>
               <button
