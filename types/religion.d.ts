@@ -1,3 +1,5 @@
+import { ReligionData as PrismaReligion } from "@/prisma/client";
+
 export interface ReligionData {
   id: string;
   name: string;
@@ -20,6 +22,7 @@ export interface EditAgamaModalProps {
 }
 
 export interface DeleteAgamaModalProps {
-  itemData: { id: string; name: string };
-  setIsModalDeleteOpen: (val: boolean) => void;
+  itemData: PrismaReligion;
+  setIsModalDeleteOpen: (open: boolean) => void;
+  forceLoading?: boolean;
 }

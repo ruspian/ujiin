@@ -6,11 +6,18 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { EditJenisUjianModalProps } from "@/types/examType";
 
+interface ExtendedProps extends EditJenisUjianModalProps {
+  forceLoading?: boolean;
+}
+
 export default function EditJenisUjianModal({
   itemData,
   setIsModalEditOpen,
-}: EditJenisUjianModalProps) {
+  forceLoading = false,
+}: ExtendedProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isLoading = isSubmitting || forceLoading;
 
   const handleEdit = async (formData: FormData) => {
     try {
@@ -93,10 +100,10 @@ export default function EditJenisUjianModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isLoading}
               className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+              {isLoading ? "Menyimpan..." : "Simpan Perubahan"}
             </button>
           </div>
         </form>

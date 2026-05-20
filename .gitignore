@@ -11,7 +11,8 @@
 !.yarn/versions
 
 # testing
-/coverage
+/coverage/
+/html/
 
 # next.js
 /.next/
@@ -41,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+
+
+
