@@ -124,7 +124,7 @@ export default async function DaftarPesertaKoreksiPage({
                       </span>
                     );
 
-                    if (attempt?.status === "IN_PROGRESS") {
+                    if (attempt?.status === "ONGOING") {
                       statusBadge = (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-50 text-yellow-700 text-[10px] font-bold tracking-wider border border-yellow-200 animate-pulse">
                           <Clock size={12} /> MENGERJAKAN
