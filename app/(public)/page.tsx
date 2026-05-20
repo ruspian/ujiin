@@ -1,8 +1,10 @@
-// src/app/(public)/page.tsx
+import { auth } from "@/lib/auth";
 import { ArrowRight, ShieldCheck, Zap, Database } from "lucide-react";
 import Link from "next/link";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth();
+
   return (
     <div className="relative overflow-hidden py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -15,17 +17,19 @@ export default function LandingPage() {
             Platform CBT modern yang dirancang khusus untuk kemudahan guru dalam
             mengelola soal dan kenyamanan siswa dalam mengerjakan ujian.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link
-              href="/login"
-              className="rounded-xl bg-teal-600 px-8 py-4 text-lg font-semibold text-white shadow-sm hover:bg-teal-700  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 flex items-center gap-2"
-            >
-              Mulai Sekarang <ArrowRight size={20} />
-            </Link>
-          </div>
+
+          {!session?.user && (
+            <div className="mt-10 flex items-center justify-center gap-x-6">
+              <Link
+                href="/login-siswa"
+                className="rounded-xl bg-teal-600 px-8 py-4 text-lg font-semibold text-white shadow-sm hover:bg-teal-700  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 flex items-center gap-2"
+              >
+                Mulai Sekarang <ArrowRight size={20} />
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* Fitur Singkat */}
         <div className="mt-24 grid grid-cols-1 gap-8 sm:grid-cols-3">
           <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
             <Zap className="text-teal-600 mb-4" />

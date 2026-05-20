@@ -9,6 +9,7 @@ import {
   User as UserIcon,
   LogIn,
   ChevronDown,
+  LayoutDashboard,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -67,15 +68,27 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
         </div>
 
         {isPublic ? (
-          <div className="flex items-center gap-4">
-            <Link
-              href="/login"
-              className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-teal-700 shadow-md active:scale-95"
-            >
-              <LogIn size={18} />
-              <span>Masuk</span>
-            </Link>
-          </div>
+          !session?.user ? (
+            <div className="flex items-center gap-4">
+              <Link
+                href="/login"
+                className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-teal-700 shadow-md active:scale-95"
+              >
+                <LogIn size={18} />
+                <span>Masuk</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-teal-700 shadow-md active:scale-95"
+              >
+                <LayoutDashboard size={18} />
+                <span>Dashboard</span>
+              </Link>
+            </div>
+          )
         ) : (
           <>
             <div className="hidden lg:flex lg:items-center lg:gap-8">
