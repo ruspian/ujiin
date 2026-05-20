@@ -50,3 +50,15 @@ export const formatDateToInput = (dateString?: string | Date) => {
   const d = new Date(dateString);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
+
+export function getWaktuSekarang() {
+  // Ambil waktu saat ini
+  const serverTime = new Date();
+
+  // Konversi paksa ke waktu WITA
+  const waktuLokal = new Date(
+    serverTime.toLocaleString("en-US", { timeZone: "Asia/Makassar" }),
+  );
+
+  return waktuLokal;
+}
