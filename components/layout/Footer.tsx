@@ -36,7 +36,7 @@ export default function Footer() {
                 <ul role="list" className="mt-6 space-y-4">
                   <li>
                     <Link
-                      href="#"
+                      href="/fitur"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
                       Fitur Utama
@@ -44,18 +44,10 @@ export default function Footer() {
                   </li>
                   <li>
                     <Link
-                      href="#"
+                      href="/instalasi"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
                       Cara Instalasi
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="#"
-                      className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
-                    >
-                      Paket Harga
                     </Link>
                   </li>
                 </ul>
@@ -67,7 +59,7 @@ export default function Footer() {
                 <ul role="list" className="mt-6 space-y-4">
                   <li>
                     <Link
-                      href="#"
+                      href="panduan-guru"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
                       Panduan Guru
@@ -75,7 +67,7 @@ export default function Footer() {
                   </li>
                   <li>
                     <Link
-                      href="#"
+                      href="panduan-siswa"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
                       Panduan Siswa
@@ -83,7 +75,7 @@ export default function Footer() {
                   </li>
                   <li>
                     <Link
-                      href="#"
+                      href="faq"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
                       FAQ
@@ -95,23 +87,31 @@ export default function Footer() {
             <div className="md:grid md:grid-cols-2 md:gap-8">
               <div>
                 <h3 className="text-sm font-semibold leading-6 text-gray-900">
-                  Perusahaan
+                  Informasi Project
                 </h3>
                 <ul role="list" className="mt-6 space-y-4">
                   <li>
                     <Link
-                      href="#"
+                      href="/tentang"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
-                      Tentang Kami
+                      Tentang Ujiin
                     </Link>
                   </li>
                   <li>
                     <Link
-                      href="#"
+                      href="/bugs"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
-                      Kontak
+                      Laporkan Bug
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/kontak"
+                      className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
+                    >
+                      Kontak Pengembang
                     </Link>
                   </li>
                 </ul>
@@ -123,7 +123,7 @@ export default function Footer() {
                 <ul role="list" className="mt-6 space-y-4">
                   <li>
                     <Link
-                      href="#"
+                      href="/kebijakan-privasi"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
                       Kebijakan Privasi
@@ -131,7 +131,7 @@ export default function Footer() {
                   </li>
                   <li>
                     <Link
-                      href="#"
+                      href="/syarat-ketentuan"
                       className="text-sm leading-6 text-gray-500 hover:text-teal-600 transition-colors"
                     >
                       Syarat & Ketentuan
@@ -145,8 +145,15 @@ export default function Footer() {
 
         <div className="mt-16 border-t border-gray-200 pt-8 sm:mt-20 lg:mt-24">
           <p className="text-xs leading-5 text-gray-500 text-center">
-            &copy; {new Date().getFullYear()} Ujiin. Dibuat untuk ekosistem
-            pendidikan Indonesia. All rights reserved.
+            &copy; {new Date().getFullYear()} Ujiin. Dibuat dengan
+            <span className="text-red-500 animate-pulse mx-1">❤️</span>oleh{" "}
+            <a
+              href="/kontak"
+              className="font-semibold text-gray-700 hover:text-teal-600 transition-colors"
+            >
+              Ruspian Majid
+            </a>
+            . All rights reserved.
           </p>
         </div>
       </div>
