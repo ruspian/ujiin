@@ -93,7 +93,7 @@ export async function createExam(data: ExamSchema) {
           connect: classes.map((id) => ({ id })),
         },
         questions: {
-          connect: autoQuestions.map((q) => ({ id: q.id })),
+          connect: autoQuestions.map((q: { id: string }) => ({ id: q.id })),
         },
       },
     });
