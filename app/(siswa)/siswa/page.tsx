@@ -14,21 +14,6 @@ export default async function StudentPortal() {
 
   const now = new Date();
 
-  console.log("=== DEBUGGING UJIAN ===");
-  console.log("Waktu Server (now):", now);
-  console.log("ID Kelas Siswa:", student.classId);
-  console.log("ID Agama Siswa:", student.religionId);
-  // Tarik ujian tanpa filter status dan waktu buat ngecek wujud aslinya
-  const checkExam = await prisma.exam.findFirst({
-    where: { classes: { some: { id: student.classId } } },
-    include: { subject: true },
-  });
-  console.log("Waktu Mulai di DB:", checkExam?.startTime);
-  console.log("Waktu Berakhir di DB:", checkExam?.endTime);
-  console.log("Status Ujian di DB:", checkExam?.status);
-  console.log("Agama Mapel di DB:", checkExam?.subject?.religionId);
-  console.log("=======================");
-
   const activeExam = await prisma.exam.findFirst({
     where: {
       status: "PUBLISHED",

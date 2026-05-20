@@ -47,6 +47,7 @@ export default function RuangUjian({
   questions,
   endTime,
   initialAnswers,
+  serverTime,
 }: RuangUjianProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -56,10 +57,14 @@ export default function RuangUjian({
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [activeLeftMatch, setActiveLeftMatch] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(() => {
-    const difference = new Date(endTime).getTime() - new Date().getTime();
+    // Ubah string/Date jadi format angka
+    const end = new Date(endTime).getTime();
+    const serverNow = new Date(serverTime).getTime();
+
+    // Hitung selisihnya
+    const difference = end - serverNow;
     return difference > 0 ? Math.floor(difference / 1000) : 0;
   });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -204,27 +209,32 @@ export default function RuangUjian({
 
   // timer
   useEffect(() => {
-    const calculateTimeLeft = () => {
-      const difference = new Date(endTime).getTime() - new Date().getTime();
-      return difference > 0 ? Math.floor(difference / 1000) : 0;
-    };
+    // Kalau waktu emang udah abis dari server, langsung submit
+    if (timeLeft <= 0) {
+      setTimeout(() => handleSelesaiUjian(true), 0);
+      return;
+    }
 
     timerRef.current = setInterval(() => {
-      const newTime = calculateTimeLeft();
-      setTimeLeft(newTime);
+      setTimeLeft((prevTime) => {
+        const newTime = prevTime - 1;
 
-      if (newTime <= 0) {
-        if (timerRef.current) clearInterval(timerRef.current);
-        handleSelesaiUjian(true);
-      }
+        if (newTime <= 0) {
+          if (timerRef.current) clearInterval(timerRef.current);
+
+          setTimeout(() => handleSelesaiUjian(true), 0);
+          return 0;
+        }
+
+        return newTime;
+      });
     }, 1000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endTime]);
-
+  }, []);
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);

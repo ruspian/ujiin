@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import RuangUjian, { ClientQuestion } from "@/components/layout/RuangUjian";
+import RuangUjian from "@/components/layout/RuangUjian";
 import { QuestionType, AttemptStatus } from "@prisma/client";
-import { AnswersMap } from "@/types/ruang-ujian";
+import { AnswersMap, ClientQuestion } from "@/types/ruang-ujian";
 import { getStudentAuth } from "@/lib/getStudentAuth";
 
 interface PageProps {
@@ -54,6 +54,8 @@ export default async function HalamanUjian({ params }: PageProps) {
 
   const initialAnswers = (attempt.answers as AnswersMap) || {};
 
+  const serverTime = new Date();
+
   return (
     <RuangUjian
       attemptId={attempt.id}
@@ -62,6 +64,7 @@ export default async function HalamanUjian({ params }: PageProps) {
       questions={safeQuestions}
       endTime={attempt.exam.endTime}
       initialAnswers={initialAnswers}
+      serverTime={serverTime}
     />
   );
 }

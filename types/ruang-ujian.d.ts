@@ -39,4 +39,5 @@ export interface RuangUjianProps {
   questions: ClientQuestion[];
   endTime: Date;
   initialAnswers: AnswersMap;
+  serverTime: Date | string;
 }
