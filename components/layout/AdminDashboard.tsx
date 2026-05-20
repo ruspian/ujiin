@@ -1,4 +1,3 @@
-// src/app/(dashboard)/dashboard/AdminDashboard.tsx
 import { Users, BookOpen, GraduationCap, School } from "lucide-react";
 
 export default function AdminDashboard() {
