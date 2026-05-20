@@ -7,9 +7,15 @@ import { Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { loginSchema } from "@/schemas/loginSchema";
 
-export default function LoginForm() {
+export default function LoginForm({
+  forceLoading = false,
+}: {
+  forceLoading?: boolean;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  const isLoadingButton = forceLoading || loading;
 
   const handleLogin = async (formData: FormData) => {
     setLoading(true);
@@ -81,10 +87,10 @@ export default function LoginForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={isLoadingButton}
         className="flex w-full justify-center rounded-lg bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-700  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:opacity-50 transition-all"
       >
-        {loading ? "Memeriksa data..." : "Masuk"}
+        {isLoadingButton ? "Memeriksa data..." : "Masuk"}
       </button>
     </form>
   );

@@ -6,11 +6,18 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { DeleteJadwalModalProps } from "@/types/exam";
 
+interface Props extends DeleteJadwalModalProps {
+  forceLoading?: boolean;
+}
+
 export default function DeleteJadwalModal({
   itemData,
   setIsModalDeleteOpen,
-}: DeleteJadwalModalProps) {
+  forceLoading = false,
+}: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isLoading = isSubmitting || forceLoading;
 
   const handleDelete = async (formData: FormData) => {
     try {
@@ -69,10 +76,10 @@ export default function DeleteJadwalModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isLoading}
               className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
             >
-              {isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+              {isLoading ? "Menghapus..." : "Ya, Hapus"}
             </button>
           </div>
         </form>
