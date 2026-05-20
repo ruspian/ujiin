@@ -141,3 +141,63 @@
     display: none !important;
   }
 }
+
+@layer utilities {
+  /* Animasi ngambang halus untuk card utama */
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-15px) rotate(0.5deg);
+    }
+  }
+
+  /* Animasi 'glitch' / 'wobble' lucu untuk teks 404 saat hover */
+  @keyframes wobble {
+    0%,
+    100% {
+      transform: translateX(0) rotate(0);
+    }
+    15% {
+      transform: translateX(-5px) rotate(-3deg);
+    }
+    30% {
+      transform: translateX(4px) rotate(2deg);
+    }
+    45% {
+      transform: translateX(-4px) rotate(-2deg);
+    }
+    60% {
+      transform: translateX(3px) rotate(1deg);
+    }
+    75% {
+      transform: translateX(-2px) rotate(-1deg);
+    }
+  }
+
+  /* Animasi scale in untuk memunculkan elemen */
+  @keyframes popIn {
+    0% {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-wobble-hover:hover {
+    animation: wobble 0.6s ease-in-out;
+  }
+
+  .animate-pop-in {
+    animation: popIn 0.5s ease-out forwards;
+  }
+}
