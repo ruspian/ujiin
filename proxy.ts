@@ -13,7 +13,7 @@ const rateLimitMap = new Map<string, RateLimitData>();
 const MAX_ATTEMPTS = 5;
 const TIME_WINDOW = 60 * 1000;
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
