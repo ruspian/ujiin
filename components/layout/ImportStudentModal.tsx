@@ -63,16 +63,19 @@ export default function ImportStudentModal({
           { value: "nisn", fontWeight: "bold" },
           { value: "name", fontWeight: "bold" },
           { value: "className", fontWeight: "bold" },
+          { value: "religion", fontWeight: "bold" },
         ],
         [
           { type: String, value: "0051234567" },
           { type: String, value: "Otong Surotong" },
           { type: String, value: "X TKJ" },
+          { type: String, value: "Islam" },
         ],
         [
           { type: String, value: "0069876543" },
           { type: String, value: "Mei Mei" },
           { type: String, value: "XI ATR" },
+          { type: String, value: "Islam" },
         ],
       ];
 
@@ -138,6 +141,9 @@ export default function ImportStudentModal({
       const classIdx = headers.findIndex(
         (h) => String(h).toLowerCase().trim() === "classname",
       );
+      const religionIdx = headers.findIndex(
+        (h) => String(h).toLowerCase().trim() === "religion",
+      );
 
       if (nisnIdx === -1 || nameIdx === -1 || classIdx === -1) {
         toast.error("Format kolom (Header) tidak sesuai template!", {
@@ -153,6 +159,7 @@ export default function ImportStudentModal({
           nisn: String(row[nisnIdx] || "").trim(),
           name: String(row[nameIdx] || "").trim(),
           className: String(row[classIdx] || "").trim(),
+          religion: String(row[religionIdx] || "").trim(),
         }))
         .filter((row) => row.nisn && row.name && row.className); // Skip baris kosong
 
@@ -214,6 +221,11 @@ export default function ImportStudentModal({
                 kelas di sistem (contoh: X TKJ).
               </li>
               <li>NISN tidak boleh ada yang duplikat.</li>
+              <li>
+                Kolom <strong>religion</strong> harus diisi sesuai penulisan
+                standar (contoh: Islam, Kristen, Katolik, Hindu, Buddha,
+                Konghucu).
+              </li>
             </ul>
             <button
               onClick={handleDownloadTemplate}

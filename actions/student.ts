@@ -113,19 +113,29 @@ export async function deleteStudent(id: string) {
 }
 
 export async function importStudents(
-  studentsData: { nisn: string; name: string; className: string }[],
+  studentsData: {
+    nisn: string;
+    name: string;
+    className: string;
+    religion: string;
+  }[],
 ) {
   if (!studentsData || studentsData.length === 0) {
     return { success: false, message: "File Excel kosong atau format salah!" };
   }
 
   try {
-    const getClasses = await prisma.class.findMany({
-      select: { id: true, name: true },
-    });
+    const [getClasses, getReligions] = await Promise.all([
+      prisma.class.findMany({ select: { id: true, name: true } }),
+      prisma.religion.findMany({ select: { id: true, name: true } }),
+    ]);
 
     const classMap = new Map(
       getClasses.map((c) => [c.name.trim().toLowerCase(), c.id]),
+    );
+
+    const religionMap = new Map(
+      getReligions.map((r) => [r.name.trim().toLowerCase(), r.id]),
     );
 
     const existingStudents = await prisma.student.findMany({
@@ -137,9 +147,9 @@ export async function importStudents(
     const validStudents = [];
     const errors = [];
 
-    // Proses data baris per baris ke excel
+    // Proses data baris per baris dari excel
     for (const [index, row] of studentsData.entries()) {
-      const rowNumber = index + 2; // +2 karena index 0 itu baris ke-2 di Excel
+      const rowNumber = index + 2;
 
       if (!row.nisn || !row.name || !row.className) {
         errors.push(`Baris ${rowNumber}: Data tidak lengkap`);
@@ -162,17 +172,30 @@ export async function importStudents(
         continue;
       }
 
+      let religionId = null;
+      if (row.religion) {
+        religionId = religionMap.get(String(row.religion).trim().toLowerCase());
+
+        if (!religionId) {
+          errors.push(
+            `Baris ${rowNumber}: Agama '${row.religion}' tidak terdaftar di sistem`,
+          );
+          continue;
+        }
+      }
+
       validStudents.push({
         nisn: nisnStr,
         name: String(row.name).trim(),
         classId: classId,
+        religionId: religionId,
       });
 
-      // Tambahkan ke Set untuk mencegah duplikat dalam file yang sama
+      //  mencegah duplikat dalam file yang sama
       existingNisnSet.add(nisnStr);
     }
 
-    // masukkan ke database sekaligus
+    // Masukkan ke database
     if (validStudents.length > 0) {
       await prisma.student.createMany({
         data: validStudents,
@@ -198,7 +221,6 @@ export async function importStudents(
     };
   }
 }
-
 export async function randomizeSessions(formData: FormData) {
   const classId = formData.get("classId") as string;
   const totalSessions = parseInt(formData.get("totalSessions") as string);
