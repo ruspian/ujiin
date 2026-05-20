@@ -6,11 +6,18 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { EditAgamaModalProps } from "@/types/religion";
 
+interface ExtendedProps extends EditAgamaModalProps {
+  forceLoading?: boolean;
+}
+
 export default function EditAgamaModal({
   itemData,
   setIsModalEditOpen,
-}: EditAgamaModalProps) {
+  forceLoading = false,
+}: ExtendedProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isLoading = isSubmitting || forceLoading;
 
   const handleEdit = async (formData: FormData) => {
     try {
@@ -74,10 +81,10 @@ export default function EditAgamaModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isLoading}
               className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+              {isLoading ? "Menyimpan..." : "Simpan Perubahan"}
             </button>
           </div>
         </form>

@@ -12,7 +12,10 @@ export default function DeleteAgamaModal({
 }: DeleteAgamaModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleDelete = async (formData: FormData) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Wajib agar browser/JSDOM tidak memicu hard-reload
+    const formData = new FormData(e.currentTarget);
+
     try {
       setIsSubmitting(true);
       const result = await deleteReligion(formData);
@@ -57,7 +60,7 @@ export default function DeleteAgamaModal({
           Data yang sudah dihapus tidak bisa dikembalikan.
         </p>
 
-        <form action={handleDelete}>
+        <form onSubmit={onSubmit}>
           <input type="hidden" name="id" value={itemData.id} />
           <div className="flex gap-3">
             <button

@@ -1,4 +1,3 @@
-// src/components/layout/master/DeleteAcademicModal.tsx
 "use client";
 
 import { deleteAcademicYear } from "@/actions/academic";
