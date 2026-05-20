@@ -14,6 +14,12 @@ import { simpanKoreksi } from "@/actions/penilaian";
 
 type AnswerValue = string | string[] | Record<string, string>;
 
+type MatchingPair = {
+  left: string;
+  right: string;
+  point?: number;
+};
+
 export default async function KoreksiDetailSiswaPage({
   params,
 }: {
@@ -132,12 +138,10 @@ export default async function KoreksiDetailSiswaPage({
     }
   });
 
-  const simpanKoreksiDenganID = simpanKoreksi.bind(
-    null,
-    subjectId,
-    examId,
-    attemptId,
-  );
+  const handleSubmit = async (formData: FormData) => {
+    "use server";
+    await simpanKoreksi(subjectId, examId, attemptId, formData);
+  };
 
   return (
     <div className="space-y-6">
@@ -193,7 +197,7 @@ export default async function KoreksiDetailSiswaPage({
         </div>
       </div>
 
-      <form action={simpanKoreksiDenganID} className="space-y-6">
+      <form action={handleSubmit} className="space-y-6">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
