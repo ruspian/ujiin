@@ -2,90 +2,42 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-interface RateLimitData {
-  count: number;
-  resetTime: number;
-}
-
-const rateLimitMap = new Map<string, RateLimitData>();
-
-// Maksimal 5 kali coba POST dalam 1 menit
-const MAX_ATTEMPTS = 5;
-const TIME_WINDOW = 60 * 1000;
-
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const method = request.method;
 
-  if (
-    (pathname === "/login" || pathname === "/login-siswa") &&
-    method === "POST"
-  ) {
-    const forwardedFor = request.headers.get("x-forwarded-for");
-
-    const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1";
-    const now = Date.now();
-
-    const clientLog = rateLimitMap.get(ip);
-
-    if (!clientLog) {
-      // Pendaftaran pertama IP
-      rateLimitMap.set(ip, { count: 1, resetTime: now + TIME_WINDOW });
-    } else {
-      if (now > clientLog.resetTime) {
-        // Kalau waktu blokir 1 menit udah lewat, reset ulang
-        rateLimitMap.set(ip, { count: 1, resetTime: now + TIME_WINDOW });
-      } else {
-        // Masih dalam jeda 1 menit yang sama, naikkan hit angka mencoba
-        clientLog.count++;
-
-        if (clientLog.count > MAX_ATTEMPTS) {
-          // Kirim respon error 429
-          return new NextResponse(
-            JSON.stringify({
-              success: false,
-              message:
-                "Terlalu banyak mencoba login! Silakan tunggu 1 menit lagi.",
-            }),
-            {
-              status: 429,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
-        }
-      }
-    }
-  }
-
-  // auth admin dan guru
+  // TARIK TOKEN ADMIN
   const authSession = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
+    secureCookie: process.env.NODE_ENV === "production",
   });
 
-  //  TOKEN SISWA
+  // TARIK TOKEN SISWA
   const studentToken = request.cookies.get("student_id")?.value;
 
   // PROTEKSI HALAMAN ADMIN & GURU
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) {
+  if (
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/guru")
+  ) {
     if (!authSession) {
       const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", request.url);
+      loginUrl.searchParams.set("callbackUrl", encodeURI(request.url));
       return NextResponse.redirect(loginUrl);
     }
   }
 
   // PROTEKSI HALAMAN SISWA
   if (pathname.startsWith("/siswa") || pathname.startsWith("/ruang-ujian")) {
-    // Belum login siswa
     if (!studentToken) {
       return NextResponse.redirect(new URL("/login-siswa", request.url));
     }
   }
 
-  // CEGAH USER LOGIN BALIK KE FORM LOGIN
+  // CEGAH LOGIN BERULANG
   if (pathname === "/login" && authSession) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   if (pathname === "/login-siswa" && studentToken) {
@@ -109,11 +61,8 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Middleware hanya mengeksekusi path halaman.
-     * Mengabaikan:
-     * - API routes (/api/...)
-     * - Aset statis & internal Next.js (/_next/...)
-     * - Semua file berekstensi seperti gambar, favicon, CSS (.*\..*)
+     * Mengeksekusi path halaman.
+     * Mengabaikan: API routes, aset statis Next.js, dan semua file dengan ekstensi.
      */
     "/((?!api|_next/static|_next/image|.*\\..*).*)",
   ],
