@@ -57,7 +57,7 @@ const MasterAdminNavbar = ({ active }: { active: string }) => {
       <Link
         href="/admin/master/agama"
         className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-          active === "tahun-ajaran"
+          active === "agama"
             ? "border-teal-600 text-teal-600"
             : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
         }`}
@@ -68,7 +68,7 @@ const MasterAdminNavbar = ({ active }: { active: string }) => {
       <Link
         href="/admin/master/jenis-ujian"
         className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-          active === "tahun-ajaran"
+          active === "jenis-ujian"
             ? "border-teal-600 text-teal-600"
             : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
         }`}
