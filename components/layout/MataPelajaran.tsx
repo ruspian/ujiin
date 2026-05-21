@@ -100,6 +100,7 @@ export default function MataPelajaran({
           subjectData={selectedSubject}
           teachers={teachers}
           classes={classes}
+          religions={religions}
           setIsModalEditOpen={setIsModalEditOpen}
           isSubmitting={isSubmitting}
           setIsSubmitting={setIsSubmitting}
