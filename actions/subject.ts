@@ -36,7 +36,25 @@ export async function createSubject(formData: FormData) {
     });
 
     if (existingSubject) {
-      return { success: false, message: "Mata pelajaran sudah ada!" };
+      await prisma.subject.update({
+        where: { id: existingSubject.id },
+        data: {
+          religionId: religionId || existingSubject.religionId,
+          teachers: {
+            connect: teacherIds.map((id) => ({ id })),
+          },
+          classes: {
+            connect: classIds.map((id) => ({ id })),
+          },
+        },
+      });
+
+      revalidatePath("/admin/master/mapel");
+      return {
+        success: true,
+        message:
+          "Mata pelajaran diperbarui, guru/kelas baru berhasil ditambahkan!",
+      };
     }
 
     await prisma.subject.create({
@@ -94,17 +112,34 @@ export async function updateSubject(formData: FormData) {
       return { success: false, message: "Mata pelajaran sudah dipakai!" };
     }
 
+    const currentSubject = await prisma.subject.findUnique({
+      where: { id },
+      include: { teachers: true, classes: true },
+    });
+
+    if (!currentSubject) {
+      return { success: false, message: "Mata pelajaran tidak ditemukan!" };
+    }
+
+    const oldTeacherIds = currentSubject.teachers.map((t) => t.id);
+    const oldClassIds = currentSubject.classes.map((c) => c.id);
+
+    const mergedTeacherIds = Array.from(
+      new Set([...oldTeacherIds, ...teacherIds]),
+    );
+    const mergedClassIds = Array.from(new Set([...oldClassIds, ...classIds]));
+
     await prisma.subject.update({
       where: { id },
       data: {
         name: name.trim(),
         religionId,
         teachers: {
-          set: teacherIds.map((id) => ({ id })),
+          set: mergedTeacherIds.map((id) => ({ id })),
         },
         // hapus relasi lama dan ganti dengan yang baru
         classes: {
-          set: classIds.map((id) => ({ id })),
+          set: mergedClassIds.map((id) => ({ id })),
         },
       },
     });

@@ -2,17 +2,22 @@
 
 import { updateSubject } from "@/actions/subject";
 import { EditSubjectModalProps } from "@/types/data.master";
-import { X, Users, School } from "lucide-react";
+import { X, Users, School, BookHeart } from "lucide-react";
 import { toast } from "sonner";
+
+interface ExtendProps extends EditSubjectModalProps {
+  religions: { id: string; name: string }[];
+}
 
 export default function EditSubjectModal({
   subjectData,
   teachers,
   classes,
   setIsModalEditOpen,
+  religions,
   isSubmitting,
   setIsSubmitting,
-}: EditSubjectModalProps) {
+}: ExtendProps) {
   const handleEditSubject = async (formData: FormData) => {
     try {
       setIsSubmitting(true);
@@ -62,6 +67,35 @@ export default function EditSubjectModal({
               defaultValue={subjectData.name}
               className="block w-full rounded-xl border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+              <BookHeart size={16} className="text-orange-500" />
+              Kategori Agama{" "}
+              <span className="text-xs text-gray-400 font-normal">
+                (Opsional)
+              </span>
+            </label>
+            <select
+              name="religionId"
+              className="block w-full rounded-xl border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-500 appearance-none"
+            >
+              <option value="">Umum</option>
+              {religions && religions.length > 0 ? (
+                religions.map((religion) => (
+                  <option key={religion.id} value={religion.id}>
+                    {religion.name}
+                  </option>
+                ))
+              ) : (
+                <option disabled>Data agama kosong</option>
+              )}
+            </select>
+            <p className="text-[8px] text-gray-500 mt-1.5">
+              Note: Pilih jika mapel ini khusus untuk siswa dengan agama
+              tertentu.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
