@@ -120,33 +120,29 @@ export default function ImportStudentModal({
       const readXlsxFile = browserWindow.readXlsxFile;
       if (!readXlsxFile) throw new Error("Library tidak tersedia.");
 
-      const rows = await readXlsxFile(file);
+      const result = await readXlsxFile(file);
 
-      if (!rows || rows.length <= 1) {
-        toast.error("File Excel kosong atau format tidak sesuai!", {
-          id: toastId,
-        });
-        setIsSubmitting(false);
-        return;
+      const rawResult = result as Array<Record<string, unknown>> | unknown[][];
+
+      let rows: unknown[][] = [];
+
+      if (
+        rawResult.length > 0 &&
+        typeof rawResult[0] === "object" &&
+        rawResult[0] !== null &&
+        !Array.isArray(rawResult[0]) &&
+        "data" in rawResult[0]
+      ) {
+        // Format: [{ sheet: 'Sheet1', data: [...] }]
+        rows = rawResult[0].data as unknown[][];
+      } else {
+        // Format: [ [...] ]
+        rows = rawResult as unknown[][];
       }
 
-      const headers = rows[0] as string[];
-
-      const nisnIdx = headers.findIndex(
-        (h) => String(h).toLowerCase().trim() === "nisn",
-      );
-      const nameIdx = headers.findIndex(
-        (h) => String(h).toLowerCase().trim() === "name",
-      );
-      const classIdx = headers.findIndex(
-        (h) => String(h).toLowerCase().trim() === "classname",
-      );
-      const religionIdx = headers.findIndex(
-        (h) => String(h).toLowerCase().trim() === "religion",
-      );
-
-      if (nisnIdx === -1 || nameIdx === -1 || classIdx === -1) {
-        toast.error("Format kolom (Header) tidak sesuai template!", {
+      // Minimal harus ada 2 baris (1 baris header, 1 baris data)
+      if (!rows || !Array.isArray(rows) || rows.length <= 1) {
+        toast.error("File Excel kosong atau format tidak sesuai!", {
           id: toastId,
         });
         setIsSubmitting(false);
@@ -155,18 +151,33 @@ export default function ImportStudentModal({
 
       const plainData = rows
         .slice(1)
-        .map((row) => ({
-          nisn: String(row[nisnIdx] || "").trim(),
-          name: String(row[nameIdx] || "").trim(),
-          className: String(row[classIdx] || "").trim(),
-          religion: String(row[religionIdx] || "").trim(),
-        }))
-        .filter((row) => row.nisn && row.name && row.className); // Skip baris kosong
+        .map((row: unknown) => {
+          // Pastikan row adalah array sebelum diakses index-nya
+          const rowArr = Array.isArray(row) ? row : [];
+
+          const safeString = (val: unknown) => {
+            if (val === null || val === undefined) return "";
+            return String(val).trim();
+          };
+
+          return {
+            nisn: safeString(rowArr[0]),
+            name: safeString(rowArr[1]),
+            className: safeString(rowArr[2]),
+            religion: safeString(rowArr[3]),
+          };
+        })
+        .filter(
+          (row) => row.nisn !== "" && row.name !== "" && row.className !== "",
+        );
 
       if (plainData.length === 0) {
-        toast.error("Tidak ada data siswa yang valid untuk diimport!", {
-          id: toastId,
-        });
+        toast.error(
+          "Tidak ada data siswa yang valid untuk diimport! Pastikan kolom NISN, Nama, dan Kelas terisi.",
+          {
+            id: toastId,
+          },
+        );
         setIsSubmitting(false);
         return;
       }
@@ -175,18 +186,18 @@ export default function ImportStudentModal({
         id: toastId,
       });
 
-      // Lempar data yang udah bersih ke Server Action
-      const result = await importStudents(plainData);
+      // Lempar data ke Server Action
+      const importResult = await importStudents(plainData);
 
-      if (result.success) {
-        toast.success(result.message, { id: toastId });
-        if (result.errors && result.errors.length > 0) {
-          setErrorLogs(result.errors);
+      if (importResult.success) {
+        toast.success(importResult.message, { id: toastId });
+        if (importResult.errors && importResult.errors.length > 0) {
+          setErrorLogs(importResult.errors);
         } else {
           setIsModalImportOpen(false);
         }
       } else {
-        toast.error(result.message, { id: toastId });
+        toast.error(importResult.message, { id: toastId });
       }
     } catch (error) {
       console.error(error);
