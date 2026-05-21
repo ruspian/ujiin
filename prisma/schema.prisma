@@ -59,7 +59,7 @@ model User {
   exams     Exam[]     @relation("ExamAuthor")
   supervisedExams Exam[]  @relation("ExamSupervisor")
 
-  subjects  Subject[]
+  subjectAssignments SubjectAssignment[]
 
   accounts  Account[]
   sessions  Session[]
@@ -95,7 +95,7 @@ model Class {
   exams     Exam[]   
 
   questions Question[]
-  subjects Subject[]
+  subjectAssignments SubjectAssignment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -133,8 +133,21 @@ model Subject {
   religionId String?
   religion   Religion? @relation(fields: [religionId], references: [id])
 
-  teachers  User[] 
-  classes   Class[]
+  assignments SubjectAssignment[]
+}
+
+model SubjectAssignment {
+  id        String  @id @default(cuid())
+  subjectId String
+  classId   String
+  teacherId String
+
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher   User    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // 1 Kelas cuma boleh punya 1 Guru untuk 1 Mapel yang sama
+  @@unique([subjectId, classId]) 
 }
 
 

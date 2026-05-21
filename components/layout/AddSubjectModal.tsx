@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { createSubject } from "@/actions/subject";
 import { AddSubjectModalProps } from "@/types/data.master";
-import { X, Users, School, BookHeart } from "lucide-react";
+import { X, BookHeart, Plus, Trash2, Users, School } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AddSubjectModal({
@@ -13,9 +14,62 @@ export default function AddSubjectModal({
   isSubmitting,
   setIsSubmitting,
 }: AddSubjectModalProps) {
+  // 🔥 100% PURE: Inisialisasi awal pakai string statis
+  const [assignments, setAssignments] = useState([
+    { id: "initial-0", classId: "", teacherId: "" },
+  ]);
+
+  const handleAddAssignment = () => {
+    setAssignments([
+      ...assignments,
+      // 🔥 Aman dipakai di dalam event handler (bukan saat render)
+      { id: `new-${Date.now()}`, classId: "", teacherId: "" },
+    ]);
+  };
+
+  const handleRemoveAssignment = (idToRemove: string) => {
+    if (assignments.length > 1) {
+      setAssignments(assignments.filter((a) => a.id !== idToRemove));
+    } else {
+      toast.error("Minimal harus ada satu pengampu mata pelajaran!");
+    }
+  };
+
+  const handleChangeAssignment = (
+    id: string,
+    field: "classId" | "teacherId",
+    value: string,
+  ) => {
+    setAssignments(
+      assignments.map((a) => (a.id === id ? { ...a, [field]: value } : a)),
+    );
+  };
+
   const handleAddSubject = async (formData: FormData) => {
     try {
       setIsSubmitting(true);
+
+      const hasEmpty = assignments.some((a) => !a.classId || !a.teacherId);
+      if (hasEmpty) {
+        throw new Error(
+          "Pilih kelas dan guru untuk semua baris yang ditambahkan!",
+        );
+      }
+
+      const classIds = assignments.map((a) => a.classId);
+      const uniqueClassIds = new Set(classIds);
+      if (classIds.length !== uniqueClassIds.size) {
+        throw new Error(
+          "Satu kelas hanya boleh memiliki satu guru untuk mapel ini. Ada kelas yang duplikat!",
+        );
+      }
+
+      const cleanAssignments = assignments.map(({ classId, teacherId }) => ({
+        classId,
+        teacherId,
+      }));
+      formData.set("assignments", JSON.stringify(cleanAssignments));
+
       const result = await createSubject(formData);
 
       if (!result.success) {
@@ -35,7 +89,7 @@ export default function AddSubjectModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-200 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-gray-200">
+      <div className="w-full max-w-xl animate-in fade-in zoom-in-95 duration-200 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-gray-200">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">
             Tambah Mata Pelajaran
@@ -48,11 +102,11 @@ export default function AddSubjectModal({
           </button>
         </div>
 
-        <form action={handleAddSubject} className="space-y-5">
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Nama Mata Pelajaran <span className="text-red-500">*</span>
+        <form action={handleAddSubject} className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Nama Mapel <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -63,8 +117,8 @@ export default function AddSubjectModal({
               />
             </div>
 
-            <div>
-              <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
+            <div className="space-y-1">
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
                 <BookHeart size={16} className="text-orange-500" />
                 Kategori Agama{" "}
                 <span className="text-xs text-gray-400 font-normal">
@@ -86,78 +140,99 @@ export default function AddSubjectModal({
                   <option disabled>Data agama kosong</option>
                 )}
               </select>
-              <p className="text-[8px] text-gray-500 mt-1.5">
-                Note: Pilih jika mapel ini khusus untuk siswa dengan agama
-                tertentu.
-              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                <Users size={16} className="text-teal-600" />
-                Pilih Guru
+          <hr className="border-gray-100" />
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-gray-900">
+                Plot Guru & Kelas
               </label>
-              <div className="h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-2 space-y-1">
-                {teachers.length > 0 ? (
-                  teachers.map((teacher) => (
-                    <label
-                      key={teacher.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-gray-200/50 transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        name="teacherIds"
-                        value={teacher.id}
-                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-600"
-                      />
-                      <span className="text-xs text-gray-800 line-clamp-1">
-                        {teacher.name}
-                      </span>
-                    </label>
-                  ))
-                ) : (
-                  <p className="p-3 text-center text-xs text-gray-500">
-                    Kosong.
-                  </p>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={handleAddAssignment}
+                className="flex items-center gap-1 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700 transition-colors hover:bg-teal-100"
+              >
+                <Plus size={14} /> Tambah Baris
+              </button>
             </div>
 
-            <div>
-              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                <School size={16} className="text-indigo-600" />
-                Pilih Kelas
-              </label>
-              <div className="h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-2 space-y-1">
-                {classes.length > 0 ? (
-                  classes.map((cls) => (
-                    <label
-                      key={cls.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-gray-200/50 transition-colors"
+            <div className="max-h-55 space-y-3 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-3">
+              {assignments.map((assignment) => (
+                <div
+                  key={assignment.id}
+                  className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:gap-3 sm:p-2"
+                >
+                  <div className="relative flex-1">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5">
+                      <School size={14} className="text-indigo-500" />
+                    </div>
+                    <select
+                      required
+                      value={assignment.classId}
+                      onChange={(e) =>
+                        handleChangeAssignment(
+                          assignment.id,
+                          "classId",
+                          e.target.value,
+                        )
+                      }
+                      className="block w-full appearance-none rounded-lg border-gray-200 bg-gray-50 py-2 pl-8 pr-8 text-xs text-gray-700 transition-colors focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500"
                     >
-                      <input
-                        type="checkbox"
-                        name="classIds"
-                        value={cls.id}
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                      />
-                      <span className="text-xs font-semibold text-gray-800">
-                        {cls.name}
-                      </span>
-                    </label>
-                  ))
-                ) : (
-                  <p className="p-3 text-center text-xs text-gray-500">
-                    Kosong.
-                  </p>
-                )}
-              </div>
+                      <option value="" disabled>
+                        Pilih Kelas...
+                      </option>
+                      {classes.map((cls) => (
+                        <option key={cls.id} value={cls.id}>
+                          {cls.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="relative flex-1">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5">
+                      <Users size={14} className="text-teal-500" />
+                    </div>
+                    <select
+                      required
+                      value={assignment.teacherId}
+                      onChange={(e) =>
+                        handleChangeAssignment(
+                          assignment.id,
+                          "teacherId",
+                          e.target.value,
+                        )
+                      }
+                      className="block w-full appearance-none rounded-lg border-gray-200 bg-gray-50 py-2 pl-8 pr-8 text-xs text-gray-700 transition-colors focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="" disabled>
+                        Pilih Guru...
+                      </option>
+                      {teachers.map((teacher) => (
+                        <option key={teacher.id} value={teacher.id}>
+                          {teacher.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAssignment(assignment.id)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-500 transition-colors hover:bg-red-100 sm:shrink-0"
+                    title="Hapus baris"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}

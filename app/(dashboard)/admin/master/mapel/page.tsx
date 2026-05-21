@@ -25,8 +25,12 @@ export default async function DataMapelPage({
         take: limit,
         orderBy: { name: "asc" },
         include: {
-          teachers: { select: { id: true, name: true } },
-          classes: { select: { id: true, name: true } },
+          assignments: {
+            include: {
+              teacher: { select: { id: true, name: true } },
+              class: { select: { id: true, name: true } },
+            },
+          },
           religion: { select: { id: true, name: true } },
         },
       }),
@@ -48,12 +52,29 @@ export default async function DataMapelPage({
 
   const totalPages = Math.ceil(totalCount / limit);
 
-  const formattedSubjects = subjects.map((sub) => ({
-    id: sub.id,
-    name: sub.name,
-    teachers: sub.teachers,
-    classes: sub.classes,
-  }));
+  const formattedSubjects = subjects.map((sub) => {
+    const uniqueTeachers = Array.from(
+      new Map(sub.assignments.map((a) => [a.teacher.id, a.teacher])).values(),
+    );
+
+    const uniqueClasses = Array.from(
+      new Map(sub.assignments.map((a) => [a.class.id, a.class])).values(),
+    );
+
+    return {
+      id: sub.id,
+      name: sub.name,
+      religion: sub.religion,
+      teachers: uniqueTeachers,
+      classes: uniqueClasses,
+      assignments: sub.assignments.map((a) => ({
+        classId: a.class.id,
+        className: a.class.name,
+        teacherId: a.teacher.id,
+        teacherName: a.teacher.name,
+      })),
+    };
+  });
 
   return (
     <MataPelajaran

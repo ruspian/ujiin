@@ -8,6 +8,12 @@ export interface SubjectData {
   name: string;
   teachers: TeacherData[];
   classes: { id: string; name: string }[];
+  assignments?: {
+    classId: string;
+    className: string;
+    teacherId: string;
+    teacherName: string;
+  }[];
 }
 
 export interface MapelClientProps {

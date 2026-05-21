@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Lock, ShieldCheck, Database } from "lucide-react"; // Tambah ikon Database
+import { User, Lock, ShieldCheck, Database } from "lucide-react";
 import { createFirstAdmin } from "@/actions/setup";
 import { toast } from "sonner";
 

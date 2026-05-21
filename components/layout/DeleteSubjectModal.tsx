@@ -11,10 +11,11 @@ export default function DeleteSubjectModal({
   isSubmitting,
   setIsSubmitting,
 }: DeleteSubjectModalProps) {
-  const handleDelete = async (formData: FormData) => {
+  const handleDelete = async () => {
     try {
       setIsSubmitting(true);
-      const result = await deleteSubject(formData);
+
+      const result = await deleteSubject(subjectData.id);
 
       if (!result.success) {
         throw new Error(result.message);
@@ -48,26 +49,23 @@ export default function DeleteSubjectModal({
           ? Data ini tidak bisa dikembalikan.
         </p>
 
-        <form action={handleDelete}>
-          <input type="hidden" name="id" value={subjectData.id} />
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setIsModalDeleteOpen(false)}
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-700 disabled:opacity-50"
-            >
-              {isSubmitting ? "Menghapus..." : "Ya, Hapus Mapel"}
-            </button>
-          </div>
-        </form>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setIsModalDeleteOpen(false)}
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isSubmitting}
+            className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-700 disabled:opacity-50"
+          >
+            {isSubmitting ? "Menghapus..." : "Ya, Hapus Mapel"}
+          </button>
+        </div>
       </div>
     </div>
   );

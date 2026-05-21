@@ -21,7 +21,11 @@ export default async function GuruView({ namaGuru }: { namaGuru: string }) {
   const [subjectCount, activeExamCount, completedExamCount, recentExams] =
     await Promise.all([
       prisma.subject.count({
-        where: { teachers: { some: { id: guruId } } },
+        where: {
+          assignments: {
+            some: { teacherId: guruId },
+          },
+        },
       }),
       prisma.exam.count({
         where: { authorId: guruId, status: "PUBLISHED" },

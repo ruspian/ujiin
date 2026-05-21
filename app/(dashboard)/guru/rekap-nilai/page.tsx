@@ -15,8 +15,18 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
   const [academicYears, subjects] = await Promise.all([
     prisma.academicYear.findMany({ orderBy: { year: "desc" } }),
     prisma.subject.findMany({
-      where: { teachers: { some: { id: session.user.id } } },
-      include: { classes: true },
+      where: {
+        assignments: {
+          some: { teacherId: session.user.id },
+        },
+      },
+      include: {
+        assignments: {
+          where: { teacherId: session.user.id },
+          include: { class: true },
+        },
+      },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -27,11 +37,17 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
     active: ay.active,
   }));
 
-  const safeSubjects = subjects.map((sub) => ({
-    id: sub.id,
-    name: sub.name,
-    classes: sub.classes.map((c) => ({ id: c.id, name: c.name })),
-  }));
+  const safeSubjects = subjects.map((sub) => {
+    const uniqueClasses = Array.from(
+      new Map(sub.assignments.map((a) => [a.class.id, a.class])).values(),
+    );
+
+    return {
+      id: sub.id,
+      name: sub.name,
+      classes: uniqueClasses.map((c) => ({ id: c.id, name: c.name })),
+    };
+  });
 
   let students: { id: string; name: string; nisn: string }[] = [];
   let exams: { id: string; title: string; examType: { name: string } }[] = [];
@@ -73,7 +89,7 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
     }
   }
 
-  const selectedSubject = subjects.find((s) => s.id === subjectId);
+  const selectedSubject = safeSubjects.find((s) => s.id === subjectId);
   const availableClasses = selectedSubject?.classes || [];
   const selectedClassName =
     availableClasses.find((c) => c.id === classId)?.name || "Kelas";

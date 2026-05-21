@@ -13,39 +13,55 @@ export default async function TeacherBankSoalPage() {
 
   const guruId = session.user.id;
 
-  const guruDenganMapel = await prisma.user.findUnique({
-    where: { id: guruId },
+  const rawSubjects = await prisma.subject.findMany({
+    where: {
+      assignments: {
+        some: { teacherId: guruId },
+      },
+    },
     include: {
-      subjects: {
+      assignments: {
+        where: { teacherId: guruId },
         include: {
-          classes: {
-            orderBy: [{ level: "asc" }, { name: "asc" }],
-          },
-          _count: {
-            select: {
-              questions: {
-                where: { authorId: guruId },
-              },
-            },
+          class: true,
+        },
+      },
+      _count: {
+        select: {
+          questions: {
+            where: { authorId: guruId },
           },
         },
       },
     },
+    orderBy: { name: "asc" },
   });
 
   const examTypes = await prisma.examType.findMany({
     orderBy: { name: "asc" },
   });
 
-  if (!guruDenganMapel) return <div>Data Guru tidak ditemukan.</div>;
+  const subjects = rawSubjects.map((subject) => {
+    const classes = subject.assignments
+      .map((a) => a.class)
+      .sort((a, b) => {
+        if (a.level !== b.level) return a.level - b.level;
+        return a.name.localeCompare(b.name);
+      });
 
-  const subjects = guruDenganMapel.subjects;
+    return {
+      id: subject.id,
+      name: subject.name,
+      _count: subject._count,
+      classes: classes,
+    };
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bank Soal Saya</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Soal Saya</h1>
           <p className="text-sm font-medium text-gray-500 mt-1">
             Kelola kumpulan pertanyaan untuk ujian berdasarkan mata pelajaran
             yang Anda ampu.

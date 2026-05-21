@@ -31,17 +31,28 @@ export async function createQuestion(payload: QuestionFormValues) {
 
     const data = questionValidation.data;
 
-    const targetClass = await prisma.class.findFirst({
+    const targetAssignment = await prisma.subjectAssignment.findUnique({
       where: {
-        id: data.classId,
-        subjects: { some: { id: data.subjectId } },
+        subjectId_classId: {
+          subjectId: data.subjectId,
+          classId: data.classId,
+        },
       },
     });
 
-    if (!targetClass) {
+    if (!targetAssignment) {
       return {
         success: false,
-        message: `Kelas tidak ditemukan!. Silakan hubungi Admin.`,
+        message:
+          "Mata pelajaran tidak terdaftar di kelas ini! Silakan hubungi Admin.",
+      };
+    }
+
+    if (targetAssignment.teacherId !== session.user.id) {
+      return {
+        success: false,
+        message:
+          "Akses ilegal! Anda tidak ditugaskan mengajar mata pelajaran ini di kelas tersebut.",
       };
     }
 

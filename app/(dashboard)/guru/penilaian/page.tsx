@@ -10,9 +10,9 @@ export default async function PilihMapelPenilaianPage() {
 
   const subjects = await prisma.subject.findMany({
     where: {
-      teachers: {
+      assignments: {
         some: {
-          id: session.user.id,
+          teacherId: session.user.id,
         },
       },
     },
@@ -43,7 +43,7 @@ export default async function PilihMapelPenilaianPage() {
         {subjects.map((subject) => (
           <Link
             key={subject.id}
-            href={`/guru/penilaian/${subject.id}`} // 🔥 Lanjut ke step 2: [subjectId]
+            href={`/guru/penilaian/${subject.id}`}
             className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all group block cursor-pointer"
           >
             <div className="flex items-center gap-4 mb-4">
