@@ -14,6 +14,13 @@ export async function loginSiswaAction(nisn: string, passwordInput: string) {
       return { success: false, message: "NISN tidak terdaftar!" };
     }
 
+    if (student.status !== "ACTIVE") {
+      return {
+        success: false,
+        message: "Akun Anda sudah tidak aktif atau Anda telah lulus.",
+      };
+    }
+
     if (!student.password) {
       return { success: false, message: "Akun belum aktif. Hubungi Admin!" };
     }
