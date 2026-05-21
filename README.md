@@ -11,6 +11,8 @@
 ## ✨ Fitur Utama
 
 - **Sistem Ujian Terpusat (CBT):** Mesin ujian berbasis web yang cepat, responsif, dan stabil untuk menampung ratusan sesi siswa secara bersamaan.
+- **Dukungan 5 Jenis Soal:** Mendukung format soal ujian yang komprehensif, meliputi: **Pilihan Ganda**, **Pilihan Ganda Kompleks**, **Benar-Salah**, **Menjodohkan**, dan **Essay/Uraian**.
+- **Manajemen Jenis Ujian Dinamis:** Fleksibilitas dalam membuat dan mengategorikan berbagai jenis ujian sesuai kebutuhan akademik sekolah (misalnya: Ulangan Harian, Penilaian Tengah Semester, hingga Ujian Sekolah).
 - **Role-Based Access Control:** Sistem manajemen hak akses terstruktur yang memisahkan otorisasi dan _dashboard_ untuk **Admin**, **Guru** dan **Siswa**.
 - **Dashboard Analitik & Rekap Nilai Otomatis:** Visualisasi data dan rekapitulasi nilai yang dikalkulasi secara _real-time_ setelah ujian selesai, menghemat waktu evaluasi guru.
 - **Fitur Anti-Cheat:** Mekanisme keamanan bawaan untuk meminimalisir kecurangan (seperti pindah tab atau _copy-paste_) saat siswa mengerjakan ujian.
