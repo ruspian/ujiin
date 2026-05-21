@@ -9,7 +9,7 @@ import {
   ShieldCheck,
   UserCircle,
   Upload,
-  Key, // 🔥 Import icon kunci buat reset password
+  Key,
 } from "lucide-react";
 import { PenggunaProps } from "@/types/user.admin";
 import { useDebounce } from "use-debounce";
@@ -39,7 +39,7 @@ export default function DataPenggunaPage({
   const [userToReset, setUserToReset] = useState<{
     id: string;
     name: string | null;
-  } | null>(null); // 🔥 State data yang mau direset
+  } | null>(null);
   const [userToDelete, setUserToDelete] = useState<{
     id: string;
     name: string | null;
@@ -86,7 +86,6 @@ export default function DataPenggunaPage({
     setIsModalEditOpen(true);
   };
 
-  // 🔥 Fungsi buat buka modal reset
   const onClickResetButton = (id: string, name: string | null) => {
     setUserToReset({ id, name });
     setIsModalResetOpen(true);
