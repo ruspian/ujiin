@@ -52,6 +52,144 @@ Aplikasi Ujiin dirancang dengan alur yang intuitif untuk meminimalisir kebingung
 - **Pengerjaan Soal:** Jawab soal dengan teliti. **Penting:** Dilarang membuka atau berpindah _tab_ browser lain, karena sistem _Anti-Cheat_ akan mencatat pelanggaran tersebut.
 - **Penyelesaian:** Pastikan semua soal telah terjawab. Tekan tombol **Kumpulkan** (atau ujian akan tersubmit otomatis jika _timer_ habis). Nilai akan langsung tersimpan di sistem.
 
+---
+
+## 📊 Format Template Excel
+
+Untuk menghindari kegagalan proses impor (_parsing error_), pastikan baris pertama (Header) pada file Excel Anda ditulis dengan huruf kecil dan nama kolom yang sama persis seperti tabel di bawah ini.
+
+### 1. Template Import Siswa
+
+| nisn       | name           | className | religion |
+| :--------- | :------------- | :-------- | :------- |
+| 0051234567 | Otong Surotong | X TKJ     | Islam    |
+| 0069876543 | Mei Mei        | XI ATR    | Kristen  |
+
+- **Aturan Pengisian:**
+  - `nisn`: Harus unik dan tidak boleh duplikat di database.
+  - `name`: Isi dengan nama lengkap siswa.
+  - `className`: Harus sama persis dengan nama kelas yang telah didaftarkan Admin di sistem (bersifat _case-sensitive_, misal: `X TKJ`).
+  - `religion`: Diisi dengan standar nama agama (Islam, Kristen, Katolik, Hindu, Buddha, Konghucu).
+
+---
+
+### 2. Template Import Guru
+
+| Nama Lengkap        | Username    | Password    | Peran |
+| :------------------ | :---------- | :---------- | :---- |
+| Budi Setiadi, M.Kom | budisetiadi | Password123 | GURU  |
+| Siti Aminah, S.Pd   | sitiaminah  | Password123 | GURU  |
+
+- **Aturan Pengisian:**
+  - `username`: Digunakan guru untuk keperluan login ke _dashboard_ pendidik.
+  - `Peran`: Wajib diisi dengan string kapital `GURU` (sesuai dengan skema ENUM Prisma database).
+
+---
+
+### 3. Template Import Soal
+
+Untuk mempermudah manajemen soal, format _import_ soal dapat disimpan ke dalam **satu file Excel yang sama**. Namun, pengisiannya dipisah ke dalam beberapa **Sheet (Lembar Kerja)** yang berbeda.
+
+Sistem akan otomatis membedakan _parsing_ data berdasarkan nama sheet. Pastikan Anda tidak mengubah nama-nama sheet standar berikut:
+
+- 📄 **Sheet `PG`** ➔ Khusus untuk soal Pilihan Ganda biasa.
+- 📄 **Sheet `PG Kompleks`** ➔ Khusus untuk soal Pilihan Ganda Kompleks.
+- 📄 **Sheet `Menjodohkan`** ➔ Khusus untuk soal Menjodohkan.
+- 📄 **Sheet `Benar Salah`** ➔ Khusus untuk soal pernyataan Benar - Salah.
+- 📄 **Sheet `Esai`** ➔ Khusus untuk soal Essay / Uraian.
+
+<br>
+
+#### Berikut adalah beberapa contoh format _import_ soal:
+
+- **Soal Pilihan Ganda**
+
+Format ini dikhususkan untuk mengimpor soal berjenis Pilihan Ganda. Pastikan nama kolom pada baris pertama (Header) sama persis dengan tabel di bawah ini.
+
+| Teks_Soal                          | Opsi_A  | Opsi_B  | Opsi_C   | Opsi_D | Opsi_E | Kunci_Jawaban | Skor |
+| :--------------------------------- | :------ | :------ | :------- | :----- | :----- | :------------ | :--- |
+| Ibukota negara Indonesia adalah... | Jakarta | Bandung | Surabaya | Medan  | Bali   | A             | 2    |
+
+**📝 Aturan Pengisian:**
+
+- **`Teks_Soal`:** Wajib diisi dengan pertanyaan atau pernyataan soal.
+- **`Opsi_A` s/d `Opsi_E`:** Wajib diisi dengan pilihan jawaban. (Jika opsi hanya sampai D, biarkan kolom `Opsi_E` kosong).
+- **`Kunci_Jawaban`:** Wajib diisi dengan **satu huruf kapital** yang mewakili jawaban benar (`A`, `B`, `C`, `D`, atau `E`).
+- **`Skor`:** Wajib diisi dengan angka bulat yang mewakili bobot nilai jika siswa menjawab soal ini dengan benar (Contoh: `2`, `5`, `10`).
+
+<br>
+
+- **Soal Pilihan Ganda Kompleks**
+
+Format ini digunakan untuk soal berjenis Pilihan Ganda Kompleks di mana siswa dapat memilih **lebih dari satu jawaban benar**.
+
+| Teks_Soal                                      | Opsi_A | Opsi_B    | Opsi_C | Opsi_D    | Opsi_E     | Kunci_Jawaban | Skor |
+| :--------------------------------------------- | :----- | :-------- | :----- | :-------- | :--------- | :------------ | :--- |
+| Yang termasuk bahasa pemrograman web adalah... | Word   | Photoshop | PHP    | CorelDraw | JavaScript | C,E           | 2    |
+
+**📝 Aturan Pengisian:**
+
+- **`Teks_Soal`:** Wajib diisi dengan pertanyaan atau pernyataan soal.
+- **`Opsi_A` s/d `Opsi_E`:** Wajib diisi dengan pilihan jawaban.
+- **`Kunci_Jawaban`:** Wajib diisi dengan huruf kapital yang benar, **dipisahkan dengan tanda koma (,) tanpa spasi** (Contoh: `C,E` atau `A,B,D`).
+- **`Skor`:** Wajib diisi dengan angka bulat yang mewakili bobot nilai (Contoh: `2`, `5`).
+
+<br>
+
+- **Soal Menjodohkan**
+
+Format ini digunakan untuk jenis soal Menjodohkan. Berbeda dengan jenis soal lain, skor dan pasangan jawaban pada soal menjodohkan ditulis langsung di dalam kolom Opsi dengan menggunakan pemisah garis vertikal atau _pipe_ (`|`).
+
+| Teks_Soal               | Opsi_A                    | Opsi_B                        | Opsi_C               | Opsi_D | Opsi_E |
+| :---------------------- | :------------------------ | :---------------------------- | :------------------- | :----- | :----- |
+| Pasangkan dengan tepat! | Indonesia \| Jakarta \| 2 | Malaysia \| Kuala Lumpur \| 2 | Jepang \| Tokyo \| 2 |        |        |
+| Pasangkan fungsinya!    | Mouse \| Klik \| 2        | Keyboard \| Ngetik \| 2       |                      |        |        |
+
+**📝 Aturan Pengisian:**
+
+- **`Teks_Soal`:** Wajib diisi dengan instruksi atau pertanyaan soal utama.
+- **`Opsi_A` s/d `Opsi_E`:** Diisi dengan format khusus: **`Pernyataan | Pasangan | Skor`**.
+  - **Pernyataan:** Teks di sisi kiri (contoh: _Indonesia_).
+  - **Pasangan:** Teks jawaban yang benar di sisi kanan (contoh: _Jakarta_). Sistem akan otomatis mengacak pasangan ini saat ditampilkan ke siswa.
+  - **Skor:** Angka bobot nilai untuk satu pasangan tersebut (contoh: _2_).
+  - **Pemisah:** Gunakan spasi, lalu simbol _pipe_ (`|`), lalu spasi lagi sebagai pemisah antar elemen.
+- **Kolom Kunci_Jawaban & Skor Total:** (Jika ada di dalam _template_ master Excel, kolom ini bisa dikosongkan karena skor sudah diakumulasi dari masing-masing opsi).
+
+<br>
+
+- **Soal Essay (Uraian)**
+
+Format ini dikhususkan untuk soal berjenis Essay atau Uraian. Karena siswa harus mengetik jawaban secara manual, semua kolom opsi dibiarkan kosong.
+
+| Teks_Soal                             | Opsi_A | Opsi_B | Opsi_C | Opsi_D | Opsi_E | Kunci_Jawaban                      | Skor |
+| :------------------------------------ | :----- | :----- | :----- | :----- | :----- | :--------------------------------- | :--- |
+| Jelaskan visi dan misi desa Banuroja! |        |        |        |        |        | Visi: Maju bersama... Misi: 1. ... | 10   |
+
+**📝 Aturan Pengisian:**
+
+- **`Teks_Soal`:** Wajib diisi dengan pertanyaan atau instruksi soal essay.
+- **`Opsi_A` s/d `Opsi_E`:** Wajib **dikosongkan** (biarkan _blank_ tanpa spasi).
+- **`Kunci_Jawaban`:** Diisi dengan pedoman jawaban, kata kunci, atau rubrik penilaian. Teks ini tidak akan muncul di layar siswa, tetapi berfungsi sebagai referensi bagi guru saat melakukan koreksi dan pemberian nilai manual.
+- **`Skor`:** Wajib diisi dengan angka bulat yang mewakili **nilai maksimal** jika siswa menjawab essay tersebut dengan sangat sempurna (Contoh: `10`, `15`, atau `20`).
+
+<br>
+
+- **Soal Benar - Salah**
+
+Format ini digunakan untuk jenis soal pernyataan di mana siswa hanya perlu memilih apakah pernyataan tersebut Benar atau Salah. Untuk mempermudah guru, semua kolom opsi tidak perlu diisi.
+
+| Teks_Soal                                        | Opsi_A | Opsi_B | Opsi_C | Opsi_D | Opsi_E | Kunci_Jawaban | Skor |
+| :----------------------------------------------- | :----- | :----- | :----- | :----- | :----- | :------------ | :--- |
+| Javascript adalah bahasa pemrograman             |        |        |        |        |        | BENAR         | 2    |
+| Ibukota negara Indonesia saat ini adalah Bandung |        |        |        |        |        | SALAH         | 2    |
+
+**📝 Aturan Pengisian:**
+
+- **`Teks_Soal`:** Wajib diisi dengan pernyataan yang akan dievaluasi oleh siswa.
+- **`Opsi_A` s/d `Opsi_E`:** Wajib **dikosongkan** (biarkan _blank_ tanpa spasi). Sistem akan secara otomatis men- _generate_ tombol pilihan "Benar" dan "Salah" di layar ujian siswa.
+- **`Kunci_Jawaban`:** Wajib diisi dengan kata **BENAR** atau **SALAH** (gunakan huruf kapital) sesuai dengan fakta dari pernyataan di kolom soal.
+- **`Skor`:** Wajib diisi dengan angka bulat yang mewakili bobot nilai (Contoh: `2`, `5`).
+
 ## 🛠️ Tech Stack
 
 - **Framework:** Next.js (App Router, Server Actions)
