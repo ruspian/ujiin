@@ -101,6 +101,13 @@ model Class {
   updatedAt DateTime  @updatedAt
 }
 
+enum StudentStatus {
+  ACTIVE
+  GRADUATED
+  DROPOUT
+  MUTATED 
+}
+
 model Student {
   id        String   @id @default(cuid())
   nisn      String   @unique 
@@ -115,6 +122,7 @@ model Student {
   class     Class    @relation(fields: [classId], references: [id])
   
   attempts  Attempt[] 
+  status  StudentStatus @default(ACTIVE)
 
   religionId String?
   religion   Religion? @relation(fields: [religionId], references: [id])
