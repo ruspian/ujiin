@@ -141,6 +141,13 @@ export default function Navbar({ isPublic = false }: NavbarProps) {
                         >
                           Jadwal Ujian
                         </Link>
+                        <Link
+                          href="/admin/kenaikan-kelas"
+                          onClick={() => setIsDataMenuOpen(false)}
+                          className="block rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                        >
+                          Kenaikan Kelas
+                        </Link>
                         <div className="my-1 border-t border-gray-100" />
                       </div>
                     )}
