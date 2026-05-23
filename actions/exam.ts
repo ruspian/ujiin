@@ -19,8 +19,12 @@ export async function getQuestionsForExam(
         author: {
           select: { name: true },
         },
-        class: {
-          select: { name: true },
+        classes: {
+          include: {
+            class: {
+              select: { name: true },
+            },
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -54,7 +58,7 @@ export async function createExam(data: ExamSchema) {
     showResult,
     status,
     classes,
-    supervisorId, // 🔥 Tarik supervisorId dari data validasi
+    supervisorId,
   } = validation.data;
 
   try {
@@ -62,7 +66,11 @@ export async function createExam(data: ExamSchema) {
       where: {
         subjectId: subjectId,
         examTypeId: examTypeId,
-        classId: { in: classes },
+        classes: {
+          some: {
+            classId: { in: classes },
+          },
+        },
       },
       select: { id: true },
     });

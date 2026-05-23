@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Layers,
   Tag,
+  Check,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SubjectCardProps } from "@/types/subject";
@@ -20,22 +21,29 @@ export default function SubjectCard({
   classes,
 }: SubjectCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [step, setStep] = useState<"CLASS" | "EXAM">("CLASS");
   const router = useRouter();
 
-  const handleNextStep = (classId: string) => {
-    setSelectedClassId(classId);
+  const toggleClass = (classId: string) => {
+    setSelectedClassIds((prev) =>
+      prev.includes(classId)
+        ? prev.filter((id) => id !== classId)
+        : [...prev, classId],
+    );
   };
 
   const handleSelectExamType = (examTypeId: string) => {
+    const classParams = selectedClassIds.join(",");
     router.push(
-      `/guru/soal/${subjectId}?classId=${selectedClassId}&type=${examTypeId}`,
+      `/guru/soal/${subjectId}?classId=${classParams}&type=${examTypeId}`,
     );
   };
 
   const resetModal = () => {
     setIsModalOpen(false);
-    setSelectedClassId(null);
+    setSelectedClassIds([]);
+    setStep("CLASS");
   };
 
   return (
@@ -75,7 +83,7 @@ export default function SubjectCard({
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-linear-to-r from-blue-50 to-white">
               <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                {selectedClassId === null ? (
+                {step === "CLASS" ? (
                   <>
                     <Layers size={18} className="text-blue-600" /> Pilih Kelas
                   </>
@@ -95,51 +103,45 @@ export default function SubjectCard({
             </div>
 
             <div className="p-6">
-              {selectedClassId === null ? (
+              {step === "CLASS" ? (
                 <>
                   <p className="text-sm text-gray-500 mb-5 text-center">
-                    Anda akan mengelola soal{" "}
-                    <strong className="text-gray-800">{subjectName}</strong>.
-                    Pilih kelas yang dituju:
+                    Pilih satu atau lebih kelas untuk mengelola soal:
                   </p>
 
                   <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2">
                     {classes.map((cls) => (
                       <button
                         key={cls.id}
-                        onClick={() => handleNextStep(cls.id)}
-                        className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-blue-500 hover:bg-blue-50 transition-all group"
+                        onClick={() => toggleClass(cls.id)}
+                        className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                          selectedClassIds.includes(cls.id)
+                            ? "border-blue-600 bg-blue-50"
+                            : "border-gray-100 hover:border-blue-200"
+                        }`}
                       >
-                        <div className="text-left">
-                          <span className="block font-bold text-gray-700 group-hover:text-blue-700">
-                            {cls.name}
-                          </span>
-                        </div>
-                        <ChevronRight
-                          size={18}
-                          className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-transform"
-                        />
+                        <span className="font-bold text-gray-700">
+                          {cls.name}
+                        </span>
+                        {selectedClassIds.includes(cls.id) && (
+                          <Check size={18} className="text-blue-600" />
+                        )}
                       </button>
                     ))}
-
-                    {classes.length === 0 && (
-                      <div className="text-center p-4 bg-red-50 rounded-xl border border-red-100">
-                        <p className="text-red-600 text-sm font-semibold">
-                          Belum ada kelas yang terhubung.
-                        </p>
-                        <p className="text-xs text-red-500 mt-1">
-                          Silakan hubungi Admin untuk menghubungkan mapel ini
-                          dengan kelas.
-                        </p>
-                      </div>
-                    )}
                   </div>
+
+                  <button
+                    disabled={selectedClassIds.length === 0}
+                    onClick={() => setStep("EXAM")}
+                    className="w-full mt-6 py-3 bg-blue-600 text-white font-bold rounded-xl disabled:opacity-50 hover:bg-blue-700 transition-colors"
+                  >
+                    Lanjut Pilih Jenis Ujian
+                  </button>
                 </>
               ) : (
                 <>
                   <p className="text-sm text-gray-500 mb-5 text-center">
-                    Pilih kategori ujian untuk soal{" "}
-                    <strong className="text-gray-800">{subjectName}</strong>:
+                    Pilih kategori ujian untuk soal:
                   </p>
                   <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2">
                     {examTypes.map((type) => (
@@ -156,22 +158,12 @@ export default function SubjectCard({
                             {type.code}
                           </span>
                         </div>
-                        <ChevronRight
-                          size={18}
-                          className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-transform"
-                        />
+                        <ChevronRight size={18} className="text-gray-300" />
                       </button>
                     ))}
-
-                    {examTypes.length === 0 && (
-                      <p className="text-center text-red-500 text-sm p-4">
-                        Belum ada kategori ujian di sistem.
-                      </p>
-                    )}
                   </div>
-
                   <button
-                    onClick={() => setSelectedClassId(null)}
+                    onClick={() => setStep("CLASS")}
                     className="mt-4 text-sm font-semibold text-gray-500 hover:text-blue-600 flex items-center justify-center w-full"
                   >
                     &larr; Kembali ke Pilihan Kelas
