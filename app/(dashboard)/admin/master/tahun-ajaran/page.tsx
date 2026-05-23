@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/master/tahun-ajaran/page.tsx
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import TahunAjaran from "@/components/layout/TahunAjaran";

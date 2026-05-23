@@ -32,7 +32,7 @@ export default async function DaftarSoalPage({
   const resolvedSearchParams = await searchParams;
 
   const subjectId = resolvedParams.subjectId;
-  const classId = resolvedSearchParams.classId ?? "";
+  const classIdParam = resolvedSearchParams.classId ?? "";
   const typeId = resolvedSearchParams.type ?? "";
 
   const searchQuery = resolvedSearchParams.q ?? "";
@@ -42,10 +42,16 @@ export default async function DaftarSoalPage({
   const ITEMS_PER_PAGE = 10;
   const skip = (currentPage - 1) * ITEMS_PER_PAGE;
 
+  const classIdsArray = classIdParam ? classIdParam.split(",") : [];
+
   const whereClause: Prisma.QuestionWhereInput = {
     subjectId: subjectId,
-    classId: classId,
     examTypeId: typeId,
+    classes: {
+      some: {
+        classId: { in: classIdsArray },
+      },
+    },
   };
 
   if (searchQuery) {
@@ -59,14 +65,18 @@ export default async function DaftarSoalPage({
     whereClause.type = filterType as QuestionType;
   }
 
-  const [subject, examType, classTarget] = await Promise.all([
+  const [subject, examType, classesTarget] = await Promise.all([
     prisma.subject.findUnique({ where: { id: subjectId } }),
     typeId ? prisma.examType.findUnique({ where: { id: typeId } }) : null,
-    classId ? prisma.class.findUnique({ where: { id: classId } }) : null,
+    classIdsArray.length > 0
+      ? prisma.class.findMany({ where: { id: { in: classIdsArray } } })
+      : null,
   ]);
 
-  if (!subject || !examType || !classTarget)
+  if (!subject || !examType || !classesTarget || classesTarget.length === 0)
     return <div>Data tidak valid.</div>;
+
+  const classNamesString = classesTarget.map((c) => c.name).join(", ");
 
   const [questions, totalQuestions] = await Promise.all([
     prisma.question.findMany({
@@ -96,7 +106,7 @@ export default async function DaftarSoalPage({
             <h1 className="text-xl font-bold text-gray-900">{subject.name}</h1>
             <div className="flex items-center gap-2 mt-1 text-sm font-medium">
               <span className="bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-md">
-                Kelas {classTarget.name}
+                Kelas {classNamesString}
               </span>
               <span className="text-gray-400">•</span>
               <span className="bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-md">
@@ -115,19 +125,19 @@ export default async function DaftarSoalPage({
 
           <ImportExcelWrapper
             subjectId={subjectId}
-            classId={classId}
+            classId={classIdParam}
             typeId={typeId}
           />
 
           <ExportWordButton
             questions={questions}
             subjectName={subject.name}
-            className={classTarget.name}
+            className={classNamesString}
             examName={examType.name}
           />
 
           <Link
-            href={`/guru/soal/${subjectId}/buat?classId=${classId}&type=${typeId}`}
+            href={`/guru/soal/${subjectId}/buat?classId=${classIdParam}&type=${typeId}`}
             className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
           >
             <PlusCircle size={18} /> Buat Soal
@@ -140,7 +150,7 @@ export default async function DaftarSoalPage({
       <QuestionListTable
         questions={questions}
         subjectId={subjectId}
-        classId={classId}
+        classId={classIdParam}
         typeId={typeId}
         totalOnPage={questions.length}
       />

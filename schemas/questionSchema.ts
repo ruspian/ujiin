@@ -11,7 +11,9 @@ const questionTypeEnum = z.enum([
 export const questionSchema = z.object({
   subjectId: z.string().min(1, { message: "Mata pelajaran wajib dipilih!" }),
 
-  classId: z.string().min(1, { message: "Kelas tidak valid!" }),
+  classIds: z
+    .array(z.string())
+    .min(1, { message: "Pilih minimal satu kelas!" }),
 
   typeId: z.string().min(1, { message: "Kategori ujian wajib dipilih!" }),
   type: questionTypeEnum,

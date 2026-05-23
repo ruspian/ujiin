@@ -50,10 +50,10 @@ export default async function GuruView({ namaGuru }: { namaGuru: string }) {
       <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-600 to-indigo-600 p-8 text-white shadow-lg">
         <div className="relative z-10 md:w-2/3">
           <h1 className="mb-2 text-3xl font-bold">
-            Halo, Bapak/Ibu {namaGuru}! 👨‍🏫
+            Halo, Bapak/Ibu {namaGuru}!
           </h1>
           <p className="mb-6 text-blue-100 text-sm leading-relaxed">
-            Selamat datang di Ruang Guru. Kelola bank soal Anda dan pantau hasil
+            Selamat datang di Ruang Guru. Kelola soal Anda dan pantau hasil
             ujian siswa dengan mudah dari sini.
           </p>
         </div>
@@ -120,8 +120,8 @@ export default async function GuruView({ namaGuru }: { namaGuru: string }) {
             <FileQuestion className="mx-auto h-12 w-12 text-gray-300 mb-3" />
             <h3 className="text-lg font-bold text-gray-900">Belum Ada Ujian</h3>
             <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-              Anda belum membuat ujian atau bank soal. Silakan buka menu Bank
-              Soal untuk mulai menyusun pertanyaan.
+              Anda belum membuat soal. Silakan buka menu Bank Soal untuk mulai
+              menyusun pertanyaan.
             </p>
             <Link
               href="/guru/soal"
@@ -165,10 +165,10 @@ export default async function GuruView({ namaGuru }: { namaGuru: string }) {
 
                 <div className="shrink-0 w-full sm:w-auto">
                   <Link
-                    href={`/guru/soal/${exam.id}`}
+                    href={`/guru/monitoring/${exam.id}`}
                     className="inline-flex w-full justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors"
                   >
-                    Detail
+                    Pantau Ujian
                   </Link>
                 </div>
               </div>

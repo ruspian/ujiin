@@ -30,6 +30,8 @@ export default function FormSoal({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
+  const classIds = classId ? classId.split(",") : [];
+
   const [questionType, setQuestionType] = useState<QuestionType>(
     initialData?.type || "MULTIPLE_CHOICE",
   );
@@ -37,7 +39,6 @@ export default function FormSoal({
   const [text, setText] = useState(initialData?.text || "");
   const [score, setScore] = useState<number>(initialData?.score || 10);
 
-  // 🔥 State Options tetap sama (A-E), tapi isinya nanti HTML dari RichTextEditor
   const [options, setOptions] = useState(() => {
     const defaultOpts = { A: "", B: "", C: "", D: "", E: "" };
     if (
@@ -221,7 +222,7 @@ export default function FormSoal({
     try {
       const payload = {
         subjectId,
-        classId: classId as string,
+        classIds: classIds,
         typeId,
         type: questionType,
         score: finalScore,

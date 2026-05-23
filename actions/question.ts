@@ -31,52 +31,49 @@ export async function createQuestion(payload: QuestionFormValues) {
 
     const data = questionValidation.data;
 
-    const targetAssignment = await prisma.subjectAssignment.findUnique({
+    const assignments = await prisma.subjectAssignment.findMany({
       where: {
-        subjectId_classId: {
-          subjectId: data.subjectId,
-          classId: data.classId,
-        },
-      },
-    });
-
-    if (!targetAssignment) {
-      return {
-        success: false,
-        message:
-          "Mata pelajaran tidak terdaftar di kelas ini! Silakan hubungi Admin.",
-      };
-    }
-
-    if (targetAssignment.teacherId !== session.user.id) {
-      return {
-        success: false,
-        message:
-          "Akses ilegal! Anda tidak ditugaskan mengajar mata pelajaran ini di kelas tersebut.",
-      };
-    }
-
-    await prisma.question.create({
-      data: {
-        type: data.type,
-        text: data.text,
-        score: data.score,
-        options: data.options,
-        correctAnswer: data.correctAnswer,
-        classId: data.classId,
-        examTypeId: data.typeId,
+        teacherId: session.user.id,
         subjectId: data.subjectId,
-        authorId: session.user.id,
+        classId: { in: payload.classIds },
       },
     });
 
-    revalidatePath(
-      `/guru/soal/${data.subjectId}?classId=${data.classId}&type=${data.typeId}`,
-    );
+    if (assignments.length !== payload.classIds.length) {
+      return {
+        success: false,
+        message:
+          "Akses ilegal! Anda tidak ditugaskan di salah satu kelas terpilih.",
+      };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const newQuestion = await tx.question.create({
+        data: {
+          type: data.type,
+          text: data.text,
+          score: data.score,
+          options: data.options,
+          correctAnswer: data.correctAnswer,
+          examTypeId: data.typeId,
+          subjectId: data.subjectId,
+          authorId: session.user.id,
+        },
+      });
+
+      await tx.questionToClass.createMany({
+        data: payload.classIds.map((cId) => ({
+          questionId: newQuestion.id,
+          classId: cId,
+        })),
+      });
+    });
+
+    revalidatePath(`/guru/soal/${data.subjectId}`);
 
     return {
       success: true,
-      message: "Soal berhasil disimpan ke dalam Bank Soal!",
+      message: "Soal berhasil disimpan ke dalam Soal!",
     };
   } catch (error) {
     console.error("CREATE_QUESTION_ERROR:", error);
@@ -89,7 +86,7 @@ export async function createQuestion(payload: QuestionFormValues) {
 
 export async function importQuestions(payload: {
   subjectId: string;
-  classId: string;
+  classIds: string[];
   typeId: string;
   questions: ExcelRow[];
 }) {
@@ -99,115 +96,129 @@ export async function importQuestions(payload: {
       return { success: false, message: "Akses ditolak." };
     }
 
-    const dataToInsert = payload.questions.map((row) => {
-      const tipeSoalExcel = String(row.Tipe_Soal || "")
-        .toUpperCase()
-        .trim();
-
-      let type: QuestionType = "MULTIPLE_CHOICE";
-
-      const optionsPG: MultipleChoiceOption[] = [];
-      let optionsMenjodohkan: MatchingOption | null = null;
-      let matchingCorrectAnswer: string | null = null;
-
-      let finalScore = Number(row.Skor) || 10;
-
-      if (tipeSoalExcel === "ESSAY") {
-        type = "ESSAY";
-      } else if (
-        tipeSoalExcel === "TRUE_FALSE" ||
-        tipeSoalExcel === "BENAR_SALAH" ||
-        tipeSoalExcel === "BENAR SALAH"
-      ) {
-        type = "TRUE_FALSE";
-      } else if (tipeSoalExcel === "MATCHING") {
-        type = "MATCHING";
-        const pairs: { left: string; right: string; point: number }[] = [];
-        const lefts: string[] = [];
-        const rights: string[] = [];
-        let totalMatchingScore = 0;
-
-        const processPair = (val: string | number | undefined) => {
-          if (!val) return;
-          const parts = String(val).split("|");
-          if (parts.length >= 2) {
-            const l = parts[0].trim();
-            const r = parts[1].trim();
-            const p = parts.length === 3 ? Number(parts[2].trim()) || 5 : 5;
-
-            lefts.push(l);
-            rights.push(r);
-            pairs.push({ left: l, right: r, point: p });
-            totalMatchingScore += p;
-          }
-        };
-
-        processPair(row.Opsi_A);
-        processPair(row.Opsi_B);
-        processPair(row.Opsi_C);
-        processPair(row.Opsi_D);
-        processPair(row.Opsi_E);
-
-        const shuffledRights = [...rights].sort(() => Math.random() - 0.5);
-        optionsMenjodohkan = { left: lefts, right: shuffledRights };
-        matchingCorrectAnswer = JSON.stringify(pairs);
-
-        // Final skor
-        finalScore = totalMatchingScore;
-      } else if (tipeSoalExcel === "MULTIPLE_CHOICE_COMPLEX") {
-        type = "MULTIPLE_CHOICE_COMPLEX";
-        if (row.Opsi_A) optionsPG.push({ id: "A", text: String(row.Opsi_A) });
-        if (row.Opsi_B) optionsPG.push({ id: "B", text: String(row.Opsi_B) });
-        if (row.Opsi_C) optionsPG.push({ id: "C", text: String(row.Opsi_C) });
-        if (row.Opsi_D) optionsPG.push({ id: "D", text: String(row.Opsi_D) });
-        if (row.Opsi_E) optionsPG.push({ id: "E", text: String(row.Opsi_E) });
-      } else {
-        type = "MULTIPLE_CHOICE";
-        if (row.Opsi_A) optionsPG.push({ id: "A", text: String(row.Opsi_A) });
-        if (row.Opsi_B) optionsPG.push({ id: "B", text: String(row.Opsi_B) });
-        if (row.Opsi_C) optionsPG.push({ id: "C", text: String(row.Opsi_C) });
-        if (row.Opsi_D) optionsPG.push({ id: "D", text: String(row.Opsi_D) });
-        if (row.Opsi_E) optionsPG.push({ id: "E", text: String(row.Opsi_E) });
-      }
-
-      const finalOptions =
-        optionsMenjodohkan !== null ? optionsMenjodohkan : optionsPG;
-
-      let finalCorrectAnswer =
-        matchingCorrectAnswer !== null
-          ? matchingCorrectAnswer
-          : String(row.Kunci_Jawaban || "")
-              .trim()
-              .toUpperCase();
-
-      if (type === "TRUE_FALSE") {
-        finalCorrectAnswer = finalCorrectAnswer === "SALAH" ? "SALAH" : "BENAR";
-      }
-
-      return {
-        type: type,
-        score: finalScore,
-        text: `<p>${row.Teks_Soal}</p>`,
-        options: finalOptions as unknown as Prisma.InputJsonValue,
-        correctAnswer: finalCorrectAnswer,
-        classId: payload.classId,
-        examTypeId: payload.typeId,
+    const assignments = await prisma.subjectAssignment.findMany({
+      where: {
+        teacherId: session.user.id,
         subjectId: payload.subjectId,
-        authorId: session.user.id,
+        classId: { in: payload.classIds },
+      },
+    });
+
+    if (assignments.length !== payload.classIds.length) {
+      return {
+        success: false,
+        message: "Akses ilegal pada salah satu kelas terpilih!",
       };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const row of payload.questions) {
+        const tipeSoalExcel = String(row.Tipe_Soal || "")
+          .toUpperCase()
+          .trim();
+        let type: QuestionType = "MULTIPLE_CHOICE";
+        const optionsPG: MultipleChoiceOption[] = [];
+        let optionsMenjodohkan: MatchingOption | null = null;
+        let matchingCorrectAnswer: string | null = null;
+        let finalScore = Number(row.Skor) || 10;
+
+        if (tipeSoalExcel === "ESSAY") {
+          type = "ESSAY";
+        } else if (
+          tipeSoalExcel === "TRUE_FALSE" ||
+          tipeSoalExcel === "BENAR_SALAH" ||
+          tipeSoalExcel === "BENAR SALAH"
+        ) {
+          type = "TRUE_FALSE";
+        } else if (tipeSoalExcel === "MATCHING") {
+          type = "MATCHING";
+          const pairs: { left: string; right: string; point: number }[] = [];
+          const lefts: string[] = [];
+          const rights: string[] = [];
+          let totalMatchingScore = 0;
+
+          const processPair = (val: string | number | undefined) => {
+            if (!val) return;
+            const parts = String(val).split("|");
+            if (parts.length >= 2) {
+              const l = parts[0].trim();
+              const r = parts[1].trim();
+              const p = parts.length === 3 ? Number(parts[2].trim()) || 5 : 5;
+              lefts.push(l);
+              rights.push(r);
+              pairs.push({ left: l, right: r, point: p });
+              totalMatchingScore += p;
+            }
+          };
+
+          processPair(row.Opsi_A);
+          processPair(row.Opsi_B);
+          processPair(row.Opsi_C);
+          processPair(row.Opsi_D);
+          processPair(row.Opsi_E);
+
+          optionsMenjodohkan = {
+            left: lefts,
+            right: [...rights].sort(() => Math.random() - 0.5),
+          };
+          matchingCorrectAnswer = JSON.stringify(pairs);
+          finalScore = totalMatchingScore;
+        } else if (tipeSoalExcel === "MULTIPLE_CHOICE_COMPLEX") {
+          type = "MULTIPLE_CHOICE_COMPLEX";
+          if (row.Opsi_A) optionsPG.push({ id: "A", text: String(row.Opsi_A) });
+          if (row.Opsi_B) optionsPG.push({ id: "B", text: String(row.Opsi_B) });
+          if (row.Opsi_C) optionsPG.push({ id: "C", text: String(row.Opsi_C) });
+          if (row.Opsi_D) optionsPG.push({ id: "D", text: String(row.Opsi_D) });
+          if (row.Opsi_E) optionsPG.push({ id: "E", text: String(row.Opsi_E) });
+        } else {
+          type = "MULTIPLE_CHOICE";
+          if (row.Opsi_A) optionsPG.push({ id: "A", text: String(row.Opsi_A) });
+          if (row.Opsi_B) optionsPG.push({ id: "B", text: String(row.Opsi_B) });
+          if (row.Opsi_C) optionsPG.push({ id: "C", text: String(row.Opsi_C) });
+          if (row.Opsi_D) optionsPG.push({ id: "D", text: String(row.Opsi_D) });
+          if (row.Opsi_E) optionsPG.push({ id: "E", text: String(row.Opsi_E) });
+        }
+
+        const finalOptions =
+          optionsMenjodohkan !== null ? optionsMenjodohkan : optionsPG;
+        let finalCorrectAnswer =
+          matchingCorrectAnswer !== null
+            ? matchingCorrectAnswer
+            : String(row.Kunci_Jawaban || "")
+                .trim()
+                .toUpperCase();
+
+        if (type === "TRUE_FALSE") {
+          finalCorrectAnswer =
+            finalCorrectAnswer === "SALAH" ? "SALAH" : "BENAR";
+        }
+
+        const newQuestion = await tx.question.create({
+          data: {
+            type: type,
+            score: finalScore,
+            text: `<p>${row.Teks_Soal}</p>`,
+            options: finalOptions as unknown as Prisma.InputJsonValue,
+            correctAnswer: finalCorrectAnswer,
+            examTypeId: payload.typeId,
+            subjectId: payload.subjectId,
+            authorId: session.user.id,
+          },
+        });
+
+        await tx.questionToClass.createMany({
+          data: payload.classIds.map((cId) => ({
+            questionId: newQuestion.id,
+            classId: cId,
+          })),
+        });
+      }
     });
 
-    await prisma.question.createMany({
-      data: dataToInsert,
-    });
-
-    revalidatePath(
-      `/guru/soal/${payload.subjectId}?classId=${payload.classId}&type=${payload.typeId}`,
-    );
-
+    revalidatePath(`/guru/soal/${payload.subjectId}`);
     return {
       success: true,
-      message: `${dataToInsert.length} soal berhasil di-import!`,
+      message: `${payload.questions.length} soal berhasil di-import ke semua kelas!`,
     };
   } catch (error) {
     console.error("IMPORT_ERROR:", error);
@@ -242,42 +253,38 @@ export async function updateQuestion(
     const data = questionValidation.data;
 
     // Pastikan soal ada dan milik guru yang sedang login
-    const existingQuestion = await prisma.question.findUnique({
+    const existing = await prisma.question.findUnique({
       where: { id: questionId },
-      select: { authorId: true },
     });
-
-    if (!existingQuestion) {
+    if (!existing || existing.authorId !== session.user.id)
       return {
         success: false,
-        message: "Soal tidak ditemukan di database.",
+        message: "Akses ditolak. Anda tidak berhak mengedit soal ini!",
       };
-    }
 
-    if (existingQuestion.authorId !== session.user.id) {
-      return {
-        success: false,
-        message: "Akses ditolak. Anda tidak berhak mengedit soal ini.",
-      };
-    }
+    await prisma.$transaction(async (tx) => {
+      // Update data
+      await tx.question.update({
+        where: { id: questionId },
+        data: {
+          type: data.type,
+          text: data.text,
+          score: data.score,
+          options: data.options,
+          correctAnswer: data.correctAnswer,
+          examTypeId: data.typeId,
+          subjectId: data.subjectId,
+        },
+      });
 
-    await prisma.question.update({
-      where: { id: questionId },
-      data: {
-        type: data.type,
-        text: data.text,
-        score: data.score,
-        options: data.options,
-        correctAnswer: data.correctAnswer,
-        classId: data.classId,
-        examTypeId: data.typeId,
-        subjectId: data.subjectId,
-      },
+      // Hapus relasi lama, buat relasi baru
+      await tx.questionToClass.deleteMany({ where: { questionId } });
+      await tx.questionToClass.createMany({
+        data: data.classIds.map((cId) => ({ questionId, classId: cId })),
+      });
     });
 
-    revalidatePath(
-      `/guru/soal/${data.subjectId}?classId=${data.classId}&type=${data.typeId}`,
-    );
+    revalidatePath(`/guru/soal/${data.subjectId}`);
 
     return {
       success: true,
@@ -313,7 +320,6 @@ export async function deleteQuestion(questionId: string) {
       select: {
         authorId: true,
         subjectId: true,
-        classId: true,
         examTypeId: true,
       },
     });
@@ -333,9 +339,7 @@ export async function deleteQuestion(questionId: string) {
       where: { id: questionId },
     });
 
-    revalidatePath(
-      `/guru/soal/${existingQuestion.subjectId}?classId=${existingQuestion.classId}&type=${existingQuestion.examTypeId}`,
-    );
+    revalidatePath(`/guru/soal/${existingQuestion.subjectId}`);
 
     return { success: true, message: "Soal berhasil dihapus!" };
   } catch (error: unknown) {
@@ -358,7 +362,7 @@ export async function deleteManyQuestions(ids: string[]) {
       },
     });
 
-    revalidatePath("/guru/soal");
+    revalidatePath("/guru/soal", "layout");
     return {
       success: true,
       message: `${result.count} soal berhasil dihapus sekaligus!`,
