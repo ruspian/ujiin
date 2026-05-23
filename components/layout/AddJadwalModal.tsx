@@ -49,8 +49,10 @@ export default function AddJadwalModal({
 
     const formData = new FormData(e.currentTarget);
 
-    const finalStartDateTime = `${startDate}T${startTime}:00+08:00`;
-    const finalEndDateTime = `${endDate}T${endTime}:00+08:00`;
+    const finalStartDateTime = new Date(
+      `${startDate}T${startTime}:00`,
+    ).toISOString();
+    const finalEndDateTime = new Date(`${endDate}T${endTime}:00`).toISOString();
 
     const payload = {
       title: formData.get("title") as string,
