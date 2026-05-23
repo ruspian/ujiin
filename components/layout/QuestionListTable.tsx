@@ -8,7 +8,8 @@ import { deleteManyQuestions } from "@/actions/question";
 import { toast } from "sonner";
 import Loader2 from "./Loader2";
 import { QuestionListTableProps } from "@/types/question";
-import { getSafeHTML } from "@/lib/getSafeHTML";
+import "katex/dist/katex.min.css";
+import RichTextReadOnly from "./RichTextReadOnly";
 
 export default function QuestionListTable({
   questions,
@@ -116,11 +117,8 @@ export default function QuestionListTable({
               {index + 1}
             </div>
 
-            <div className="flex-1">
-              <div
-                className="prose prose-sm max-w-none text-gray-800 line-clamp-2"
-                dangerouslySetInnerHTML={{ __html: getSafeHTML(q.text) }}
-              />
+            <div className="flex-1 min-w-0">
+              <RichTextReadOnly content={q.text} />
 
               <span className="text-blue-600 text-[10px] font-bold bg-blue-50 px-2 py-1 rounded-md uppercase tracking-wider border border-blue-100">
                 {q.type === "MULTIPLE_CHOICE" && "Pilihan Ganda"}

@@ -37,6 +37,7 @@ export default function FormSoal({
   const [text, setText] = useState(initialData?.text || "");
   const [score, setScore] = useState<number>(initialData?.score || 10);
 
+  // 🔥 State Options tetap sama (A-E), tapi isinya nanti HTML dari RichTextEditor
   const [options, setOptions] = useState(() => {
     const defaultOpts = { A: "", B: "", C: "", D: "", E: "" };
     if (
@@ -143,27 +144,51 @@ export default function FormSoal({
     let finalScore = score;
 
     if (questionType === "MULTIPLE_CHOICE") {
-      if (!options.A || !options.B)
+      if (
+        !options.A ||
+        options.A === "<p></p>" ||
+        !options.B ||
+        options.B === "<p></p>"
+      )
         return toast.error("Minimal Opsi A dan B harus diisi!");
+
       finalOptions = [
         { id: "A", text: options.A },
         { id: "B", text: options.B },
-        ...(options.C ? [{ id: "C", text: options.C }] : []),
-        ...(options.D ? [{ id: "D", text: options.D }] : []),
-        ...(options.E ? [{ id: "E", text: options.E }] : []),
+        ...(options.C && options.C !== "<p></p>"
+          ? [{ id: "C", text: options.C }]
+          : []),
+        ...(options.D && options.D !== "<p></p>"
+          ? [{ id: "D", text: options.D }]
+          : []),
+        ...(options.E && options.E !== "<p></p>"
+          ? [{ id: "E", text: options.E }]
+          : []),
       ];
       finalCorrectAnswer = correctSingle;
     } else if (questionType === "MULTIPLE_CHOICE_COMPLEX") {
-      if (!options.A || !options.B)
+      if (
+        !options.A ||
+        options.A === "<p></p>" ||
+        !options.B ||
+        options.B === "<p></p>"
+      )
         return toast.error("Minimal Opsi A dan B harus diisi!");
       if (correctMultiple.length < 1)
         return toast.error("Pilih minimal 1 jawaban benar!");
+
       finalOptions = [
         { id: "A", text: options.A },
         { id: "B", text: options.B },
-        ...(options.C ? [{ id: "C", text: options.C }] : []),
-        ...(options.D ? [{ id: "D", text: options.D }] : []),
-        ...(options.E ? [{ id: "E", text: options.E }] : []),
+        ...(options.C && options.C !== "<p></p>"
+          ? [{ id: "C", text: options.C }]
+          : []),
+        ...(options.D && options.D !== "<p></p>"
+          ? [{ id: "D", text: options.D }]
+          : []),
+        ...(options.E && options.E !== "<p></p>"
+          ? [{ id: "E", text: options.E }]
+          : []),
       ];
       finalCorrectAnswer = correctMultiple.join(",");
     } else if (questionType === "TRUE_FALSE") {
@@ -298,57 +323,83 @@ export default function FormSoal({
                 Opsi Jawaban & Kunci
               </label>
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
-                Pilih kotak hijau untuk mengatur Kunci Jawaban
+                Pilih kotak{" "}
+                {questionType === "MULTIPLE_CHOICE" ? "hijau" : "centang"} untuk
+                mengatur Kunci Jawaban
               </span>
             </div>
 
-            {(["A", "B", "C", "D", "E"] as const).map((opt) => {
-              const isChecked =
-                questionType === "MULTIPLE_CHOICE"
-                  ? correctSingle === opt
-                  : correctMultiple.includes(opt);
-              return (
-                <div
-                  key={opt}
-                  className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all ${isChecked ? "border-green-500 bg-green-50/30" : "border-gray-100 bg-white"}`}
-                >
-                  <div className="pt-2">
-                    {questionType === "MULTIPLE_CHOICE" ? (
-                      <input
-                        type="radio"
-                        name="correct"
-                        checked={isChecked}
-                        onChange={() => setCorrectSingle(opt)}
-                        className="w-5 h-5 text-green-600 focus:ring-green-500 cursor-pointer"
-                      />
-                    ) : (
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handleToggleMultiple(opt)}
-                        className="w-5 h-5 rounded text-green-600 focus:ring-green-500 cursor-pointer"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 flex gap-3">
-                    <div
-                      className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center font-bold text-lg ${isChecked ? "bg-green-500 text-white" : "bg-gray-100 text-gray-600"}`}
-                    >
-                      {opt}
+            <div className="space-y-6">
+              {(["A", "B", "C", "D", "E"] as const).map((opt) => {
+                const isChecked =
+                  questionType === "MULTIPLE_CHOICE"
+                    ? correctSingle === opt
+                    : correctMultiple.includes(opt);
+
+                return (
+                  <div
+                    key={opt}
+                    className={`flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border transition-all ${
+                      isChecked
+                        ? "border-green-500 bg-green-50/10 ring-1 ring-green-500 shadow-sm"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center sm:pt-2 shrink-0">
+                      {questionType === "MULTIPLE_CHOICE" ? (
+                        <button
+                          type="button"
+                          onClick={() => setCorrectSingle(opt)}
+                          className={`flex h-10 w-10 items-center justify-center rounded-xl font-black text-lg transition-all shadow-sm ${
+                            isChecked
+                              ? "bg-green-500 text-white scale-105"
+                              : "bg-gray-50 border border-gray-300 text-gray-500 hover:border-green-500 hover:text-green-600 hover:bg-white"
+                          }`}
+                          title={`Set Pilihan ${opt} sebagai kunci jawaban`}
+                        >
+                          {isChecked ? <CheckCircle2 size={20} /> : opt}
+                        </button>
+                      ) : (
+                        <label
+                          className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl font-black text-lg transition-all shadow-sm ${
+                            isChecked
+                              ? "bg-green-500 text-white scale-105"
+                              : "bg-gray-50 border border-gray-300 text-gray-500 hover:border-green-500 hover:text-green-600 hover:bg-white"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleMultiple(opt)}
+                            className="hidden"
+                          />
+                          {isChecked ? <CheckCircle2 size={20} /> : opt}
+                        </label>
+                      )}
+                      {isChecked && (
+                        <span className="text-[10px] font-bold text-green-600 mt-1 uppercase text-center">
+                          Kunci
+                        </span>
+                      )}
                     </div>
-                    <input
-                      type="text"
-                      placeholder={`Tulis opsi ${opt}...`}
-                      value={options[opt as keyof typeof options]}
-                      onChange={(e) =>
-                        setOptions({ ...options, [opt]: e.target.value })
-                      }
-                      className="w-full px-4 py-2 bg-transparent border-b border-gray-200 focus:border-blue-500 focus:ring-0 text-sm"
-                    />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-500">
+                          Isi Opsi {opt}
+                        </span>
+                      </div>
+                      <RichTextEditor
+                        content={options[opt as keyof typeof options]}
+                        onChange={(html) =>
+                          setOptions({ ...options, [opt]: html })
+                        }
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -410,14 +461,11 @@ export default function FormSoal({
         {questionType === "ESSAY" && (
           <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <label className="text-sm font-bold text-gray-800">
-              Kunci Jawaban <span className="text-red-500">*</span>
+              Kunci Jawaban / Rubrik <span className="text-red-500">*</span>
             </label>
-            <textarea
-              rows={4}
-              placeholder="Contoh: Siswa menjawab A mendapat skor 5..."
-              value={textAnswer}
-              onChange={(e) => setTextAnswer(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-green-500 focus:border-green-500"
+            <RichTextEditor
+              content={textAnswer}
+              onChange={(val) => setTextAnswer(val)}
             />
             <p className="text-xs text-gray-500">
               Ditampilkan ke guru saat proses koreksi manual.

@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   HelpCircle,
 } from "lucide-react";
-import { getSafeHTML } from "@/lib/getSafeHTML";
 import { toast } from "sonner";
 
 import { useRouter } from "next/navigation";
@@ -31,6 +30,7 @@ import {
   cekStatusAttempt,
 } from "@/actions/ruang-ujian";
 import FullscreenGuard from "./FullscreenGuard";
+import RichTextReadOnly from "./RichTextReadOnly";
 
 const TYPE_ORDER: Record<string, number> = {
   MULTIPLE_CHOICE: 1,
@@ -417,12 +417,12 @@ export default function RuangUjian({
                   </div>
                 </div>
 
-                <div
-                  className="prose prose-blue max-w-none text-gray-800 font-medium leading-relaxed mb-8 sm:text-lg"
-                  dangerouslySetInnerHTML={{
-                    __html: getSafeHTML(currentQuestion.text),
-                  }}
-                />
+                <div className="mb-8 sm:text-lg">
+                  <RichTextReadOnly
+                    key={currentQuestion.id}
+                    content={currentQuestion.text}
+                  />
+                </div>
 
                 <div className="space-y-3 mb-10 animate-in slide-in-from-bottom-4 duration-500">
                   {(currentQuestion.type === "MULTIPLE_CHOICE" ||
@@ -463,9 +463,12 @@ export default function RuangUjian({
                           >
                             {opt.id}
                           </div>
-                          <span className="text-gray-700 font-semibold text-sm sm:text-base mt-1 sm:mt-0">
-                            {opt.text}
-                          </span>
+                          <div className="flex-1 min-w-0 pointer-events-none mt-0.5">
+                            <RichTextReadOnly
+                              key={`${currentQuestion.id}-${opt.id}`}
+                              content={opt.text}
+                            />
+                          </div>
                         </button>
                       );
                     })}

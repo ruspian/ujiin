@@ -16,10 +16,9 @@ import {
   OptionMatching,
   OptionMC,
 } from "@/types/exam";
-import { getSafeHTML } from "@/lib/getSafeHTML";
 import { toast } from "sonner";
+import RichTextReadOnly from "./RichTextReadOnly";
 
-// Urutan prioritas soal
 const TYPE_ORDER: Record<string, number> = {
   MULTIPLE_CHOICE: 1,
   MULTIPLE_CHOICE_COMPLEX: 2,
@@ -209,11 +208,13 @@ export default function ExamSimulationModal({
                   </div>
 
                   <div
-                    className={`prose prose-blue max-w-none text-gray-800 font-medium leading-relaxed mb-8 ${isMobileView ? "text-base" : "text-lg"}`}
-                    dangerouslySetInnerHTML={{
-                      __html: getSafeHTML(currentQuestion.text),
-                    }}
-                  />
+                    className={`mb-8 ${isMobileView ? "text-base" : "text-lg"}`}
+                  >
+                    <RichTextReadOnly
+                      key={currentQuestion.id}
+                      content={currentQuestion.text}
+                    />
+                  </div>
 
                   <div className="space-y-3 mb-10 animate-in slide-in-from-bottom-4 duration-500">
                     {(currentQuestion.type === "MULTIPLE_CHOICE" ||
@@ -254,9 +255,12 @@ export default function ExamSimulationModal({
                               >
                                 {opt.id}
                               </div>
-                              <span className="text-gray-700 font-semibold text-sm sm:text-base mt-1 sm:mt-0">
-                                {opt.text}
-                              </span>
+                              <div className="flex-1 min-w-0 pointer-events-none mt-0.5">
+                                <RichTextReadOnly
+                                  key={`${currentQuestion.id}-${opt.id}`}
+                                  content={opt.text}
+                                />
+                              </div>
                             </button>
                           );
                         },
