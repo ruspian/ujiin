@@ -140,9 +140,11 @@ export default function ImportExcelButton({
         { id: toastId },
       );
 
+      const classIdsArray = classId ? classId.split(",") : [];
+
       const result = await importQuestions({
         subjectId,
-        classId,
+        classIds: classIdsArray,
         typeId,
         questions: allJsonData,
       });
