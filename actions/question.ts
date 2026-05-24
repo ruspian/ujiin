@@ -111,109 +111,125 @@ export async function importQuestions(payload: {
       };
     }
 
-    await prisma.$transaction(async (tx) => {
-      for (const row of payload.questions) {
-        const tipeSoalExcel = String(row.Tipe_Soal || "")
-          .toUpperCase()
-          .trim();
-        let type: QuestionType = "MULTIPLE_CHOICE";
-        const optionsPG: MultipleChoiceOption[] = [];
-        let optionsMenjodohkan: MatchingOption | null = null;
-        let matchingCorrectAnswer: string | null = null;
-        let finalScore = Number(row.Skor) || 10;
+    await prisma.$transaction(
+      async (tx) => {
+        for (const row of payload.questions) {
+          const tipeSoalExcel = String(row.Tipe_Soal || "")
+            .toUpperCase()
+            .trim();
+          let type: QuestionType = "MULTIPLE_CHOICE";
+          const optionsPG: MultipleChoiceOption[] = [];
+          let optionsMenjodohkan: MatchingOption | null = null;
+          let matchingCorrectAnswer: string | null = null;
+          let finalScore = Number(row.Skor) || 10;
 
-        if (tipeSoalExcel === "ESSAY") {
-          type = "ESSAY";
-        } else if (
-          tipeSoalExcel === "TRUE_FALSE" ||
-          tipeSoalExcel === "BENAR_SALAH" ||
-          tipeSoalExcel === "BENAR SALAH"
-        ) {
-          type = "TRUE_FALSE";
-        } else if (tipeSoalExcel === "MATCHING") {
-          type = "MATCHING";
-          const pairs: { left: string; right: string; point: number }[] = [];
-          const lefts: string[] = [];
-          const rights: string[] = [];
-          let totalMatchingScore = 0;
+          if (tipeSoalExcel === "ESSAY") {
+            type = "ESSAY";
+          } else if (
+            tipeSoalExcel === "TRUE_FALSE" ||
+            tipeSoalExcel === "BENAR_SALAH" ||
+            tipeSoalExcel === "BENAR SALAH"
+          ) {
+            type = "TRUE_FALSE";
+          } else if (tipeSoalExcel === "MATCHING") {
+            type = "MATCHING";
+            const pairs: { left: string; right: string; point: number }[] = [];
+            const lefts: string[] = [];
+            const rights: string[] = [];
+            let totalMatchingScore = 0;
 
-          const processPair = (val: string | number | undefined) => {
-            if (!val) return;
-            const parts = String(val).split("|");
-            if (parts.length >= 2) {
-              const l = parts[0].trim();
-              const r = parts[1].trim();
-              const p = parts.length === 3 ? Number(parts[2].trim()) || 5 : 5;
-              lefts.push(l);
-              rights.push(r);
-              pairs.push({ left: l, right: r, point: p });
-              totalMatchingScore += p;
-            }
-          };
+            const processPair = (val: string | number | undefined) => {
+              if (!val) return;
+              const parts = String(val).split("|");
+              if (parts.length >= 2) {
+                const l = parts[0].trim();
+                const r = parts[1].trim();
+                const p = parts.length === 3 ? Number(parts[2].trim()) || 5 : 5;
+                lefts.push(l);
+                rights.push(r);
+                pairs.push({ left: l, right: r, point: p });
+                totalMatchingScore += p;
+              }
+            };
 
-          processPair(row.Opsi_A);
-          processPair(row.Opsi_B);
-          processPair(row.Opsi_C);
-          processPair(row.Opsi_D);
-          processPair(row.Opsi_E);
+            processPair(row.Opsi_A);
+            processPair(row.Opsi_B);
+            processPair(row.Opsi_C);
+            processPair(row.Opsi_D);
+            processPair(row.Opsi_E);
 
-          optionsMenjodohkan = {
-            left: lefts,
-            right: [...rights].sort(() => Math.random() - 0.5),
-          };
-          matchingCorrectAnswer = JSON.stringify(pairs);
-          finalScore = totalMatchingScore;
-        } else if (tipeSoalExcel === "MULTIPLE_CHOICE_COMPLEX") {
-          type = "MULTIPLE_CHOICE_COMPLEX";
-          if (row.Opsi_A) optionsPG.push({ id: "A", text: String(row.Opsi_A) });
-          if (row.Opsi_B) optionsPG.push({ id: "B", text: String(row.Opsi_B) });
-          if (row.Opsi_C) optionsPG.push({ id: "C", text: String(row.Opsi_C) });
-          if (row.Opsi_D) optionsPG.push({ id: "D", text: String(row.Opsi_D) });
-          if (row.Opsi_E) optionsPG.push({ id: "E", text: String(row.Opsi_E) });
-        } else {
-          type = "MULTIPLE_CHOICE";
-          if (row.Opsi_A) optionsPG.push({ id: "A", text: String(row.Opsi_A) });
-          if (row.Opsi_B) optionsPG.push({ id: "B", text: String(row.Opsi_B) });
-          if (row.Opsi_C) optionsPG.push({ id: "C", text: String(row.Opsi_C) });
-          if (row.Opsi_D) optionsPG.push({ id: "D", text: String(row.Opsi_D) });
-          if (row.Opsi_E) optionsPG.push({ id: "E", text: String(row.Opsi_E) });
+            optionsMenjodohkan = {
+              left: lefts,
+              right: [...rights].sort(() => Math.random() - 0.5),
+            };
+            matchingCorrectAnswer = JSON.stringify(pairs);
+            finalScore = totalMatchingScore;
+          } else if (tipeSoalExcel === "MULTIPLE_CHOICE_COMPLEX") {
+            type = "MULTIPLE_CHOICE_COMPLEX";
+            if (row.Opsi_A)
+              optionsPG.push({ id: "A", text: String(row.Opsi_A) });
+            if (row.Opsi_B)
+              optionsPG.push({ id: "B", text: String(row.Opsi_B) });
+            if (row.Opsi_C)
+              optionsPG.push({ id: "C", text: String(row.Opsi_C) });
+            if (row.Opsi_D)
+              optionsPG.push({ id: "D", text: String(row.Opsi_D) });
+            if (row.Opsi_E)
+              optionsPG.push({ id: "E", text: String(row.Opsi_E) });
+          } else {
+            type = "MULTIPLE_CHOICE";
+            if (row.Opsi_A)
+              optionsPG.push({ id: "A", text: String(row.Opsi_A) });
+            if (row.Opsi_B)
+              optionsPG.push({ id: "B", text: String(row.Opsi_B) });
+            if (row.Opsi_C)
+              optionsPG.push({ id: "C", text: String(row.Opsi_C) });
+            if (row.Opsi_D)
+              optionsPG.push({ id: "D", text: String(row.Opsi_D) });
+            if (row.Opsi_E)
+              optionsPG.push({ id: "E", text: String(row.Opsi_E) });
+          }
+
+          const finalOptions =
+            optionsMenjodohkan !== null ? optionsMenjodohkan : optionsPG;
+          let finalCorrectAnswer =
+            matchingCorrectAnswer !== null
+              ? matchingCorrectAnswer
+              : String(row.Kunci_Jawaban || "")
+                  .trim()
+                  .toUpperCase();
+
+          if (type === "TRUE_FALSE") {
+            finalCorrectAnswer =
+              finalCorrectAnswer === "SALAH" ? "SALAH" : "BENAR";
+          }
+
+          const newQuestion = await tx.question.create({
+            data: {
+              type: type,
+              score: finalScore,
+              text: `<p>${row.Teks_Soal}</p>`,
+              options: finalOptions as unknown as Prisma.InputJsonValue,
+              correctAnswer: finalCorrectAnswer,
+              examTypeId: payload.typeId,
+              subjectId: payload.subjectId,
+              authorId: session.user.id,
+            },
+          });
+
+          await tx.questionToClass.createMany({
+            data: payload.classIds.map((cId) => ({
+              questionId: newQuestion.id,
+              classId: cId,
+            })),
+          });
         }
-
-        const finalOptions =
-          optionsMenjodohkan !== null ? optionsMenjodohkan : optionsPG;
-        let finalCorrectAnswer =
-          matchingCorrectAnswer !== null
-            ? matchingCorrectAnswer
-            : String(row.Kunci_Jawaban || "")
-                .trim()
-                .toUpperCase();
-
-        if (type === "TRUE_FALSE") {
-          finalCorrectAnswer =
-            finalCorrectAnswer === "SALAH" ? "SALAH" : "BENAR";
-        }
-
-        const newQuestion = await tx.question.create({
-          data: {
-            type: type,
-            score: finalScore,
-            text: `<p>${row.Teks_Soal}</p>`,
-            options: finalOptions as unknown as Prisma.InputJsonValue,
-            correctAnswer: finalCorrectAnswer,
-            examTypeId: payload.typeId,
-            subjectId: payload.subjectId,
-            authorId: session.user.id,
-          },
-        });
-
-        await tx.questionToClass.createMany({
-          data: payload.classIds.map((cId) => ({
-            questionId: newQuestion.id,
-            classId: cId,
-          })),
-        });
-      }
-    });
+      },
+      {
+        maxWait: 5000,
+        timeout: 60000,
+      },
+    );
 
     revalidatePath(`/guru/soal/${payload.subjectId}`);
     return {
@@ -224,7 +240,8 @@ export async function importQuestions(payload: {
     console.error("IMPORT_ERROR:", error);
     return {
       success: false,
-      message: "Gagal import soal. Pastikan format Excel sesuai template.",
+      message:
+        "Gagal import soal. Pastikan format Excel sesuai template atau coba bagi file menjadi beberapa bagian.",
     };
   }
 }
