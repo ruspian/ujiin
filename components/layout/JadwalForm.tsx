@@ -114,9 +114,10 @@ export default function JadwalForm({
     }
 
     setIsLoading(true);
+    const witaOffset = "+08:00";
 
-    const combinedStartTime = `${formData.examDate}T${formData.startTime}:00`;
-    const combinedEndTime = `${formData.examDate}T${formData.endTime}:00`;
+    const combinedStartTime = `${formData.examDate}T${formData.startTime}:00${witaOffset}`;
+    const combinedEndTime = `${formData.examDate}T${formData.endTime}:00${witaOffset}`;
 
     const payload = {
       title: formData.title,
