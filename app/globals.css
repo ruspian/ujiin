@@ -11,7 +11,7 @@
 }
 
 @theme {
-  --font-arabic: "LPMQ Isep Misbah", sans-serif;
+  --font-soal: "JetBrains Mono", "LPMQ Isep Misbah", monospace;
 }
 
 @custom-variant dark (&:is(.dark *));

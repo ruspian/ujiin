@@ -202,7 +202,13 @@ export default function FormSoal({
       finalCorrectAnswer = textAnswer;
     } else if (questionType === "MATCHING") {
       const isValid = matchingPairs.every(
-        (p) => p.left.trim() !== "" && p.right.trim() !== "",
+        (p) =>
+          p.left &&
+          p.left !== "<p></p>" &&
+          p.left.trim() !== "" &&
+          p.right &&
+          p.right !== "<p></p>" &&
+          p.right.trim() !== "",
       );
       if (!isValid) return toast.error("Semua baris menjodohkan harus diisi!");
 
@@ -477,75 +483,87 @@ export default function FormSoal({
         {questionType === "MATCHING" && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <label className="text-sm font-bold text-gray-800 block">
-              Pasangan Menjodohkan & Poin
+              Daftar Pasangan Menjodohkan
             </label>
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
-              <div className="flex gap-3 mb-2 px-1">
-                <span className="flex-1 text-xs font-bold text-gray-500 uppercase">
-                  Premis
-                </span>
-                <span className="flex-1 text-xs font-bold text-gray-500 uppercase">
-                  Jawaban
-                </span>
-                <span className="w-20 text-xs font-bold text-gray-500 uppercase text-center">
-                  Poin
-                </span>
-                <span className="w-10"></span>
-              </div>
 
+            <div className="space-y-4">
               {matchingPairs.map((pair, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <input
-                    type="text"
-                    placeholder="Sisi Kiri..."
-                    value={pair.left}
-                    onChange={(e) => {
-                      const newPairs = [...matchingPairs];
-                      newPairs[index].left = e.target.value;
-                      setMatchingPairs(newPairs);
-                    }}
-                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Sisi Kanan..."
-                    value={pair.right}
-                    onChange={(e) => {
-                      const newPairs = [...matchingPairs];
-                      newPairs[index].right = e.target.value;
-                      setMatchingPairs(newPairs);
-                    }}
-                    className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <input
-                    type="number"
-                    min="1"
-                    value={pair.point}
-                    onChange={(e) => {
-                      const newPairs = [...matchingPairs];
-                      newPairs[index].point = Number(e.target.value);
-                      setMatchingPairs(newPairs);
-                    }}
-                    className="w-20 px-3 py-2 rounded-lg border border-gray-300 text-sm text-center font-bold focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveMatchingPair(index)}
-                    disabled={matchingPairs.length <= 2}
-                    className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-30 transition-colors shrink-0"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                <div
+                  key={index}
+                  className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-4 relative shadow-sm"
+                >
+                  <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                    <span className="text-xs font-black text-blue-700 bg-blue-100 px-2.5 py-1 rounded-lg">
+                      Pasangan #{index + 1}
+                    </span>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-600">
+                          Poin:
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={pair.point}
+                          onChange={(e) => {
+                            const newPairs = [...matchingPairs];
+                            newPairs[index].point = Number(e.target.value);
+                            setMatchingPairs(newPairs);
+                          }}
+                          className="w-16 px-2 py-1 rounded-lg border border-gray-300 text-sm text-center font-bold text-gray-800 bg-white focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMatchingPair(index)}
+                        disabled={matchingPairs.length <= 2}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-30 transition-colors"
+                        title="Hapus pasangan ini"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-bold text-gray-500 block">
+                        Premis
+                      </span>
+                      <RichTextEditor
+                        content={pair.left}
+                        onChange={(val) => {
+                          const newPairs = [...matchingPairs];
+                          newPairs[index].left = val;
+                          setMatchingPairs(newPairs);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-bold text-gray-500 block">
+                        Jawaban
+                      </span>
+                      <RichTextEditor
+                        content={pair.right}
+                        onChange={(val) => {
+                          const newPairs = [...matchingPairs];
+                          newPairs[index].right = val;
+                          setMatchingPairs(newPairs);
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
-              <button
-                type="button"
-                onClick={handleAddMatchingPair}
-                className="mt-3 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <Plus size={16} /> Tambah Pasangan
-              </button>
             </div>
+
+            <button
+              type="button"
+              onClick={handleAddMatchingPair}
+              className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-blue-600 border-2 border-dashed border-blue-200 rounded-2xl bg-blue-50/30 hover:bg-blue-50 transition-colors"
+            >
+              <Plus size={16} /> Tambah Pasangan Menjodohkan Baru
+            </button>
           </div>
         )}
       </div>

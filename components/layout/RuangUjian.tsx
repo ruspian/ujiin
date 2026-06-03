@@ -214,11 +214,10 @@ export default function RuangUjian({
     const toastId = toast.loading("Sedang mengumpulkan jawaban...");
 
     try {
-      // Kirim dari state Zustand ke server
       const res = await submitUjianSiswa(attemptId, answers);
       if (res.success) {
         toast.success(res.message, { id: toastId });
-        clearExam(); // Hapus sampah localStorage setelah sukses
+        clearExam();
         router.push("/siswa");
       } else {
         throw new Error(res.message);
@@ -349,7 +348,6 @@ export default function RuangUjian({
     saveToServer(updatedAnswers);
   };
 
-  // jangan render sebelum Zustand nya siap & data pertanyaannya ada, biar gak error hydration sama undefined
   if (!isHydrated || !sortedQuestions.length) return null;
 
   const isTimeCritical = timeLeft > 0 && timeLeft <= 300;
@@ -541,34 +539,44 @@ export default function RuangUjian({
                                     !isAnswered &&
                                     setActiveLeftMatch(isActive ? null : l)
                                   }
-                                  className={`p-3 sm:p-4 border-2 rounded-xl shadow-sm text-xs sm:text-sm font-bold transition-all ${
+                                  className={`p-3 sm:p-4 border-2 rounded-xl shadow-sm transition-all flex flex-col gap-2 text-left ${
                                     isActive
-                                      ? "border-blue-600 bg-blue-50 text-blue-700 ring-2 sm:ring-4 ring-blue-100 cursor-pointer"
+                                      ? "border-blue-600 bg-blue-50 ring-2 sm:ring-4 ring-blue-100 cursor-pointer"
                                       : isAnswered
-                                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 opacity-90"
-                                        : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 cursor-pointer"
+                                        ? "border-emerald-500 bg-emerald-50 opacity-90"
+                                        : "border-gray-200 bg-white hover:border-blue-300 cursor-pointer"
                                   }`}
                                 >
-                                  <div className="flex justify-between items-center">
-                                    <span>{l}</span>
+                                  <div className="flex justify-between items-start gap-2">
+                                    <div className="flex-1 min-w-0 text-xs sm:text-sm font-bold text-gray-700">
+                                      <RichTextReadOnly content={l} />
+                                    </div>
                                     {isAnswered && (
                                       <CheckCircle2
                                         size={16}
-                                        className="text-emerald-500 shrink-0"
+                                        className="text-emerald-500 shrink-0 mt-0.5"
                                       />
                                     )}
                                   </div>
+
                                   {isAnswered && (
-                                    <div className="mt-2 pt-2 border-t border-emerald-200/50 flex items-center justify-between text-[10px] sm:text-xs">
-                                      <div className="flex items-center gap-1 sm:gap-2 text-emerald-600 font-semibold bg-emerald-100/50 px-2 py-1 rounded line-clamp-1">
-                                        <span>➔</span> {currentMatches[l]}
+                                    <div className="mt-2 pt-2 border-t border-emerald-200/50 flex flex-col gap-1.5">
+                                      <div className="flex items-start gap-2 text-emerald-700 font-bold bg-emerald-100/50 p-2 rounded text-[10px] sm:text-xs">
+                                        <span className="shrink-0 mt-0.5">
+                                          ➔
+                                        </span>
+                                        <div className="flex-1 min-w-0 font-medium">
+                                          <RichTextReadOnly
+                                            content={currentMatches[l]}
+                                          />
+                                        </div>
                                       </div>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           removeMatch(currentQuestion.id, l);
                                         }}
-                                        className="p-1 sm:p-1.5 bg-red-50 text-red-500 rounded-md"
+                                        className="self-end p-1 bg-red-50 text-red-500 hover:bg-red-100 rounded-md transition-colors"
                                       >
                                         <X size={14} />
                                       </button>
@@ -601,7 +609,7 @@ export default function RuangUjian({
                                       r,
                                     );
                                   }}
-                                  className={`w-full p-3 sm:p-4 border-2 rounded-xl shadow-sm text-xs sm:text-sm font-bold transition-all text-center ${
+                                  className={`w-full p-3 sm:p-4 border-2 rounded-xl shadow-sm text-left flex items-center transition-all ${
                                     isUsed
                                       ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-50"
                                       : activeLeftMatch
@@ -609,7 +617,9 @@ export default function RuangUjian({
                                         : "bg-white border-gray-200 text-gray-600"
                                   }`}
                                 >
-                                  {r}
+                                  <div className="flex-1 min-w-0 text-xs sm:text-sm font-bold pointer-events-none">
+                                    <RichTextReadOnly content={r} />
+                                  </div>
                                 </button>
                               );
                             })}
