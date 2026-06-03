@@ -4,7 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Mathematics from "@tiptap/extension-mathematics";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { TextDirection } from "@/lib/TextDirection";
 import "katex/dist/katex.min.css";
 
@@ -13,9 +13,8 @@ interface RichTextReadOnlyProps {
 }
 
 export default function RichTextReadOnly({ content }: RichTextReadOnlyProps) {
-  const editor = useEditor({
-    editable: false,
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit,
       Image.configure({
         HTMLAttributes: {
@@ -27,8 +26,14 @@ export default function RichTextReadOnly({ content }: RichTextReadOnlyProps) {
           throwOnError: false,
         },
       }),
-      TextDirection,
+      TextDirection.configure(),
     ],
+    [],
+  );
+
+  const editor = useEditor({
+    editable: false,
+    extensions,
     content: content,
     immediatelyRender: false,
     editorProps: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { RichTextEditorProps } from "@/types/question";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -33,8 +33,8 @@ export default function RichTextEditor({
   const [isMathModalOpen, setIsMathModalOpen] = useState(false);
   const [mathInput, setMathInput] = useState("");
 
-  const editor = useEditor({
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit,
       Image.configure({
         HTMLAttributes: {
@@ -47,8 +47,13 @@ export default function RichTextEditor({
           throwOnError: false,
         },
       }),
-      TextDirection,
+      TextDirection.configure(),
     ],
+    [],
+  );
+
+  const editor = useEditor({
+    extensions,
     content: content,
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
