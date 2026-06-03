@@ -5,6 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Mathematics from "@tiptap/extension-mathematics";
 import { useEffect } from "react";
+import { TextDirection } from "@/lib/TextDirection";
 import "katex/dist/katex.min.css";
 
 interface RichTextReadOnlyProps {
@@ -26,6 +27,7 @@ export default function RichTextReadOnly({ content }: RichTextReadOnlyProps) {
           throwOnError: false,
         },
       }),
+      TextDirection,
     ],
     content: content,
     immediatelyRender: false,
@@ -36,7 +38,8 @@ export default function RichTextReadOnly({ content }: RichTextReadOnlyProps) {
           "[&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_p]:m-0 " +
           "[&_.katex]:text-blue-700 " +
           "[&_code]:break-words [&_code]:whitespace-pre-wrap [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded " +
-          "[&_pre]:break-words [&_pre]:whitespace-pre-wrap [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:bg-gray-100 [&_pre]:p-2 [&_pre]:rounded-md",
+          "[&_pre]:break-words [&_pre]:whitespace-pre-wrap [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:bg-gray-100 [&_pre]:p-2 [&_pre]:rounded-md " +
+          "[&_[dir=rtl]]:font-arabic [&_[dir=rtl]]:text-lg [&_[dir=rtl]]:leading-loose",
       },
     },
   });
@@ -49,5 +52,5 @@ export default function RichTextReadOnly({ content }: RichTextReadOnlyProps) {
 
   if (!editor) return null;
 
-  return <EditorContent editor={editor} />;
+  return <EditorContent editor={editor} className="w-full max-w-full" />;
 }

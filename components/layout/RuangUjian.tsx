@@ -12,6 +12,8 @@ import {
   Loader2,
   AlertTriangle,
   HelpCircle,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,6 +57,7 @@ export default function RuangUjian({
 
   const { answers, initExam, updateAnswers, clearExam } = useExamStore();
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [activeLeftMatch, setActiveLeftMatch] = useState<string | null>(null);
@@ -85,6 +88,30 @@ export default function RuangUjian({
       setIsHydrated(true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setIsOnline(navigator.onLine);
+    });
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success("Koneksi internet terhubung kembali!");
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.error("Koneksi terputus! Tenang, jawaban tetap disimpan di HP.");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, []);
 
   const handlePelanggaran = async (jenis: string) => {
@@ -351,6 +378,20 @@ export default function RuangUjian({
           </div>
 
           <div className="flex items-center gap-4">
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs tracking-wide transition-colors shadow-sm ${
+                isOnline
+                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                  : "bg-red-100 text-red-600 border border-red-200 animate-pulse"
+              }`}
+              title={isOnline ? "Internet Stabil" : "Koneksi Terputus"}
+            >
+              {isOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
+              <span className="hidden sm:inline">
+                {isOnline ? "Online" : "Offline"}
+              </span>
+            </div>
+
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl font-bold font-mono tracking-wider transition-colors ${
                 isTimeCritical

@@ -2,6 +2,18 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@font-face {
+  font-family: "LPMQ Isep Misbah";
+  src: url("/lpmq.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-arabic: "LPMQ Isep Misbah", sans-serif;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
