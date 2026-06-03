@@ -31,6 +31,7 @@ import {
 } from "@/actions/ruang-ujian";
 import FullscreenGuard from "./FullscreenGuard";
 import RichTextReadOnly from "./RichTextReadOnly";
+import { useExamStore } from "@/store/useExamStore";
 
 const TYPE_ORDER: Record<string, number> = {
   MULTIPLE_CHOICE: 1,
@@ -52,16 +53,14 @@ export default function RuangUjian({
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const [answers, setAnswers] = useState<AnswersMap>(initialAnswers);
+  const { answers, initExam, updateAnswers, clearExam } = useExamStore();
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [activeLeftMatch, setActiveLeftMatch] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(() => {
-    // Ubah string/Date jadi format angka
     const end = new Date(endTime).getTime();
     const serverNow = new Date(serverTime).getTime();
-
-    // Hitung selisihnya
     const difference = end - serverNow;
     return difference > 0 ? Math.floor(difference / 1000) : 0;
   });
@@ -78,6 +77,15 @@ export default function RuangUjian({
   const MAX_VIOLATION = 3;
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // inisialisasi zustand pas pertama render
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      initExam(attemptId, initialAnswers);
+      setIsHydrated(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePelanggaran = async (jenis: string) => {
     if (isProcessingViolation.current) return;
@@ -103,20 +111,17 @@ export default function RuangUjian({
 
   // anti cheat
   useEffect(() => {
-    //  Cek status pas pertama masuk
     const validasiStatusSiswa = async () => {
       const res = await cekStatusAttempt(attemptId);
       if (
         res.success &&
         (res.status === "CHEATED" || res.status === "SUBMITTED")
       ) {
-        // Kalau di database statusnya cheated, langsung tendang seketika
         router.replace("/siswa?error=pelanggaran");
       }
     };
     validasiStatusSiswa();
 
-    // Kunci Tombol Back Browser Paksa
     window.history.pushState(null, "", window.location.href);
     const handlePopState = () => {
       window.history.pushState(null, "", window.location.href);
@@ -124,25 +129,21 @@ export default function RuangUjian({
     };
     window.addEventListener("popstate", handlePopState);
 
-    // Deteksi Pindah Tab
     const handleVisibilityChange = () => {
       if (document.hidden) {
         handlePelanggaran("Meninggalkan tab browser / Membuka aplikasi lain");
       }
     };
 
-    //  Deteksi Fokus Window
     const handleWindowBlur = () => {
       handlePelanggaran("Meninggalkan tab browser");
     };
 
-    // Blokir Klik Kanan
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       toast.warning("Klik kanan dinonaktifkan!");
     };
 
-    // blokir shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
         e.preventDefault();
@@ -157,14 +158,12 @@ export default function RuangUjian({
       }
     };
 
-    // Pasang anti cheat
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleWindowBlur);
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      // Bersihkan anti cheat
       window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleWindowBlur);
@@ -176,7 +175,6 @@ export default function RuangUjian({
 
   const handleSelesaiUjian = (isAutoSubmit = false) => {
     if (!isAutoSubmit) {
-      // Tampilkan custom modal alih-alih confirm() bawaan
       setShowConfirmModal(true);
       return;
     }
@@ -189,9 +187,11 @@ export default function RuangUjian({
     const toastId = toast.loading("Sedang mengumpulkan jawaban...");
 
     try {
+      // Kirim dari state Zustand ke server
       const res = await submitUjianSiswa(attemptId, answers);
       if (res.success) {
         toast.success(res.message, { id: toastId });
+        clearExam(); // Hapus sampah localStorage setelah sukses
         router.push("/siswa");
       } else {
         throw new Error(res.message);
@@ -209,7 +209,6 @@ export default function RuangUjian({
 
   // timer
   useEffect(() => {
-    // Kalau waktu emang udah abis dari server, langsung submit
     if (timeLeft <= 0) {
       setTimeout(() => handleSelesaiUjian(true), 0);
       return;
@@ -218,14 +217,11 @@ export default function RuangUjian({
     timerRef.current = setInterval(() => {
       setTimeLeft((prevTime) => {
         const newTime = prevTime - 1;
-
         if (newTime <= 0) {
           if (timerRef.current) clearInterval(timerRef.current);
-
           setTimeout(() => handleSelesaiUjian(true), 0);
           return 0;
         }
-
         return newTime;
       });
     }, 1000);
@@ -235,6 +231,7 @@ export default function RuangUjian({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -261,8 +258,13 @@ export default function RuangUjian({
 
   const saveToServer = async (newAnswers: AnswersMap) => {
     setIsSaving(true);
-    await autoSaveJawaban(attemptId, newAnswers);
-    setIsSaving(false);
+    try {
+      await autoSaveJawaban(attemptId, newAnswers);
+    } catch (error) {
+      console.error("Gagal nyimpen ke server, tapi data aman di lokal:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSelectAnswer = (
@@ -270,7 +272,6 @@ export default function RuangUjian({
     value: string,
     isComplex: boolean = false,
   ) => {
-    // Ambil state jawaban saat ini
     const currentAnswers = { ...answers };
     let newValue: AnswerValue;
 
@@ -285,10 +286,9 @@ export default function RuangUjian({
       newValue = value;
     }
 
-    //  objek jawaban baru
     const updatedAnswers = { ...currentAnswers, [questionId]: newValue };
 
-    setAnswers(updatedAnswers);
+    updateAnswers(updatedAnswers);
     saveToServer(updatedAnswers);
   };
 
@@ -304,7 +304,7 @@ export default function RuangUjian({
 
     const updatedAnswers = { ...currentAnswers, [questionId]: newValue };
 
-    setAnswers(updatedAnswers);
+    updateAnswers(updatedAnswers);
     saveToServer(updatedAnswers);
     setActiveLeftMatch(null);
   };
@@ -318,11 +318,12 @@ export default function RuangUjian({
 
     const updatedAnswers = { ...currentAnswers, [questionId]: currentMatches };
 
-    setAnswers(updatedAnswers);
+    updateAnswers(updatedAnswers);
     saveToServer(updatedAnswers);
   };
 
-  if (!sortedQuestions.length) return null;
+  // jangan render sebelum Zustand nya siap & data pertanyaannya ada, biar gak error hydration sama undefined
+  if (!isHydrated || !sortedQuestions.length) return null;
 
   const isTimeCritical = timeLeft > 0 && timeLeft <= 300;
 
@@ -463,7 +464,7 @@ export default function RuangUjian({
                           >
                             {opt.id}
                           </div>
-                          <div className="flex-1 min-w-0 pointer-events-none mt-0.5">
+                          <div className="flex-1 min-w-0 pointer-events-none mt-0.5 max-w-full overflow-x-auto whitespace-pre-wrap wrap-break-words">
                             <RichTextReadOnly
                               key={`${currentQuestion.id}-${opt.id}`}
                               content={opt.text}
@@ -585,14 +586,16 @@ export default function RuangUjian({
                           ...answers,
                           [currentQuestion.id]: e.target.value,
                         };
+                        updateAnswers(updatedAnswers);
                         saveToServer(updatedAnswers);
                       }}
-                      onChange={(e) =>
-                        setAnswers((prev) => ({
-                          ...prev,
+                      onChange={(e) => {
+                        const updatedAnswers = {
+                          ...answers,
                           [currentQuestion.id]: e.target.value,
-                        }))
-                      }
+                        };
+                        updateAnswers(updatedAnswers);
+                      }}
                       value={(answers[currentQuestion.id] as string) || ""}
                     />
                   )}
