@@ -9,7 +9,7 @@ declare module "@tiptap/core" {
 }
 
 export const TextDirection = Extension.create({
-  name: "textDirection",
+  name: "customTextDirection",
 
   addGlobalAttributes() {
     return [
