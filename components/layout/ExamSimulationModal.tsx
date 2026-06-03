@@ -208,7 +208,7 @@ export default function ExamSimulationModal({
                   </div>
 
                   <div
-                    className={`mb-8 ${isMobileView ? "text-base" : "text-lg"}`}
+                    className={`mb-8 ${isMobileView ? "text-base" : "text-lg"} w-full max-w-full overflow-x-auto whitespace-pre-wrap wrap-break-words`}
                   >
                     <RichTextReadOnly
                       key={currentQuestion.id}

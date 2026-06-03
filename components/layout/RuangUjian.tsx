@@ -417,7 +417,7 @@ export default function RuangUjian({
                   </div>
                 </div>
 
-                <div className="mb-8 sm:text-lg">
+                <div className="mb-8 sm:text-lg w-full max-w-full overflow-x-auto whitespace-pre-wrap wrap-break-words">
                   <RichTextReadOnly
                     key={currentQuestion.id}
                     content={currentQuestion.text}
