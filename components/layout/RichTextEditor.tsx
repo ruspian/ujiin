@@ -17,9 +17,11 @@ import {
   Loader2,
   Sigma,
   X,
+  AlignRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getCloudinarySignature } from "@/actions/cloudinary";
+import { TextDirection } from "@/lib/TextDirection";
 
 export default function RichTextEditor({
   content,
@@ -45,6 +47,7 @@ export default function RichTextEditor({
           throwOnError: false,
         },
       }),
+      TextDirection,
     ],
     content: content,
     immediatelyRender: false,
@@ -54,7 +57,10 @@ export default function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_p]:m-0 [&_.katex]:text-blue-700",
+          "focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 w-full max-w-full font-soal " +
+          "[&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_p]:m-0 " +
+          "[&_.katex]:text-blue-700 " +
+          "[&_[dir=rtl]]:text-xl [&_[dir=rtl]]:leading-loose",
       },
     },
   });
@@ -202,6 +208,28 @@ export default function RichTextEditor({
 
           <button
             type="button"
+            onClick={() => {
+              if (editor.isActive({ dir: "rtl" })) {
+                editor.chain().focus().setTextDirection("ltr").run();
+              } else {
+                editor.chain().focus().setTextDirection("rtl").run();
+              }
+            }}
+            className={`p-1.5 rounded-md transition-colors flex items-center gap-1 ${
+              editor.isActive({ dir: "rtl" })
+                ? "bg-blue-100 text-blue-700"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+            title="Format Arab (RTL)"
+          >
+            <AlignRight size={16} />
+            <span className="text-[10px] font-bold">AR</span>
+          </button>
+
+          <div className="w-px h-4 bg-gray-300 mx-1"></div>
+
+          <button
+            type="button"
             onClick={() => setIsMathModalOpen(true)}
             className="p-1.5 rounded-md transition-colors text-gray-600 hover:bg-gray-100"
             title="Tambah Rumus Matematika (LaTeX)"
@@ -233,7 +261,10 @@ export default function RichTextEditor({
           </button>
         </div>
 
-        <EditorContent editor={editor} className="bg-white cursor-text" />
+        <EditorContent
+          editor={editor}
+          className="bg-white cursor-text w-full max-w-full"
+        />
       </div>
 
       {isMathModalOpen && (

@@ -130,11 +130,13 @@ export default function QuestionListTable({
               </span>
 
               <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px]">
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-500 font-medium">Jawaban:</span>
-                  <span className="font-bold text-green-700">
+                <div className="flex items-start gap-2 w-full">
+                  <span className="text-gray-500 font-medium mt-1 shrink-0">
+                    Jawaban:
+                  </span>
+                  <div className="flex-1 min-w-0 font-bold text-green-700">
                     {q.type === "MATCHING" ? (
-                      <div className="flex flex-col gap-1 bg-green-50/50 p-2 rounded-lg border border-green-100 mt-1">
+                      <div className="flex flex-col gap-3 bg-green-50/30 p-3 rounded-xl border border-green-100 mt-1 w-full max-w-2xl">
                         {(() => {
                           try {
                             const pairs = JSON.parse(q.correctAnswer) as {
@@ -145,12 +147,21 @@ export default function QuestionListTable({
                             return pairs.map((p, i) => (
                               <div
                                 key={i}
-                                className="flex items-center gap-2 border-b border-green-100 last:border-0 pb-1 last:pb-0"
+                                className="flex items-start gap-4 border-b border-green-100/60 last:border-0 pb-3 last:pb-0 pt-1 first:pt-0"
                               >
-                                <span className="text-gray-600">{p.left}</span>
-                                <span className="text-gray-400">➔</span>
-                                <span className="text-blue-600">{p.right}</span>
-                                <span className="text-[10px] bg-green-200 text-green-800 px-1 rounded">
+                                <div className="flex-1 min-w-0 text-gray-700 bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                                  <RichTextReadOnly content={p.left} />
+                                </div>
+
+                                <span className="text-gray-400 mt-2 shrink-0">
+                                  ➔
+                                </span>
+
+                                <div className="flex-1 min-w-0 text-blue-700 bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                                  <RichTextReadOnly content={p.right} />
+                                </div>
+
+                                <span className="text-[10px] font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded-md shrink-0 mt-2">
                                   +{p.point}
                                 </span>
                               </div>
@@ -160,12 +171,16 @@ export default function QuestionListTable({
                           }
                         })()}
                       </div>
+                    ) : q.type === "ESSAY" ? (
+                      <div className="bg-green-50/30 p-3 rounded-xl border border-green-100 mt-1 w-full max-w-2xl text-gray-700 font-normal">
+                        <RichTextReadOnly content={q.correctAnswer} />
+                      </div>
                     ) : (
-                      <span className="bg-green-100 px-2 py-0.5 rounded text-green-700">
+                      <span className="inline-block bg-green-100 px-2 py-0.5 rounded text-green-700 mt-1">
                         {q.correctAnswer}
                       </span>
                     )}
-                  </span>
+                  </div>
                 </div>
               </div>
             </div>
