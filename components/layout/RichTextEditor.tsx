@@ -57,10 +57,10 @@ export default function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 w-full max-w-full " +
+          "focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 w-full max-w-full font-soal " +
           "[&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_p]:m-0 " +
           "[&_.katex]:text-blue-700 " +
-          "[&_[dir=rtl]]:font-arabic [&_[dir=rtl]]:text-lg [&_[dir=rtl]]:leading-loose",
+          "[&_[dir=rtl]]:text-xl [&_[dir=rtl]]:leading-loose",
       },
     },
   });

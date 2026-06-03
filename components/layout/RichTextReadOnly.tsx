@@ -34,12 +34,12 @@ export default function RichTextReadOnly({ content }: RichTextReadOnlyProps) {
     editorProps: {
       attributes: {
         class:
-          "text-sm text-gray-800 max-w-full break-words whitespace-pre-wrap " +
+          "text-sm text-gray-800 max-w-full break-words whitespace-pre-wrap font-soal " +
           "[&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_p]:m-0 " +
           "[&_.katex]:text-blue-700 " +
           "[&_code]:break-words [&_code]:whitespace-pre-wrap [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded " +
           "[&_pre]:break-words [&_pre]:whitespace-pre-wrap [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:bg-gray-100 [&_pre]:p-2 [&_pre]:rounded-md " +
-          "[&_[dir=rtl]]:font-arabic [&_[dir=rtl]]:text-lg [&_[dir=rtl]]:leading-loose",
+          "[&_[dir=rtl]]:text-xl [&_[dir=rtl]]:leading-loose",
       },
     },
   });
