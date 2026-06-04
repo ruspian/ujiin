@@ -22,12 +22,17 @@ export async function resetSesiSiswa(formData: FormData) {
   if (!examId || !studentId) return;
 
   try {
-    await prisma.attempt.delete({
+    await prisma.attempt.update({
       where: {
         studentId_examId: {
           studentId,
           examId,
         },
+      },
+      data: {
+        status: "ONGOING",
+        violationCount: 0,
+        violationLogs: [],
       },
     });
 

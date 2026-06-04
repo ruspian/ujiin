@@ -120,7 +120,7 @@ export default async function GuruView({ namaGuru }: { namaGuru: string }) {
             <FileQuestion className="mx-auto h-12 w-12 text-gray-300 mb-3" />
             <h3 className="text-lg font-bold text-gray-900">Belum Ada Ujian</h3>
             <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-              Anda belum membuat soal. Silakan buka menu Bank Soal untuk mulai
+              Anda belum membuat soal. Silakan buka menu Soal untuk mulai
               menyusun pertanyaan.
             </p>
             <Link
