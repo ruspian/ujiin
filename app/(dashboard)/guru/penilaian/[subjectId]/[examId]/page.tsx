@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   XCircle,
   FileEdit,
+  Eye,
 } from "lucide-react";
 
 export default async function DaftarPesertaKoreksiPage({
@@ -172,23 +173,44 @@ export default async function DaftarPesertaKoreksiPage({
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {attempt &&
-                          (attempt.status === "SUBMITTED" ||
-                            attempt.status === "CHEATED") ? (
-                            <Link
-                              href={`/guru/penilaian/${subjectId}/${examId}/${attempt.id}`}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-blue-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
-                            >
-                              <FileEdit size={14} /> Koreksi
-                            </Link>
-                          ) : (
-                            <button
-                              disabled
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 rounded-xl text-xs font-bold cursor-not-allowed"
-                            >
-                              <FileEdit size={14} /> Koreksi
-                            </button>
-                          )}
+                          <div className="flex items-center justify-center gap-2">
+                            {attempt &&
+                            (attempt.status === "SUBMITTED" ||
+                              attempt.status === "CHEATED") ? (
+                              <>
+                                <Link
+                                  href={`/guru/penilaian/${subjectId}/${examId}/${attempt.id}/view`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition-all shadow-sm"
+                                  title="Lihat lembar jawaban siswa"
+                                >
+                                  <Eye size={14} /> Lihat
+                                </Link>
+
+                                <Link
+                                  href={`/guru/penilaian/${subjectId}/${examId}/${attempt.id}`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-900 hover:bg-blue-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                                >
+                                  <FileEdit size={14} /> Koreksi
+                                </Link>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  disabled
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-400 rounded-xl text-xs font-bold cursor-not-allowed"
+                                >
+                                  <Eye size={14} /> Lihat
+                                </button>
+
+                                <button
+                                  disabled
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-400 rounded-xl text-xs font-bold cursor-not-allowed"
+                                >
+                                  <FileEdit size={14} /> Koreksi
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
