@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { requireRole, ACCESS_DENIED } from "@/lib/require-role";
 import { revalidatePath } from "next/cache";
 import {
   AcademicYearSchema,
@@ -8,6 +9,9 @@ import {
 } from "@/schemas/academicSchema";
 
 export async function createAcademicYear(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const rawData = Object.fromEntries(formData.entries());
 
   const academicValidation = AcademicYearSchema.safeParse(rawData);
@@ -46,6 +50,9 @@ export async function createAcademicYear(formData: FormData) {
 }
 
 export async function updateAcademicYear(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const rawData = Object.fromEntries(formData.entries());
 
   const academicValidation = UpdateAcademicYearSchema.safeParse(rawData);
@@ -82,6 +89,9 @@ export async function updateAcademicYear(formData: FormData) {
 }
 
 export async function deleteAcademicYear(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const id = formData.get("id") as string;
 
   if (!id) return { success: false, message: "ID tidak valid!" };
@@ -117,6 +127,9 @@ export async function deleteAcademicYear(formData: FormData) {
 }
 
 export async function setActiveAcademicYear(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const id = formData.get("id") as string;
 
   if (!id) return { success: false, message: "ID tidak valid!" };

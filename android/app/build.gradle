@@ -1,0 +1,73 @@
+plugins {
+    id 'com.android.application'
+}
+
+def appUrl = (project.findProperty('ujiinUrl') ?: 'https://GANTI-DENGAN-URL-UJIIN-ANDA').toString().trim()
+def appName = (project.findProperty('ujiinAppName') ?: 'Ujiin').toString()
+def strict = (project.findProperty('ujiinStrictDeviceCheck') ?: 'true').toString().toBoolean()
+
+if (!appUrl.startsWith('https://')) {
+    throw new GradleException("ujiinUrl harus diawali https:// (sekarang: '${appUrl}')")
+}
+
+android {
+    namespace 'com.ujiin.exam'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.ujiin.exam'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+
+        buildConfigField 'String', 'BASE_URL', "\"${appUrl.replaceAll('/+$', '')}\""
+        buildConfigField 'boolean', 'STRICT_DEVICE_CHECK', "${strict}"
+        resValue 'string', 'app_name', appName
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        release {
+            // Diisi dari environment (dipakai GitHub Actions). Kalau kosong,
+            // build tetap jalan memakai debug key (APK tetap bisa di-install).
+            def ks = System.getenv('KEYSTORE_FILE')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            debuggable false
+            signingConfig System.getenv('KEYSTORE_FILE') ? signingConfigs.release : signingConfigs.debug
+        }
+        debug {
+            // Build debug TIDAK boleh debuggable supaya tidak bisa diinspeksi
+            // siswa lewat chrome://inspect
+            debuggable false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+// Tidak ada dependensi library: seluruh aplikasi memakai API bawaan Android,
+// sehingga build kecil, cepat, dan minim risiko gagal unduh.
+dependencies {
+}

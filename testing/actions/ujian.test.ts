@@ -1,10 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { prisma } from "@/lib/prisma";
-import {
-  masukUjian,
-  verifikasiTokenUjian,
-  generateExamToken,
-} from "@/actions/ujian";
+import { verifikasiTokenUjian, generateExamToken } from "@/actions/ujian";
 import { AttemptStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
@@ -24,7 +20,27 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn(),
       create: vi.fn(),
     },
+    rateLimit: {
+      findUnique: vi.fn(),
+    },
   },
+}));
+
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn().mockResolvedValue({ user: { id: "guru-1", role: "GURU" } }),
+}));
+
+vi.mock("@/lib/getStudentAuth", () => ({
+  getStudentAuth: vi
+    .fn()
+    .mockResolvedValue({ id: "std-pian", classId: "kelas-1" }),
+}));
+
+vi.mock("@/lib/rate-limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/rate-limit")>()),
+  isRateLimited: vi.fn().mockResolvedValue(false),
+  recordFailure: vi.fn(),
+  resetRateLimit: vi.fn(),
 }));
 
 vi.mock("@/lib/generateRandomPassword", () => ({
@@ -49,10 +65,6 @@ describe("Pengujian Server Action - Autentikasi Token & Akses Ujian", () => {
     vi.useRealTimers();
   });
 
-  type MockStudentFindUnique = Awaited<
-    ReturnType<typeof prisma.student.findUnique>
-  >;
-  type MockExamFindFirst = Awaited<ReturnType<typeof prisma.exam.findFirst>>;
   type MockExamFindUnique = Awaited<ReturnType<typeof prisma.exam.findUnique>>;
   type MockAttemptFindFirst = Awaited<
     ReturnType<typeof prisma.attempt.findFirst>
@@ -65,84 +77,101 @@ describe("Pengujian Server Action - Autentikasi Token & Akses Ujian", () => {
     return d;
   };
 
-  // TES MASUK UJIAN (GATEKEEPING ENGINE)
+  // TES GERBANG MASUK UJIAN
 
-  describe("masukUjian", () => {
-    test("Harus gagal masuk jika kelas siswa tidak terdaftar dalam target kelas ujian", async () => {
-      vi.mocked(prisma.student.findUnique).mockResolvedValue({
-        id: "std-pian",
-        classId: "class-rpl1",
-      } as unknown as MockStudentFindUnique);
-
-      // Ujian ini di-setel khusus untuk kelas TKJ saja
-      vi.mocked(prisma.exam.findFirst).mockResolvedValue({
+  describe("verifikasiTokenUjian - gerbang masuk", () => {
+    const examOk = (over: object = {}) =>
+      ({
         id: "exam-uts",
-        classes: [{ id: "class-tkj1" }, { id: "class-tkj2" }],
-      } as unknown as MockExamFindFirst);
+        status: "PUBLISHED",
+        token: "TOK123",
+        classes: [{ id: "kelas-1" }],
+        startTime: getMockTime(-1),
+        endTime: getMockTime(1),
+        ...over,
+      }) as unknown as MockExamFindUnique;
 
-      const hasil = await masukUjian("0012345", "TOK123");
+    test("Menolak jika studentId dari client berbeda dengan siswa yang login", async () => {
+      const hasil = await verifikasiTokenUjian("exam-uts", "std-lain", "TOK123");
+      expect(hasil.success).toBe(false);
+      expect(hasil.message).toContain("Sesi login tidak valid");
+      expect(prisma.attempt.create).not.toHaveBeenCalled();
+    });
 
+    test("Menolak jika kelas siswa bukan target ujian", async () => {
+      vi.mocked(prisma.exam.findUnique).mockResolvedValue(
+        examOk({ classes: [{ id: "kelas-lain" }] }),
+      );
+      const hasil = await verifikasiTokenUjian("exam-uts", "std-pian", "TOK123");
       expect(hasil).toEqual({
         success: false,
         message: "Ujian ini bukan untuk kelas Anda!",
       });
+    });
+
+    test("Menolak token salah dan tidak membuat sesi", async () => {
+      vi.mocked(prisma.exam.findUnique).mockResolvedValue(examOk());
+      vi.mocked(prisma.attempt.findFirst).mockResolvedValue(null);
+      const hasil = await verifikasiTokenUjian("exam-uts", "std-pian", "SALAH1");
+      expect(hasil).toEqual({ success: false, message: "Token salah!" });
       expect(prisma.attempt.create).not.toHaveBeenCalled();
     });
 
-    test("Harus gagal masuk jika waktu sekarang belum menyentuh jam mulai ujian (startTime)", async () => {
-      vi.mocked(prisma.student.findUnique).mockResolvedValue({
-        id: "std-pian",
-        classId: "class-rpl1",
-      } as unknown as MockStudentFindUnique);
-
-      vi.mocked(prisma.exam.findFirst).mockResolvedValue({
-        id: "exam-uts",
-        classes: [{ id: "class-rpl1" }],
-        startTime: getMockTime(2), // Ujian baru mulai 2 jam lagi (Jam 11 WITA)
-        endTime: getMockTime(4),
-      } as unknown as MockExamFindFirst);
-
-      const hasil = await masukUjian("0012345", "TOK123");
-
+    test("Menolak jika ujian belum dimulai", async () => {
+      vi.mocked(prisma.exam.findUnique).mockResolvedValue(
+        examOk({ startTime: getMockTime(2), endTime: getMockTime(4) }),
+      );
+      vi.mocked(prisma.attempt.findFirst).mockResolvedValue(null);
+      const hasil = await verifikasiTokenUjian("exam-uts", "std-pian", "TOK123");
       expect(hasil).toEqual({
         success: false,
-        message: "Ujian belum dimulai!",
+        message: "Waktu ujian belum dimulai!",
       });
     });
 
-    test("Harus sukses membuat attempt baru dengan status ONGOING jika semua validasi lolos", async () => {
-      vi.mocked(prisma.student.findUnique).mockResolvedValue({
-        id: "std-pian",
-        classId: "class-rpl1",
-      } as unknown as MockStudentFindUnique);
-
-      vi.mocked(prisma.exam.findFirst).mockResolvedValue({
-        id: "exam-uts",
-        classes: [{ id: "class-rpl1" }],
-        startTime: getMockTime(-1), // Sudah mulai 1 jam yang lalu (Jam 08 WITA)
-        endTime: getMockTime(1), // Berakhir 1 jam lagi (Jam 10 WITA)
-      } as unknown as MockExamFindFirst);
-
-      // Murid belum pernah buat sesi (null)
+    test("Token benar (huruf kecil diterima) membuat sesi ONGOING baru", async () => {
+      vi.mocked(prisma.exam.findUnique).mockResolvedValue(examOk());
       vi.mocked(prisma.attempt.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.attempt.create).mockResolvedValue({
-        id: "att-baru-789",
+        id: "att-baru",
+        status: AttemptStatus.ONGOING,
       } as unknown as Awaited<ReturnType<typeof prisma.attempt.create>>);
 
-      const hasil = await masukUjian("0012345", "tok123"); // Input huruf kecil otomatis dicarry ke UpperCase
+      const hasil = await verifikasiTokenUjian("exam-uts", "std-pian", "tok123");
 
-      expect(hasil).toEqual({
-        success: true,
-        message: "Berhasil masuk! Mengalihkan ke ruang ujian...",
-        attemptId: "att-baru-789",
-      });
-
+      expect(hasil.success).toBe(true);
+      expect(hasil.attemptId).toBe("att-baru");
       expect(prisma.attempt.create).toHaveBeenCalledWith({
-        data: {
-          studentId: "std-pian",
-          examId: "exam-uts",
-          status: "ONGOING",
-        },
+        data: { studentId: "std-pian", examId: "exam-uts", status: "ONGOING" },
+      });
+    });
+
+    test("Siswa yang sesinya MASIH BERJALAN bisa masuk lagi tanpa token (token sudah diganti guru)", async () => {
+      vi.mocked(prisma.exam.findUnique).mockResolvedValue(
+        examOk({ token: "TOKENBARU" }),
+      );
+      vi.mocked(prisma.attempt.findFirst).mockResolvedValue({
+        id: "att-lama",
+        status: AttemptStatus.ONGOING,
+      } as unknown as MockAttemptFindFirst);
+
+      const hasil = await verifikasiTokenUjian("exam-uts", "std-pian", "TOKENLAMA");
+
+      expect(hasil.success).toBe(true);
+      expect(hasil.attemptId).toBe("att-lama");
+      expect(prisma.attempt.create).not.toHaveBeenCalled();
+    });
+
+    test("Sesi lama yang SUDAH selesai tidak bisa dibuka lagi walau token benar", async () => {
+      vi.mocked(prisma.exam.findUnique).mockResolvedValue(examOk());
+      vi.mocked(prisma.attempt.findFirst).mockResolvedValue({
+        id: "att-selesai",
+        status: AttemptStatus.SUBMITTED,
+      } as unknown as MockAttemptFindFirst);
+      const hasil = await verifikasiTokenUjian("exam-uts", "std-pian", "TOK123");
+      expect(hasil).toEqual({
+        success: false,
+        message: "Anda sudah menyelesaikan ujian ini!",
       });
     });
   });
@@ -155,6 +184,7 @@ describe("Pengujian Server Action - Autentikasi Token & Akses Ujian", () => {
         id: "exam-uts",
         status: "PUBLISHED",
         token: "TOK123",
+        classes: [{ id: "kelas-1" }],
         startTime: getMockTime(-1),
         endTime: getMockTime(1),
       } as unknown as MockExamFindUnique);

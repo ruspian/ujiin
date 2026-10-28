@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { finalizeExpiredAttempts } from "@/lib/finalize-attempts";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Calculator, FileSpreadsheet, Filter, ShieldAlert } from "lucide-react";
@@ -87,6 +88,9 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
       ]);
 
       if (exams.length > 0 && students.length > 0) {
+        // Kumpulkan otomatis pengerjaan yang waktunya habis tapi belum disubmit
+        await finalizeExpiredAttempts({ examIds: exams.map((e) => e.id) });
+
         const attempts = await prisma.attempt.findMany({
           where: {
             examId: { in: exams.map((e) => e.id) },
@@ -98,7 +102,7 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
 
         attempts.forEach((a) => {
           attemptsMap[`${a.studentId}_${a.examId}`] =
-            a.score !== null ? Math.ceil(a.score) : 0;
+            a.score !== null ? Math.round(a.score) : 0;
         });
       }
     }
@@ -230,7 +234,7 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
                             );
                           })}
                           <td className="px-4 py-3 text-sm font-black text-center bg-emerald-50/30 group-hover:bg-emerald-100/50 text-emerald-700 border-l border-emerald-100 transition-colors">
-                            {count > 0 ? Math.ceil(total / count) : "-"}
+                            {count > 0 ? Math.round(total / count) : "-"}
                           </td>
                         </tr>
                       );

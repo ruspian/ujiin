@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hanya HTTPS dan HANYA sertifikat bawaan sistem.
+     Sertifikat yang dipasang manual (proxy/MITM untuk mengintip atau
+     memodifikasi lalu lintas ujian) tidak dipercaya. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

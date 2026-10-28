@@ -11,14 +11,11 @@ import {
   Calculator,
 } from "lucide-react";
 import { simpanKoreksi } from "@/actions/penilaian";
+import { EssayScores, gradeAttempt } from "@/lib/grading";
+import { getSafeHTML } from "@/lib/getSafeHTML";
+import { canTeacherAccessAttempt } from "@/lib/teacher-access";
 
 type AnswerValue = string | string[] | Record<string, string>;
-
-type MatchingPair = {
-  left: string;
-  right: string;
-  point?: number;
-};
 
 export default async function KoreksiDetailSiswaPage({
   params,
@@ -62,6 +59,18 @@ export default async function KoreksiDetailSiswaPage({
     );
   }
 
+  // Guru hanya boleh membuka pengerjaan siswa yang menjadi tanggung jawabnya
+  // (sebelumnya guru mana pun bisa membaca jawaban siswa lewat URL).
+  if (
+    !(await canTeacherAccessAttempt(
+      session.user.id,
+      attempt.exam,
+      attempt.student.classId,
+    ))
+  ) {
+    redirect("/dashboard");
+  }
+
   const studentAnswers = (attempt.answers as Record<string, AnswerValue>) || {};
 
   const essayQuestions = attempt.exam.questions.filter(
@@ -71,72 +80,24 @@ export default async function KoreksiDetailSiswaPage({
     (q) => q.type !== "ESSAY",
   );
 
-  // Hitung simulasi skor otomatis
-  let currentAutoScore = 0;
-  let maxAutoScore = 0;
-
-  autoGradedQuestions.forEach((q) => {
-    maxAutoScore += q.score || 0;
-    const answer = studentAnswers[q.id];
-    if (!answer) return;
-
-    const rawCorrect = q.correctAnswer || "";
-
-    if (q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE") {
-      if (
-        typeof answer === "string" &&
-        answer.trim().toUpperCase() === rawCorrect.trim().toUpperCase()
-      ) {
-        currentAutoScore += q.score || 0;
-      }
-    } else if (q.type === "MULTIPLE_CHOICE_COMPLEX") {
-      try {
-        let correctArr: string[] = [];
-        if (rawCorrect.startsWith("[") && rawCorrect.endsWith("]")) {
-          correctArr = (JSON.parse(rawCorrect) as string[]).map((v) =>
-            String(v).trim().toUpperCase(),
-          );
-        } else {
-          correctArr = rawCorrect.split(",").map((v) => v.trim().toUpperCase());
-        }
-
-        const studentArr = Array.isArray(answer)
-          ? (answer as string[]).map((v) => String(v).trim().toUpperCase())
-          : [];
-
-        if (
-          studentArr.length === correctArr.length &&
-          studentArr.every((v) => correctArr.includes(v))
-        ) {
-          currentAutoScore += q.score || 0;
-        }
-      } catch (error) {
-        console.error("Error Complex UI:", error);
-      }
-    } else if (q.type === "MATCHING") {
-      try {
-        const correctData = JSON.parse(rawCorrect) as MatchingPair[];
-        const studentData =
-          typeof answer === "object" && !Array.isArray(answer)
-            ? (answer as Record<string, string>)
-            : {};
-
-        let scoreObtained = 0;
-        correctData.forEach((item) => {
-          const studentAns = studentData[item.left];
-          if (
-            studentAns &&
-            studentAns.trim().toLowerCase() === item.right.trim().toLowerCase()
-          ) {
-            scoreObtained += item.point || q.score / correctData.length;
-          }
-        });
-        currentAutoScore += scoreObtained;
-      } catch (error) {
-        console.error("Error Matching UI:", error);
-      }
-    }
-  });
+  // Poin otomatis (non-esai) dihitung dengan logika terpusat yang SAMA dengan
+  // saat siswa submit & saat guru menyimpan koreksi.
+  const gradable = attempt.exam.questions.map((q) => ({
+    id: q.id,
+    type: q.type,
+    score: q.score,
+    correctAnswer: q.correctAnswer,
+  }));
+  const autoResult = gradeAttempt(
+    gradable.filter((q) => q.type !== "ESSAY"),
+    studentAnswers,
+  );
+  const currentAutoScore = autoResult.autoPoints;
+  const maxAutoScore = autoGradedQuestions.reduce(
+    (sum, q) => sum + (q.score || 0),
+    0,
+  );
+  const savedEssayScores = (attempt.essayScores as EssayScores | null) ?? {};
 
   const handleSubmit = async (formData: FormData) => {
     "use server";
@@ -266,7 +227,7 @@ export default async function KoreksiDetailSiswaPage({
 
                   <div
                     className="prose prose-sm max-w-none mb-4 text-gray-800 font-medium bg-gray-50/50 p-4 rounded-xl border border-gray-100"
-                    dangerouslySetInnerHTML={{ __html: q.text }}
+                    dangerouslySetInnerHTML={{ __html: getSafeHTML(q.text) }}
                   />
 
                   <div className="mt-4 p-4 rounded-xl bg-blue-50/50 border border-blue-100">
@@ -290,7 +251,7 @@ export default async function KoreksiDetailSiswaPage({
                         <input
                           type="number"
                           name={`nilai_${q.id}`}
-                          defaultValue={0}
+                          defaultValue={savedEssayScores[q.id] ?? 0}
                           min="0"
                           max={q.score}
                           step="0.1"

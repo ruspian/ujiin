@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { createClass, updateClass, deleteClass } from "@/actions/class"; // Sesuaikan dengan nama file asli lu
 import { Class } from "@prisma/client";
 
@@ -23,9 +24,16 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(),
+}));
+
 describe("Pengujian Server Action - Manajemen Kelas", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "admin-1", role: "ADMIN" },
+    } as never);
   });
 
   const createMockClass = (overrides: Partial<Class>): Class => {
@@ -122,5 +130,20 @@ describe("Pengujian Server Action - Manajemen Kelas", () => {
         where: { id: "class-kosong" },
       });
     });
+  });
+});
+
+describe("Kontrol akses (hanya ADMIN)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("deleteClass: ditolak untuk guru dan tanpa login", async () => {
+    for (const session of [{ user: { id: "guru-1", role: "GURU" } }, null]) {
+      vi.mocked(auth).mockResolvedValue(session as never);
+      const hasil = await deleteClass("class-1");
+      expect(hasil.success).toBe(false);
+    }
+    expect(prisma.class.delete).not.toHaveBeenCalled();
   });
 });

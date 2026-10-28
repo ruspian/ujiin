@@ -1,12 +1,16 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { requireRole, ACCESS_DENIED } from "@/lib/require-role";
 import { revalidatePath } from "next/cache";
 import { classSchema, updateClassSchema } from "@/schemas/studentSchema";
 import bcryptjs from "bcryptjs";
 import { generateRandomPassword } from "@/lib/generateRandomPassword";
 
 export async function createStudent(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const rawData = Object.fromEntries(formData.entries());
 
   const studentValidation = classSchema.safeParse(rawData);
@@ -44,6 +48,9 @@ export async function createStudent(formData: FormData) {
 }
 
 export async function updateStudent(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const rawData = Object.fromEntries(formData.entries());
 
   const studentValidation = updateClassSchema.safeParse(rawData);
@@ -83,6 +90,9 @@ export async function updateStudent(formData: FormData) {
 }
 
 export async function deleteStudent(id: string) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   if (!id) return { success: false, message: "ID siswa tidak valid!" };
 
   try {
@@ -120,6 +130,9 @@ export async function importStudents(
     religion: string;
   }[],
 ) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   if (!studentsData || studentsData.length === 0) {
     return { success: false, message: "File Excel kosong atau format salah!" };
   }
@@ -222,6 +235,9 @@ export async function importStudents(
   }
 }
 export async function randomizeSessions(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const classId = formData.get("classId") as string;
   const totalSessions = parseInt(formData.get("totalSessions") as string);
   const room = (formData.get("room") as string) || null;
@@ -273,6 +289,9 @@ export async function randomizeSessions(formData: FormData) {
 }
 
 export async function resetSessions(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const classId = formData.get("classId") as string;
 
   if (!classId) {
@@ -301,6 +320,9 @@ export async function resetSessions(formData: FormData) {
 }
 
 export async function prepareExamCards(classId: string) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   try {
     const students = await prisma.student.findMany({
       where: { classId },
@@ -332,9 +354,21 @@ export async function prepareExamCards(classId: string) {
       });
     }
 
+    // Tahun pelajaran di kartu mengikuti tahun ajaran yang aktif
+    let tahunPelajaran = "";
+    try {
+      const aktif = await prisma.academicYear.findFirst({
+        where: { active: true },
+      });
+      if (aktif) tahunPelajaran = aktif.year;
+    } catch {
+      // kartu tetap bisa dicetak tanpa tahun
+    }
+
     return {
       success: true,
       data: studentsWithRawPassword,
+      tahunPelajaran,
       message: "Kartu ujian berhasil disiapkan dengan PIN baru!",
     };
   } catch (error) {
@@ -344,6 +378,9 @@ export async function prepareExamCards(classId: string) {
 }
 
 export async function resetStudentPassword(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const id = formData.get("id") as string;
 
   if (!id) return { success: false, message: "ID Siswa tidak valid!" };

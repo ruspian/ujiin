@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import bcryptjs from "bcryptjs";
 import { setupSchema } from "@/schemas/setupSchema";
 
+// Kunci advisory Postgres: hanya satu permintaan setup yang boleh berjalan.
+const SETUP_LOCK_KEY = 727_274;
+
 export async function createFirstAdmin(formData: FormData) {
   const rawData = Object.fromEntries(formData.entries());
 
@@ -17,26 +20,34 @@ export async function createFirstAdmin(formData: FormData) {
   }
 
   try {
-    const { name, username, password } = setupValidation.data;
+    const { name, password } = setupValidation.data;
+    const username = setupValidation.data.username.trim().toLowerCase();
 
-    const adminExists = await prisma.user.findFirst({
-      where: { role: "ADMIN" },
-    });
-
-    if (adminExists) {
+    // Cek cepat dulu supaya tidak meng-hash password bila admin sudah ada
+    if (await prisma.user.findFirst({ where: { role: "ADMIN" } })) {
       return { success: true, message: "Admin sudah ada!" };
     }
-
     const hashedPassword = await bcryptjs.hash(password, 10);
 
-    await prisma.user.create({
-      data: {
-        name,
-        username,
-        password: hashedPassword,
-        role: "ADMIN",
-      },
+    // Cek-lalu-buat dilakukan di bawah kunci, jadi dua permintaan bersamaan
+    // tidak bisa sama-sama membuat admin.
+    const created = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${SETUP_LOCK_KEY})`;
+
+      const adminExists = await tx.user.findFirst({
+        where: { role: "ADMIN" },
+      });
+      if (adminExists) return false;
+
+      await tx.user.create({
+        data: { name, username, password: hashedPassword, role: "ADMIN" },
+      });
+      return true;
     });
+
+    if (!created) {
+      return { success: true, message: "Admin sudah ada!" };
+    }
 
     return { success: true };
   } catch (error) {

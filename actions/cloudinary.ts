@@ -2,8 +2,19 @@
 
 import { CloudinarySignature } from "@/types/cloudinary";
 import crypto from "crypto";
+import { auth } from "@/lib/auth";
 
 export async function getCloudinarySignature(): Promise<CloudinarySignature> {
+  // Tanpa login siapa pun bisa meminta tanda tangan lalu mengunggah file
+  // sembarangan ke akun Cloudinary sekolah. Hanya admin/guru yang boleh.
+  const session = await auth();
+  if (
+    !session?.user ||
+    (session.user.role !== "ADMIN" && session.user.role !== "GURU")
+  ) {
+    throw new Error("Akses ditolak!");
+  }
+
   // Bikin timestamp waktu sekarang
   const timestamp = Math.round(new Date().getTime() / 1000).toString();
   const apiSecret = process.env.CLOUDINARY_API_SECRET;

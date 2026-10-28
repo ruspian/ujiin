@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { finalizeExpiredAttempts } from "@/lib/finalize-attempts";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -23,6 +24,8 @@ export default async function DetailMonitoringPage({
   if (!session?.user || session.user.role !== "GURU") redirect("/login");
 
   const { id } = await params;
+
+  await finalizeExpiredAttempts({ examIds: [id] });
 
   const exam = await prisma.exam.findUnique({
     where: {
@@ -182,7 +185,16 @@ export default async function DetailMonitoringPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {studentStatuses.map((row, index) => (
+              {studentStatuses.map((row, index) => {
+                const logs = Array.isArray(row.attempt?.violationLogs)
+                  ? (row.attempt?.violationLogs as unknown as {
+                      jenis?: string;
+                      action?: string;
+                    }[])
+                  : [];
+                const lastEntry = logs[logs.length - 1];
+                const lastLog = lastEntry?.jenis ?? lastEntry?.action ?? "";
+                return (
                 <tr
                   key={row.student.id}
                   className="hover:bg-gray-50/50 transition-colors"
@@ -213,13 +225,21 @@ export default async function DetailMonitoringPage({
                     {row.attempt ? (
                       <div className="flex items-center gap-2">
                         <div
-                          className={`w-2 h-2 rounded-full ${row.attempt.violationCount > 3 ? "bg-red-500 animate-pulse" : row.attempt.violationCount > 0 ? "bg-orange-400" : "bg-gray-200"}`}
+                          className={`w-2 h-2 rounded-full ${row.attempt.violationCount >= 3 ? "bg-red-500 animate-pulse" : row.attempt.violationCount > 0 ? "bg-orange-400" : "bg-gray-200"}`}
                         />
                         <span
-                          className={`text-xs font-black ${row.attempt.violationCount > 3 ? "text-red-600" : row.attempt.violationCount > 0 ? "text-orange-600" : "text-gray-400"}`}
+                          className={`text-xs font-black ${row.attempt.violationCount >= 3 ? "text-red-600" : row.attempt.violationCount > 0 ? "text-orange-600" : "text-gray-400"}`}
                         >
                           {row.attempt.violationCount} Kali
                         </span>
+                        {lastLog && (
+                          <span
+                            className="text-[10px] text-gray-400 font-medium max-w-48 truncate"
+                            title={lastLog}
+                          >
+                            {lastLog}
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <span className="text-xs text-gray-300 font-bold">-</span>
@@ -273,7 +293,8 @@ export default async function DetailMonitoringPage({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

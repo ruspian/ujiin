@@ -1,0 +1,58 @@
+name: Build APK Ujiin
+
+# Jalankan manual: tab Actions -> "Build APK Ujiin" -> Run workflow,
+# isi URL website Ujiin Anda (wajib https://).
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "URL website Ujiin (https://...)"
+        required: true
+        type: string
+      app_name:
+        description: "Nama aplikasi di layar HP"
+        required: false
+        default: "Ujiin"
+        type: string
+      strict_device_check:
+        description: "Blokir ujian jika USB debugging aktif / HP di-root"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build APK release
+        working-directory: android
+        env:
+          APP_URL: ${{ inputs.app_url }}
+          APP_NAME: ${{ inputs.app_name }}
+          STRICT: ${{ inputs.strict_device_check }}
+        run: |
+          gradle assembleRelease \
+            -PujiinUrl="$APP_URL" \
+            -PujiinAppName="$APP_NAME" \
+            -PujiinStrictDeviceCheck="$STRICT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ujiin-apk
+          path: android/app/build/outputs/apk/release/*.apk

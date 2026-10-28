@@ -1,6 +1,11 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import crypto from "crypto";
+import { auth } from "@/lib/auth";
 import { getCloudinarySignature } from "@/actions/cloudinary"; // Sesuaikan dengan path file asli lu
+
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(),
+}));
 
 // MOCKING MODUL CRYPTO BAWAAN NODE.JS
 
@@ -28,6 +33,9 @@ describe("Pengujian Server Action - Cloudinary Signature", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "guru-1", role: "GURU" },
+    } as never);
     // Salin env asli agar manipulasi variabel env tidak merusak test file lain
     process.env = { ...ORIGINAL_ENV };
 
@@ -40,6 +48,16 @@ describe("Pengujian Server Action - Cloudinary Signature", () => {
     // Kembalikan waktu asli setelah tes selesai
     vi.useRealTimers();
     process.env = ORIGINAL_ENV;
+  });
+
+  // KONTROL AKSES
+
+  test("Harus menolak permintaan tanpa login atau dengan role yang tidak berhak", async () => {
+    process.env.CLOUDINARY_API_SECRET = "fake-test-value";
+    for (const session of [null, { user: { id: "x", role: "SISWA" } }]) {
+      vi.mocked(auth).mockResolvedValue(session as never);
+      await expect(getCloudinarySignature()).rejects.toThrow("Akses ditolak!");
+    }
   });
 
   // SKENARIO 1: ERROR VARIABEL ENV KOSONG
@@ -57,7 +75,7 @@ describe("Pengujian Server Action - Cloudinary Signature", () => {
 
   test("Harus sukses membuat signature dengan format SHA-1 dan mengembalikan data payload yang lengkap", async () => {
     // Setel variabel env tiruan untuk kebutuhan testing
-    process.env.CLOUDINARY_API_SECRET = "rahasia-dusun-123";
+    process.env.CLOUDINARY_API_SECRET = "fake-test-value";
     process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY = "key-xyz";
     process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME = "ujiin-cloud";
 
@@ -78,7 +96,7 @@ describe("Pengujian Server Action - Cloudinary Signature", () => {
     });
 
     // Verifikasi rumus string signature yang di-hash beneran menggunakan formula yang sah
-    const expectedSignatureString = `folder=ujiin&timestamp=${expectedTimestamp}rahasia-dusun-123`;
+    const expectedSignatureString = `folder=ujiin&timestamp=${expectedTimestamp}fake-test-value`;
 
     // Ambil instance mock crypto untuk memastikan update() menerima string string yang tepat
     const spyHash = crypto.createHash("sha1");

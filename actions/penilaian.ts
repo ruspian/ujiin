@@ -1,14 +1,17 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { canTeacherAccessAttempt } from "@/lib/teacher-access";
 import { redirect } from "next/navigation";
+import {
+  AnswersMap,
+  EssayScores,
+  clampEssayScore,
+  gradeAttempt,
+} from "@/lib/grading";
 
-interface MatchingPair {
-  left: string;
-  right: string;
-  point?: number;
-}
 export async function simpanKoreksi(
   subjectId: string,
   examId: string,
@@ -16,96 +19,79 @@ export async function simpanKoreksi(
   formData: FormData,
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.role !== "GURU") {
+      return { success: false, message: "Akses ditolak!" };
+    }
+
     const attempt = await prisma.attempt.findUnique({
       where: { id: attemptId },
       include: {
+        student: { select: { classId: true } },
         exam: {
-          include: { questions: true },
+          include: {
+            questions: {
+              select: { id: true, type: true, score: true, correctAnswer: true },
+            },
+          },
         },
       },
     });
 
-    if (!attempt || !attempt.exam) {
+    if (!attempt || !attempt.exam || attempt.examId !== examId) {
       return { success: false, message: "Sesi ujian tidak valid!" };
     }
 
-    let totalScore = 0;
-    const questions = attempt.exam.questions;
-
-    const studentAnswers = (attempt.answers as Record<string, string>) || {};
-
-    for (const q of questions) {
-      const answer = studentAnswers[q.id];
-      const rawCorrect = q.correctAnswer || "";
-
-      if (q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE") {
-        if (
-          typeof answer === "string" &&
-          answer.trim().toUpperCase() === rawCorrect.trim().toUpperCase()
-        ) {
-          totalScore += q.score || 0;
-        }
-      } else if (q.type === "MULTIPLE_CHOICE_COMPLEX") {
-        try {
-          let correctArr: string[] = [];
-          if (rawCorrect.startsWith("[") && rawCorrect.endsWith("]")) {
-            correctArr = (JSON.parse(rawCorrect) as string[]).map((v) =>
-              v.trim().toUpperCase(),
-            );
-          } else {
-            correctArr = rawCorrect
-              .split(",")
-              .map((v) => v.trim().toUpperCase());
-          }
-
-          const studentArr = Array.isArray(answer)
-            ? (answer as string[]).map((v) => String(v).trim().toUpperCase())
-            : [];
-
-          if (
-            studentArr.length === correctArr.length &&
-            studentArr.every((v) => correctArr.includes(v))
-          ) {
-            totalScore += q.score || 0;
-          }
-        } catch (error) {
-          console.error(`Error Action Complex pada soal ${q.id}:`, error);
-        }
-      } else if (q.type === "MATCHING") {
-        try {
-          const correctData = JSON.parse(rawCorrect) as MatchingPair[];
-          const studentData =
-            typeof answer === "object" && !Array.isArray(answer)
-              ? (answer as Record<string, string>)
-              : {};
-
-          correctData.forEach((item) => {
-            const studentAns = studentData[item.left];
-            if (
-              studentAns &&
-              studentAns.trim().toLowerCase() ===
-                item.right.trim().toLowerCase()
-            ) {
-              totalScore += item.point || q.score / correctData.length;
-            }
-          });
-        } catch (error) {
-          console.error(`Error Action Matching pada soal ${q.id}:`, error);
-        }
-      } else if (q.type === "ESSAY") {
-        const nilaiEsai = Number(formData.get(`nilai_${q.id}`)) || 0;
-        const nilaiAman = Math.min(nilaiEsai, q.score || 0);
-        totalScore += Math.max(0, nilaiAman);
-      }
+    // Hanya guru terkait (pembuat jadwal, pengawas, atau pengampu mapel di
+    // kelas siswa) yang boleh mengubah nilai.
+    const exam = attempt.exam;
+    if (
+      !(await canTeacherAccessAttempt(
+        session.user.id,
+        exam,
+        attempt.student.classId,
+      ))
+    ) {
+      return { success: false, message: "Akses ditolak!" };
     }
+
+    // Nilai esai dari form: dibatasi 0..bobot soal, disimpan PER SOAL supaya
+    // saat dibuka lagi nilai sebelumnya tidak kembali ke 0.
+    const essayScores: EssayScores = {};
+    for (const q of exam.questions) {
+      if (q.type !== "ESSAY") continue;
+      const raw = formData.get(`nilai_${q.id}`);
+      if (raw === null || raw === "") continue;
+      essayScores[q.id] = clampEssayScore(raw, q.score);
+    }
+
+    const prev = (attempt.essayScores as EssayScores | null) ?? {};
+    const mergedEssay: EssayScores = { ...prev, ...essayScores };
+
+    const result = gradeAttempt(
+      exam.questions.map((q) => ({
+        id: q.id,
+        type: q.type,
+        score: q.score,
+        correctAnswer: q.correctAnswer,
+      })),
+      (attempt.answers as AnswersMap | null) ?? {},
+      mergedEssay,
+    );
 
     await prisma.attempt.update({
       where: { id: attemptId },
-      data: { score: totalScore },
+      data: {
+        // Skala 0–100 (sebelumnya disimpan sebagai poin mentah sehingga
+        // rekap dan nilai submit siswa tidak sama skalanya).
+        score: result.percent,
+        essayScores: mergedEssay as object,
+      },
     });
 
     revalidatePath(`/guru/penilaian/${subjectId}/${examId}/${attemptId}`);
     revalidatePath(`/guru/penilaian/${subjectId}/${examId}`);
+    revalidatePath(`/guru/rekap-nilai`);
   } catch (error) {
     console.error("Gagal menyimpan koreksi:", error);
     return { success: false, message: "Terjadi kesalahan server!" };

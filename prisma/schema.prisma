@@ -284,6 +284,15 @@ model Attempt {
 
   violationCount  Int       @default(0)
   violationLogs   Json?
+
+  // Nilai esai per soal yang diberikan guru: { [questionId]: poin }
+  essayScores     Json?
+  // Terakhir kali perangkat siswa mengirim heartbeat (anti-cheat/monitoring)
+  lastSeenAt      DateTime?
+  // Nomor urut simpan jawaban dari perangkat siswa. Simpan dengan nomor lebih
+  // kecil dari yang sudah tersimpan ditolak, sehingga request lama yang tiba
+  // terlambat (jaringan jelek) tidak menimpa jawaban yang lebih baru.
+  saveSeq         Int       @default(0)
   
   examId      String
   exam        Exam      @relation(fields: [examId], references: [id])
@@ -295,4 +304,12 @@ enum AttemptStatus {
   ONGOING   
   SUBMITTED 
   CHEATED   
+}
+
+// Pembatas percobaan (login siswa/guru, tebak token ujian). Disimpan di DB agar
+// tetap berlaku walau aplikasi berjalan di banyak instance/serverless.
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
 }

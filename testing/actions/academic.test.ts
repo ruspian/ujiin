@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { createAcademicYear, deleteAcademicYear } from "@/actions/academic";
 import { AcademicYear, Semester } from "@prisma/client";
 
@@ -21,9 +22,16 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(),
+}));
+
 describe("Pengujian Server Action - Academic Year (Folder Terpisah)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "admin-1", role: "ADMIN" },
+    } as never);
   });
 
   const createMockAcademicYear = (
@@ -120,5 +128,20 @@ describe("Pengujian Server Action - Academic Year (Folder Terpisah)", () => {
       expect(hasil.message).toBe("Tahun Ajaran berhasil dihapus!");
       expect(prisma.academicYear.delete).toHaveBeenCalled();
     });
+  });
+});
+
+describe("Kontrol akses (hanya ADMIN)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("deleteAcademicYear: ditolak untuk guru dan tanpa login", async () => {
+    for (const session of [{ user: { id: "guru-1", role: "GURU" } }, null]) {
+      vi.mocked(auth).mockResolvedValue(session as never);
+      const hasil = await deleteAcademicYear((() => { const f = new FormData(); f.set("id", "x"); f.set("classId", "x"); return f; })());
+      expect(hasil.success).toBe(false);
+    }
+    expect(prisma.academicYear.delete).not.toHaveBeenCalled();
   });
 });

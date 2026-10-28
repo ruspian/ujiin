@@ -279,6 +279,24 @@ export async function updateQuestion(
         message: "Akses ditolak. Anda tidak berhak mengedit soal ini!",
       };
 
+    // Sama seperti saat membuat soal: guru hanya boleh menempatkan soal di
+    // mapel & kelas yang memang ditugaskan kepadanya (sebelumnya tidak dicek).
+    const classIds = [...new Set(data.classIds)];
+    const assignments = await prisma.subjectAssignment.findMany({
+      where: {
+        teacherId: session.user.id,
+        subjectId: data.subjectId,
+        classId: { in: classIds },
+      },
+    });
+    if (assignments.length !== classIds.length) {
+      return {
+        success: false,
+        message:
+          "Akses ilegal! Anda tidak ditugaskan di salah satu kelas terpilih.",
+      };
+    }
+
     await prisma.$transaction(async (tx) => {
       // Update data
       await tx.question.update({
@@ -308,13 +326,8 @@ export async function updateQuestion(
       message: "Soal berhasil diperbarui!",
     };
   } catch (error: unknown) {
+    // Pesan error mentah (mis. dari database) tidak dikirim ke browser.
     console.error("UPDATE_QUESTION_ERROR:", error);
-    if (error instanceof Error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
     return {
       success: false,
       message: "Terjadi kesalahan pada server saat memperbarui soal.",
@@ -372,10 +385,20 @@ export async function deleteQuestion(questionId: string) {
 }
 
 export async function deleteManyQuestions(ids: string[]) {
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== "GURU") {
+    return { success: false, message: "Akses ditolak!" };
+  }
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 500) {
+    return { success: false, message: "Daftar soal tidak valid." };
+  }
+
   try {
+    // Hanya soal milik guru ini (sebelumnya soal guru lain ikut terhapus).
     const result = await prisma.question.deleteMany({
       where: {
         id: { in: ids },
+        authorId: session.user.id,
       },
     });
 

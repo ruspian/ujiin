@@ -1,10 +1,14 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { requireRole, ACCESS_DENIED } from "@/lib/require-role";
 import { revalidatePath } from "next/cache";
 import { classSchema, updateClassSchema } from "@/schemas/classSchema";
 
 export async function createClass(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const rawData = Object.fromEntries(formData.entries());
 
   const classValidation = classSchema.safeParse(rawData);
@@ -47,6 +51,9 @@ export async function createClass(formData: FormData) {
 }
 
 export async function updateClass(formData: FormData) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   const rawData = Object.fromEntries(formData.entries());
 
   const classValidation = updateClassSchema.safeParse(rawData);
@@ -88,6 +95,9 @@ export async function updateClass(formData: FormData) {
 }
 
 export async function deleteClass(id: string) {
+  if (!(await requireRole("ADMIN"))) {
+    return { success: false, message: ACCESS_DENIED };
+  }
   if (!id) return { success: false, message: "ID kelas tidak valid!" };
 
   try {

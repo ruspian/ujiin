@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach, Mock } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import bcryptjs from "bcryptjs";
 import {
   createStudent,
@@ -7,6 +8,7 @@ import {
   importStudents,
   randomizeSessions,
   prepareExamCards,
+  resetStudentPassword,
 } from "@/actions/student";
 import { Student } from "@prisma/client";
 
@@ -24,6 +26,9 @@ vi.mock("@/lib/prisma", () => ({
       delete: vi.fn(),
     },
     class: {
+      findMany: vi.fn(),
+    },
+    religion: {
       findMany: vi.fn(),
     },
     attempt: {
@@ -45,9 +50,16 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(),
+}));
+
 describe("Pengujian Server Action - Manajemen Data Siswa & Sesi", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "admin-1", role: "ADMIN" },
+    } as never);
   });
 
   type MockStudentFindUnique = Awaited<
@@ -122,15 +134,19 @@ describe("Pengujian Server Action - Manajemen Data Siswa & Sesi", () => {
         { id: "class-rpl1", name: "XII RPL 1" },
       ] as MockClassFindMany);
 
+      vi.mocked(prisma.religion.findMany).mockResolvedValue([
+        { id: "rel-islam", name: "Islam" },
+      ] as unknown as Awaited<ReturnType<typeof prisma.religion.findMany>>);
+
       vi.mocked(prisma.student.findMany).mockResolvedValue([
         { nisn: "9999999999" },
       ] as unknown as MockStudentFindMany);
 
       const mockExcelInput = [
-        { nisn: "0011223344", name: "Rian", className: "XII RPL 1" },
-        { nisn: "9999999999", name: "Duplikat DB", className: "XII RPL 1" },
-        { nisn: "0011223344", name: "Duplikat File", className: "XII RPL 1" },
-        { nisn: "0055667788", name: "Zaki", className: "X TKJ 2" },
+        { nisn: "0011223344", name: "Rian", className: "XII RPL 1", religion: "Islam" },
+        { nisn: "9999999999", name: "Duplikat DB", className: "XII RPL 1", religion: "Islam" },
+        { nisn: "0011223344", name: "Duplikat File", className: "XII RPL 1", religion: "Islam" },
+        { nisn: "0055667788", name: "Zaki", className: "X TKJ 2", religion: "Islam" },
       ];
 
       vi.mocked(prisma.student.createMany).mockResolvedValue({ count: 1 });
@@ -150,7 +166,14 @@ describe("Pengujian Server Action - Manajemen Data Siswa & Sesi", () => {
       );
 
       expect(prisma.student.createMany).toHaveBeenCalledWith({
-        data: [{ nisn: "0011223344", name: "Rian", classId: "class-rpl1" }],
+        data: [
+          {
+            nisn: "0011223344",
+            name: "Rian",
+            classId: "class-rpl1",
+            religionId: "rel-islam",
+          },
+        ],
         skipDuplicates: true,
       });
     });
@@ -234,5 +257,29 @@ describe("Pengujian Server Action - Manajemen Data Siswa & Sesi", () => {
         }),
       );
     });
+  });
+});
+
+describe("Kontrol akses (hanya ADMIN)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("resetStudentPassword: ditolak untuk guru dan tanpa login", async () => {
+    for (const session of [{ user: { id: "guru-1", role: "GURU" } }, null]) {
+      vi.mocked(auth).mockResolvedValue(session as never);
+      const hasil = await resetStudentPassword((() => { const f = new FormData(); f.set("id", "x"); f.set("classId", "x"); return f; })());
+      expect(hasil.success).toBe(false);
+    }
+    expect(prisma.student.update).not.toHaveBeenCalled();
+  });
+
+  test("prepareExamCards: ditolak untuk guru dan tanpa login", async () => {
+    for (const session of [{ user: { id: "guru-1", role: "GURU" } }, null]) {
+      vi.mocked(auth).mockResolvedValue(session as never);
+      const hasil = await prepareExamCards("class-1");
+      expect(hasil.success).toBe(false);
+    }
+    expect(prisma.student.update).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,8 @@ export interface ClientFormTokenProps {
   studentId: string;
   subjectName: string;
   examTypeName: string;
+  /** Sesi masih berjalan: tidak perlu token lagi. */
+  resume?: boolean;
 }
 
 export interface OptionMC {
@@ -39,5 +41,7 @@ export interface RuangUjianProps {
   questions: ClientQuestion[];
   endTime: Date;
   initialAnswers: AnswersMap;
+  /** Nomor urut simpan terakhir yang sudah ada di server. */
+  initialSeq?: number;
   serverTime: Date | string;
 }

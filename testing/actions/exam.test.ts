@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, Mock } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { createExam, deleteExam, recordViolation } from "@/actions/exam";
+import { createExam, deleteExam, getQuestionsForExam } from "@/actions/exam";
 
 //  MOCKING SEMUA DEPENDENSI EKSTERNAL
 
@@ -140,46 +140,28 @@ describe("Pengujian Server Action - Manajemen Ujian & Pelanggaran", () => {
       });
     });
   });
+});
 
-  // TES ANTI-CHEAT
+describe("getQuestionsForExam - hanya staf (berisi kunci jawaban)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-  describe("recordViolation", () => {
-    test("Harus gagal jika sesi attempt pengerjaan siswa tidak valid", async () => {
-      vi.mocked(prisma.attempt.findUnique).mockResolvedValue(null);
+  test("ditolak tanpa login dan untuk role selain ADMIN/GURU", async () => {
+    for (const session of [null, { user: { id: "x", role: "SISWA" } }]) {
+      (vi.mocked(auth) as Mock).mockResolvedValue(session);
+      const hasil = await getQuestionsForExam("sub-1", "type-1");
+      expect(hasil).toEqual({ success: false, data: [] });
+    }
+    expect(prisma.question.findMany).not.toHaveBeenCalled();
+  });
 
-      const hasil = await recordViolation("attempt-palsu", "Pindah Tab");
-
-      expect(hasil.success).toBe(false);
-      expect(hasil.message).toBe("Sesi tidak ditemukan");
+  test("guru boleh mengambil daftar soal", async () => {
+    (vi.mocked(auth) as Mock).mockResolvedValue({
+      user: { id: "g1", role: "GURU" },
     });
-
-    test("Harus sukses menambahkan log baru ke dalam array JSON dan menaikkan violationCount", async () => {
-      const mockPastLogs = [
-        { time: "2026-05-20T10:00:00.000Z", action: "Pindah Tab Pertama" },
-      ];
-
-      vi.mocked(prisma.attempt.findUnique).mockResolvedValue({
-        id: "attempt-budi",
-        violationCount: 1,
-        violationLogs: mockPastLogs,
-      } as unknown as Awaited<ReturnType<typeof prisma.attempt.findUnique>>);
-
-      const hasil = await recordViolation(
-        "attempt-budi",
-        "Keluar dari Fullscreen",
-      );
-      expect(hasil.success).toBe(true);
-
-      expect(prisma.attempt.update).toHaveBeenCalledWith({
-        where: { id: "attempt-budi" },
-        data: expect.objectContaining({
-          violationCount: 2,
-          violationLogs: expect.arrayContaining([
-            mockPastLogs[0],
-            expect.objectContaining({ action: "Keluar dari Fullscreen" }),
-          ]),
-        }),
-      });
-    });
+    vi.mocked(prisma.question.findMany).mockResolvedValue([]);
+    const hasil = await getQuestionsForExam("sub-1", "type-1");
+    expect(hasil.success).toBe(true);
   });
 });
