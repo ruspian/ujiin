@@ -5,7 +5,23 @@ import { AttemptStatus } from "@prisma/client";
 import { getStudentAuth } from "@/lib/getStudentAuth";
 import ClientFormToken from "@/components/layout/ClientFormToken";
 
-export default async function StudentPortal() {
+const PESAN_ERROR: Record<string, string> = {
+  pelanggaran:
+    "Sesi ujian Anda dihentikan karena terdeteksi pelanggaran. Hubungi pengawas ujian.",
+  wajib_app:
+    "Ujian ini hanya bisa dikerjakan lewat aplikasi Ujiin (APK). Instal dan buka aplikasinya dulu.",
+  perangkat:
+    "Perangkat Anda tidak memenuhi syarat ujian (mode pengembang/USB debugging aktif atau perangkat di-root). Nonaktifkan lalu coba lagi.",
+};
+
+export default async function StudentPortal({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const pesanError = error ? PESAN_ERROR[error] : undefined;
+
   const student = await getStudentAuth();
 
   if (!student) {
@@ -109,11 +125,21 @@ export default async function StudentPortal() {
         </div>
       </div>
 
+      {pesanError && (
+        <div
+          role="alert"
+          className="w-full max-w-md mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"
+        >
+          {pesanError}
+        </div>
+      )}
+
       <ClientFormToken
         examId={activeExam.id}
         studentId={student.id}
         subjectName={activeExam.subject.name}
         examTypeName={activeExam.examType.name}
+        resume={attempt?.status === AttemptStatus.ONGOING}
       />
     </div>
   );

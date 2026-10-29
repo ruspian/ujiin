@@ -12,12 +12,16 @@ import {
 import { Prisma, User } from "@prisma/client";
 import { ImportUserData } from "@/types/user.admin";
 
+const sandiUji = (n: string) => `uji-sandi-${n}`; // data palsu khusus tes
+
 // MOCKING SEMUA DEPENDENSI EKSTERNAL
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -83,7 +87,7 @@ describe("Pengujian Server Action - Manajemen Pengguna (User Management)", () =>
     });
 
     test("Harus gagal jika username sudah terdaftar di database", async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(
         createMockUser({ username: "ekoguru" }) as MockUserFindUnique,
       );
 
@@ -97,8 +101,28 @@ describe("Pengujian Server Action - Manajemen Pengguna (User Management)", () =>
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
+    test("Username dicek tanpa beda huruf besar/kecil dan disimpan huruf kecil", async () => {
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      (vi.mocked(bcryptjs.hash) as Mock).mockResolvedValue("$2a$10$hashed");
+      vi.mocked(prisma.user.create).mockResolvedValue(
+        {} as unknown as Awaited<ReturnType<typeof prisma.user.create>>,
+      );
+
+      const hasil = await createUser(
+        createMockFormData({ username: "  EkoGuru " }),
+      );
+
+      expect(hasil.success).toBe(true);
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
+        where: { username: { equals: "ekoguru", mode: "insensitive" } },
+      });
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ username: "ekoguru" }),
+      });
+    });
+
     test("Harus menangkap error P2002 dari Prisma jika terjadi balapan data (race condition)", async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
       (vi.mocked(bcryptjs.hash) as Mock).mockResolvedValue("$2a$10$hashed");
 
       const prismaError = new Prisma.PrismaClientKnownRequestError(
@@ -130,8 +154,45 @@ describe("Pengujian Server Action - Manajemen Pengguna (User Management)", () =>
       });
     });
 
+    test("Harus menolak menurunkan role admin TERAKHIR", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        role: "ADMIN",
+      } as unknown as MockUserFindUnique);
+      vi.mocked(prisma.user.count).mockResolvedValue(1);
+
+      const hasil = await updateUser(
+        createMockFormData({ id: "usr-admin", role: "GURU", password: "" }),
+      );
+
+      expect(hasil).toEqual({
+        success: false,
+        message: "Tidak bisa menurunkan role admin terakhir!",
+      });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    test("Boleh menurunkan role admin bila masih ada admin lain", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        role: "ADMIN",
+      } as unknown as MockUserFindUnique);
+      vi.mocked(prisma.user.count).mockResolvedValue(2);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.user.update).mockResolvedValue(
+        {} as unknown as Awaited<ReturnType<typeof prisma.user.update>>,
+      );
+
+      const hasil = await updateUser(
+        createMockFormData({ id: "usr-admin", role: "GURU", password: "" }),
+      );
+
+      expect(hasil.success).toBe(true);
+    });
+
     test("Harus memperbarui data tanpa mengubah password jika input password kosong", async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        role: "GURU",
+      } as unknown as MockUserFindUnique);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.user.update).mockResolvedValue(
         {} as unknown as Awaited<ReturnType<typeof prisma.user.update>>,
       );
@@ -174,6 +235,9 @@ describe("Pengujian Server Action - Manajemen Pengguna (User Management)", () =>
         expires: "valid",
       });
 
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        role: "GURU",
+      } as unknown as MockUserFindUnique);
       vi.mocked(prisma.user.delete).mockResolvedValue(
         {} as unknown as MockUserDelete,
       );
@@ -191,6 +255,55 @@ describe("Pengujian Server Action - Manajemen Pengguna (User Management)", () =>
     });
   });
 
+  describe("deleteUser - pengaman", () => {
+    beforeEach(() => {
+      (vi.mocked(auth) as Mock).mockResolvedValue({
+        user: { id: "admin-pian", role: "ADMIN" },
+        expires: "valid",
+      });
+    });
+
+    test("Tidak boleh menghapus akun yang sedang dipakai sendiri", async () => {
+      const hasil = await deleteUser("admin-pian");
+
+      expect(hasil.success).toBe(false);
+      expect(hasil.message).toContain("sedang Anda pakai");
+      expect(prisma.user.delete).not.toHaveBeenCalled();
+    });
+
+    test("Tidak boleh menghapus admin terakhir", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        role: "ADMIN",
+      } as unknown as MockUserFindUnique);
+      vi.mocked(prisma.user.count).mockResolvedValue(1);
+
+      const hasil = await deleteUser("usr-admin-lain");
+
+      expect(hasil).toEqual({
+        success: false,
+        message: "Tidak bisa menghapus admin terakhir!",
+      });
+      expect(prisma.user.delete).not.toHaveBeenCalled();
+    });
+
+    test("Pengguna yang masih dipakai data lain (P2003) mendapat pesan yang jelas", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        role: "GURU",
+      } as unknown as MockUserFindUnique);
+      vi.mocked(prisma.user.delete).mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("fk", {
+          code: "P2003",
+          clientVersion: "5.0.0",
+        }),
+      );
+
+      const hasil = await deleteUser("usr-guru");
+
+      expect(hasil.success).toBe(false);
+      expect(hasil.message).toContain("masih dipakai data lain");
+    });
+  });
+
   // TES BULK IMPORT USER (SEQUENTIAL LOOP)
 
   describe("importUsersBulk", () => {
@@ -202,7 +315,7 @@ describe("Pengujian Server Action - Manajemen Pengguna (User Management)", () =>
     });
 
     test("Harus sukses memproses baris data unik dan melewati username yang sudah kembar di DB", async () => {
-      vi.mocked(prisma.user.findUnique)
+      vi.mocked(prisma.user.findFirst)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(
           createMockUser({ username: "guru-bentrok" }) as MockUserFindUnique,
@@ -217,13 +330,13 @@ describe("Pengujian Server Action - Manajemen Pengguna (User Management)", () =>
         {
           name: "Guru Baru",
           username: "gurubaru",
-          password: "123",
+          password: sandiUji("b"),
           role: "GURU",
         },
         {
           name: "Guru Bentrok",
           username: "guru-bentrok",
-          password: "123",
+          password: sandiUji("b"),
           role: "GURU",
         },
       ];
@@ -235,6 +348,38 @@ describe("Pengujian Server Action - Manajemen Pengguna (User Management)", () =>
 
       expect(prisma.user.create).toHaveBeenCalledTimes(1);
       expect(revalidatePath).toHaveBeenCalledWith("/admin/pengguna");
+    });
+
+    test("Baris dengan username/password terlalu pendek dilewati, tidak membuat akun lemah", async () => {
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      (vi.mocked(bcryptjs.hash) as Mock).mockResolvedValue("$2a$10$h");
+      vi.mocked(prisma.user.create).mockResolvedValue(
+        {} as unknown as Awaited<ReturnType<typeof prisma.user.create>>,
+      );
+
+      const hasil = await importUsersBulk([
+        { name: "A", username: "abc", password: sandiUji("b"), role: "GURU" },
+        { name: "B", username: "gurubaru", password: sandiUji("c").slice(0, 2), role: "GURU" },
+        { name: "C", username: "gurubagus", password: sandiUji("b"), role: "GURU" },
+      ] as ImportUserData[]);
+
+      expect(hasil.message).toContain("1 berhasil, 2 dilewati");
+      expect(prisma.user.create).toHaveBeenCalledTimes(1);
+    });
+
+    test("Import lebih dari 500 baris ditolak", async () => {
+      const banyak = Array.from({ length: 501 }, (_, i) => ({
+        name: `G${i}`,
+        username: `guru${i}xx`,
+        password: sandiUji("b"),
+        role: "GURU",
+      })) as ImportUserData[];
+
+      const hasil = await importUsersBulk(banyak);
+
+      expect(hasil.success).toBe(false);
+      expect(hasil.message).toContain("Maksimal 500");
+      expect(prisma.user.create).not.toHaveBeenCalled();
     });
   });
 });

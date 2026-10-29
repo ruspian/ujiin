@@ -10,12 +10,14 @@ export default function CetakKartuPage() {
   const { classId } = useParams();
   const [students, setStudents] = useState<PrintStudentData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tahun, setTahun] = useState("");
 
   useEffect(() => {
     async function loadData() {
       const res = await prepareExamCards(classId as string);
       if (res.success && res.data) {
         setStudents(res.data as PrintStudentData[]);
+        setTahun(res.tahunPelajaran ?? "");
       }
       setLoading(false);
     }
@@ -56,7 +58,7 @@ export default function CetakKartuPage() {
               <h2 className="font-bold text-sm uppercase">
                 Kartu Peserta Ujian
               </h2>
-              <p className="text-[10px]">Tahun Pelajaran 2025/2026</p>
+              <p className="text-[10px]">Tahun Pelajaran {tahun}</p>
             </div>
 
             <div className="flex gap-4 pb-1">

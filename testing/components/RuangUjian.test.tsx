@@ -1,14 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor, act } from "@testing-library/react";
 import RuangUjian from "@/components/layout/RuangUjian";
-import {
-  autoSaveJawaban,
-  submitUjianSiswa,
-  cekStatusAttempt,
-  catatPelanggaran,
-} from "@/actions/ruang-ujian";
 import { toast } from "sonner";
 import { RuangUjianProps } from "@/types/ruang-ujian";
+import { useExamStore } from "@/store/useExamStore";
 
 // 1. MOCKING DEPENDENSI
 
@@ -25,13 +20,12 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("@/actions/ruang-ujian", () => ({
-  autoSaveJawaban: vi.fn(),
-  submitUjianSiswa: vi.fn(),
-  catatPelanggaran: vi.fn(),
-  cekStatusAttempt: vi
-    .fn()
-    .mockResolvedValue({ success: true, status: "IN_PROGRESS" }),
+// Ruang ujian berkomunikasi lewat fetch ke /api/ujian/sync (examCall), bukan
+// server action langsung, supaya satu request macet tidak memblokir yang lain.
+const examCall = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/exam-api", () => ({
+  examCall,
+  UnauthorizedError: class UnauthorizedError extends Error {},
 }));
 
 vi.mock("@/components/layout/FullscreenGuard", () => ({
@@ -72,6 +66,26 @@ describe("Pengujian Komponen Utama - Ruang Ujian", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // store jawaban dipersist ke localStorage -> bersihkan agar antar tes tidak bocor
+    localStorage.clear();
+    useExamStore.setState({ attemptId: null, answers: {} });
+    examCall.mockImplementation(async (op: { type: string }) => {
+      switch (op.type) {
+        case "heartbeat":
+          return {
+            success: true,
+            status: "ONGOING",
+            remainingSeconds: 3000,
+            serverTime: new Date().toISOString(),
+          };
+        case "violation":
+          return { success: true, violationCount: 1, isKicked: false };
+        case "status":
+          return { success: true, status: "ONGOING" };
+        default:
+          return { success: true };
+      }
+    });
   });
 
   // SKENARIO 1: RENDERING AWAL & INFORMASI
@@ -80,7 +94,10 @@ describe("Pengujian Komponen Utama - Ruang Ujian", () => {
     const { getByText } = render(<RuangUjian {...mockProps} />);
 
     await waitFor(() => {
-      expect(cekStatusAttempt).toHaveBeenCalledWith("att-123");
+      expect(examCall).toHaveBeenCalledWith(
+        { type: "status", attemptId: "att-123" },
+        expect.anything(),
+      );
     });
 
     expect(getByText("Matematika Lanjut")).toBeInTheDocument();
@@ -93,31 +110,35 @@ describe("Pengujian Komponen Utama - Ruang Ujian", () => {
 
   // SKENARIO 2: AUTO-SAVE JAWABAN
 
-  test("Harus memanggil fungsi autoSaveJawaban saat siswa memilih opsi", async () => {
-    const { getByText } = render(<RuangUjian {...mockProps} />);
+  test("Harus menyimpan jawaban ke server (operasi save) saat siswa memilih opsi", async () => {
+    const { findByText } = render(<RuangUjian {...mockProps} />);
 
     // Sesuaikan yang diklik
-    const opsiA = getByText("Dua");
+    const opsiA = await findByText("Dua");
 
     await act(async () => {
       fireEvent.click(opsiA);
     });
 
     await waitFor(() => {
-      expect(autoSaveJawaban).toHaveBeenCalledWith("att-123", {
-        q1: "opt-A",
-      });
+      expect(examCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "save",
+          attemptId: "att-123",
+          answers: { q1: "opt-A" },
+        }),
+      );
     });
   });
 
   // SKENARIO 3: NAVIGASI ANTAR SOAL
 
   test("Harus bisa berpindah ke soal berikutnya dan sebelumnya", async () => {
-    const { getByRole, getByText, queryByText } = render(
+    const { getByRole, getByText, queryByText, findByRole } = render(
       <RuangUjian {...mockProps} />,
     );
 
-    const btnPrev = getByRole("button", { name: /Soal Sebelumnya/i });
+    const btnPrev = await findByRole("button", { name: /Soal Sebelumnya/i });
     expect(btnPrev).toBeDisabled();
 
     const btnNext = getByRole("button", { name: /Soal Berikutnya/i });
@@ -134,13 +155,13 @@ describe("Pengujian Komponen Utama - Ruang Ujian", () => {
   // SKENARIO 4: PENGUMPULAN UJIAN (SUBMIT)
 
   test("Harus memunculkan modal konfirmasi dan berhasil mengumpulkan ujian", async () => {
-    vi.mocked(submitUjianSiswa).mockResolvedValue({
-      success: true,
-      message: "Ujian berhasil diselesaikan!",
-    });
-
-    const { getByRole, getByText } = render(<RuangUjian {...mockProps} />);
-    const btnSelesaiAtas = getByRole("button", { name: /Selesai Ujian/i });
+    const { getByRole, getByText, findAllByRole } = render(
+      <RuangUjian {...mockProps} />,
+    );
+    // ada 2 tombol "Selesai Ujian" (header & footer soal terakhir); ambil yang di header
+    const btnSelesaiAtas = (
+      await findAllByRole("button", { name: /Selesai Ujian/i })
+    )[0];
 
     await act(async () => {
       fireEvent.click(btnSelesaiAtas);
@@ -155,10 +176,16 @@ describe("Pengujian Komponen Utama - Ruang Ujian", () => {
     });
 
     await waitFor(() => {
-      expect(submitUjianSiswa).toHaveBeenCalledWith("att-123", {});
+      expect(examCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "submit",
+          attemptId: "att-123",
+          answers: {},
+        }),
+        expect.anything(),
+      );
       expect(toast.success).toHaveBeenCalledWith(
-        "Ujian berhasil diselesaikan!",
-        { id: "toast-123" },
+        "Ujian berhasil dikumpulkan!",
       );
     });
   });
@@ -166,22 +193,21 @@ describe("Pengujian Komponen Utama - Ruang Ujian", () => {
   // SKENARIO 5: ANTI-CHEAT (WINDOW BLUR)
 
   test("Harus mencatat pelanggaran jika siswa meninggalkan tab browser", async () => {
-    vi.mocked(catatPelanggaran).mockResolvedValue({
-      success: true,
-      violationCount: 1,
-      isKicked: false,
-    });
-
-    const { getByText } = render(<RuangUjian {...mockProps} />);
+    const { getByText, findByText } = render(<RuangUjian {...mockProps} />);
+    await findByText("Dua"); // tunggu inisialisasi penyimpanan lokal selesai
 
     await act(async () => {
       fireEvent.blur(window);
     });
 
     await waitFor(() => {
-      expect(catatPelanggaran).toHaveBeenCalledWith(
-        "att-123",
-        "Meninggalkan tab browser",
+      expect(examCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "violation",
+          attemptId: "att-123",
+          jenis: "Meninggalkan tab browser",
+          sumber: "web",
+        }),
       );
     });
 

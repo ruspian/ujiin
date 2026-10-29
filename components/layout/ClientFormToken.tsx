@@ -11,6 +11,7 @@ export default function ClientFormToken({
   studentId,
   subjectName,
   examTypeName,
+  resume = false,
 }: ClientFormTokenProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -20,16 +21,17 @@ export default function ClientFormToken({
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const token = formData.get("token")?.toString();
+    // Siswa yang sesinya masih berjalan tidak perlu token lagi
+    const token = resume ? "" : formData.get("token")?.toString();
 
-    if (!token) {
+    if (!resume && !token) {
       toast.error("Token wajib diisi!");
       setLoading(false);
       return;
     }
 
     try {
-      const result = await verifikasiTokenUjian(examId, studentId, token);
+      const result = await verifikasiTokenUjian(examId, studentId, token ?? "");
 
       if (result.success && result.attemptId) {
         toast.success(result.message);
@@ -56,33 +58,42 @@ export default function ClientFormToken({
           {subjectName}
         </h2>
         <p className="text-sm text-gray-500 mt-2">
-          Masukkan Token ujian yang diberikan oleh pengawas untuk mulai
-          mengerjakan.
+          {resume
+            ? "Ujian Anda masih berjalan. Lanjutkan mengerjakan, jawaban sebelumnya sudah tersimpan."
+            : "Masukkan Token ujian yang diberikan oleh pengawas untuk mulai mengerjakan."}
         </p>
       </div>
 
       <form onSubmit={handleExamLogin} className="space-y-5">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5 text-center">
-            TOKEN UJIAN
-          </label>
-          <input
-            type="text"
-            name="token"
-            required
-            disabled={loading}
-            className="block w-full rounded-xl border-gray-300 py-4 text-center text-3xl font-black tracking-[0.3em] text-gray-900 uppercase bg-gray-50 border ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-teal-600 focus:bg-white transition-all placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal disabled:opacity-50"
-            placeholder="XXXXXX"
-            maxLength={6}
-          />
-        </div>
+        {!resume && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5 text-center">
+              TOKEN UJIAN
+            </label>
+            <input
+              type="text"
+              name="token"
+              required
+              disabled={loading}
+              className="block w-full rounded-xl border-gray-300 py-4 text-center text-3xl font-black tracking-[0.3em] text-gray-900 uppercase bg-gray-50 border ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-teal-600 focus:bg-white transition-all placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal disabled:opacity-50"
+              placeholder="XXXXXX"
+              maxLength={6}
+            />
+          </div>
+        )}
 
         <button
           type="submit"
           disabled={loading}
           className="mt-6 flex w-full justify-center rounded-xl bg-teal-600 px-4 py-4 text-base font-bold text-white shadow-lg shadow-teal-600/30 hover:bg-teal-700 hover:shadow-teal-600/40 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 disabled:opacity-50 transition-all active:scale-[0.98]"
         >
-          {loading ? "Memverifikasi Token..." : "Mulai Mengerjakan"}
+          {loading
+            ? resume
+              ? "Membuka ujian..."
+              : "Memverifikasi Token..."
+            : resume
+              ? "Lanjutkan Ujian"
+              : "Mulai Mengerjakan"}
         </button>
       </form>
     </div>

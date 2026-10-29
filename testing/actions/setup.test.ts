@@ -5,14 +5,18 @@ import { createFirstAdmin } from "@/actions/setup";
 
 //  MOCKING SEMUA DEPENDENSI EKSTERNAL
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    user: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}));
+const db = vi.hoisted(() => {
+  const user = { findFirst: vi.fn(), create: vi.fn() };
+  return {
+    user,
+    // transaksi tiruan: tx memakai mock yang sama + kunci advisory
+    $transaction: vi.fn(async (cb: (tx: unknown) => unknown) =>
+      cb({ user, $executeRaw: vi.fn() }),
+    ),
+  };
+});
+
+vi.mock("@/lib/prisma", () => ({ prisma: db }));
 
 // Mock bcryptjs agar ramah default import dan return value-nya bisa dikontrol
 vi.mock("bcryptjs", () => {
@@ -105,5 +109,36 @@ describe("Pengujian Server Action - Initial Setup Wizard (First Admin)", () => {
     expect(hasil.success).toBe(false);
     expect(hasil.message).toBeDefined(); // Memastikan ada pesan error terlempar dari Zod
     expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  // SKENARIO 4: BALAPAN (dua permintaan bersamaan)
+
+  test("Bila admin dibuat permintaan lain tepat sebelum transaksi, tidak membuat admin kedua", async () => {
+    // cek cepat: belum ada -> lolos; di dalam transaksi (di bawah kunci): sudah ada
+    vi.mocked(prisma.user.findFirst)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "usr-admin-lain",
+        role: "ADMIN",
+      } as unknown as MockUserFindFirst);
+    (vi.mocked(bcryptjs.hash) as Mock).mockResolvedValue("$2a$10$x");
+
+    const hasil = await createFirstAdmin(createMockFormData());
+
+    expect(hasil).toEqual({ success: true, message: "Admin sudah ada!" });
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  test("Username disimpan huruf kecil tanpa spasi di tepi", async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+    (vi.mocked(bcryptjs.hash) as Mock).mockResolvedValue("$2a$10$x");
+    const fd = createMockFormData();
+    fd.set("username", "  SuperAdmin ");
+
+    await createFirstAdmin(fd);
+
+    expect(prisma.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ username: "superadmin" }),
+    });
   });
 });

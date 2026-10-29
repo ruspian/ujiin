@@ -19,19 +19,18 @@ import { toast } from "sonner";
 
 import { useRouter } from "next/navigation";
 import {
-  AnswersMap,
   AnswerValue,
   OptionMatching,
   OptionMC,
   RuangUjianProps,
 } from "@/types/ruang-ujian";
-import {
-  autoSaveJawaban,
-  submitUjianSiswa,
-  catatPelanggaran,
-  cekStatusAttempt,
-} from "@/actions/ruang-ujian";
+import { examCall, UnauthorizedError } from "@/lib/exam-api";
+import { useExamSync } from "@/hooks/useExamSync";
 import FullscreenGuard from "./FullscreenGuard";
+import { useAntiCheat } from "@/hooks/useAntiCheat";
+import { isNativeApp } from "@/lib/native-app";
+import { HEARTBEAT_INTERVAL_MS, MAX_VIOLATIONS } from "@/lib/exam-config";
+import { usePreloadQuestionImages } from "@/hooks/usePreloadQuestionImages";
 import RichTextReadOnly from "./RichTextReadOnly";
 import { useExamStore } from "@/store/useExamStore";
 
@@ -43,6 +42,22 @@ const TYPE_ORDER: Record<string, number> = {
   ESSAY: 5,
 };
 
+interface GuardProps {
+  children: React.ReactNode;
+  attemptId?: string;
+  onViolation?: (jenis: string) => void;
+}
+
+/** Di APK tidak perlu API fullscreen browser: aplikasi sudah immersive + terkunci. */
+const PassThroughGuard = ({ children }: GuardProps) => <>{children}</>;
+
+type HeartbeatRes = {
+  success: boolean;
+  status?: string;
+  remainingSeconds?: number;
+  serverTime?: string;
+};
+
 export default function RuangUjian({
   attemptId,
   examName,
@@ -50,12 +65,13 @@ export default function RuangUjian({
   questions,
   endTime,
   initialAnswers,
+  initialSeq = 0,
   serverTime,
 }: RuangUjianProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const { answers, initExam, updateAnswers, clearExam } = useExamStore();
+  const { answers, initExam, clearExam } = useExamStore();
   const [isHydrated, setIsHydrated] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
@@ -67,8 +83,13 @@ export default function RuangUjian({
     const difference = end - serverNow;
     return difference > 0 ? Math.floor(difference / 1000) : 0;
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isNative, setIsNative] = useState(false);
+  // Sisa waktu dihitung dari DEADLINE + selisih jam server, bukan dikurangi
+  // per detik. Interval dibekukan saat app/tab di background, sehingga timer
+  // lama bisa menampilkan sisa waktu yang lebih banyak dari kenyataan.
+  const deadlineRef = useRef<number>(new Date(endTime).getTime());
+  const clockOffsetRef = useRef<number>(0);
+  const submitRef = useRef<() => void>(() => {});
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [violationData, setViolationData] = useState<{
@@ -77,14 +98,46 @@ export default function RuangUjian({
     isKicked: boolean;
   } | null>(null);
   const isProcessingViolation = useRef(false);
-  const MAX_VIOLATION = 3;
+  const MAX_VIOLATION = MAX_VIOLATIONS;
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Mesin sinkronisasi semi daring: jawaban/pelanggaran/submit ditulis ke HP
+  // lebih dulu, dikirim ke server di latar belakang, dan dicoba ulang otomatis.
+  const sync = useExamSync({
+    attemptId,
+    enabled: isHydrated,
+    onClosed: (reason) => {
+      clearExam();
+      router.replace(
+        reason === "CHEATED"
+          ? "/siswa?error=pelanggaran"
+          : "/siswa?error=sudah_selesai",
+      );
+    },
+    onSubmitted: () => {
+      toast.success("Ujian berhasil dikumpulkan!");
+      clearExam();
+      router.push("/siswa");
+    },
+    onUnauthorized: () => {
+      // jawaban tetap tersimpan di HP; setelah login ulang akan dikirim
+      toast.error("Sesi login berakhir. Silakan login ulang.");
+      router.replace("/login-siswa");
+    },
+    onViolation: (r) => setViolationData(r),
+  });
+  const syncRef = useRef(sync);
+  useEffect(() => {
+    syncRef.current = sync;
+  });
+  const isSubmitting = sync.submitting;
 
   // inisialisasi zustand pas pertama render
   useEffect(() => {
     Promise.resolve().then(() => {
-      initExam(attemptId, initialAnswers);
+      initExam(attemptId, initialAnswers, initialSeq);
+      setIsNative(isNativeApp());
       setIsHydrated(true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,40 +167,57 @@ export default function RuangUjian({
     };
   }, []);
 
-  const handlePelanggaran = async (jenis: string) => {
-    if (isProcessingViolation.current) return;
-    isProcessingViolation.current = true;
-
-    try {
-      const result = await catatPelanggaran(attemptId, jenis);
-      if (result && result.success) {
-        setViolationData({
-          jenis,
-          count: result.violationCount as number,
-          isKicked: result.isKicked as boolean,
-        });
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setTimeout(() => {
-        isProcessingViolation.current = false;
-      }, 2000);
-    }
-  };
-
-  // anti cheat
+  // Cegah tab ditutup tidak sengaja saat masih ada jawaban yang belum terkirim
   useEffect(() => {
-    const validasiStatusSiswa = async () => {
-      const res = await cekStatusAttempt(attemptId);
-      if (
-        res.success &&
-        (res.status === "CHEATED" || res.status === "SUBMITTED")
-      ) {
-        router.replace("/siswa?error=pelanggaran");
+    const warn = (e: BeforeUnloadEvent) => {
+      const s = useExamStore.getState();
+      if (s.seq > s.syncedSeq || s.violations.length > 0 || s.submitRequested) {
+        e.preventDefault();
       }
     };
-    validasiStatusSiswa();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, []);
+
+  // Web: dibatasi 1 pelanggaran per 2 detik (1 kejadian sering memicu banyak event)
+  const handlePelanggaran = (jenis: string) => {
+    if (isProcessingViolation.current) return;
+    isProcessingViolation.current = true;
+    setTimeout(() => {
+      isProcessingViolation.current = false;
+    }, 2000);
+    sync.reportViolation(jenis, "web");
+  };
+
+  // Pelanggaran dari aplikasi Android: TIDAK di-throttle (tiap kejadian
+  // penting); antrean dikirim berurutan oleh mesin sinkronisasi.
+  const handleNativeViolation = (jenis: string) => {
+    sync.reportViolation(jenis, "android");
+  };
+
+  // semua proteksi sisi web (copy/paste, devtools, screenshot, pindah tab, dll.)
+  useAntiCheat({
+    onViolation: handlePelanggaran,
+    enabled: !isSubmitting,
+    watchFocus: !isNative,
+  });
+
+  // status sesi + blok tombol back
+  useEffect(() => {
+    examCall<{ success: boolean; status?: string }>(
+      { type: "status", attemptId },
+      10_000,
+    )
+      .then((res) => {
+        if (res.success && res.status === "CHEATED") {
+          router.replace("/siswa?error=pelanggaran");
+        } else if (res.success && res.status === "SUBMITTED") {
+          router.replace("/siswa?error=sudah_selesai");
+        }
+      })
+      .catch(() => {
+        // offline saat membuka: abaikan, mesin sinkronisasi akan menyusul
+      });
 
     window.history.pushState(null, "", window.location.href);
     const handlePopState = () => {
@@ -156,49 +226,37 @@ export default function RuangUjian({
     };
     window.addEventListener("popstate", handlePopState);
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        handlePelanggaran("Meninggalkan tab browser / Membuka aplikasi lain");
-      }
-    };
-
-    const handleWindowBlur = () => {
-      handlePelanggaran("Meninggalkan tab browser");
-    };
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      toast.warning("Klik kanan dinonaktifkan!");
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
-        e.preventDefault();
-        handlePelanggaran("Mencoba menginspeksi elemen (F12)");
-      }
-      if (
-        e.ctrlKey &&
-        (e.key === "c" || e.key === "v" || e.key === "C" || e.key === "V")
-      ) {
-        e.preventDefault();
-        toast.warning("Fitur Copy-Paste dimatikan!");
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("blur", handleWindowBlur);
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyDown);
-
     return () => {
       window.removeEventListener("popstate", handlePopState);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleWindowBlur);
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("keydown", handleKeyDown);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // pelanggaran yang dideteksi aplikasi Android (fokus hilang, split-screen,
+  // screenshot, dll.)
+  useEffect(() => {
+    if (!isNative) return;
+
+    const onNativeViolation = (e: Event) => {
+      const jenis = (e as CustomEvent<{ jenis?: string }>).detail?.jenis;
+      if (jenis) handleNativeViolation(String(jenis));
+    };
+    window.addEventListener("ujiin-native-violation", onNativeViolation);
+
+    try {
+      window.UjiinNative?.examReady?.();
+      const pending = JSON.parse(window.UjiinNative?.drainViolations?.() ?? "[]");
+      if (Array.isArray(pending)) {
+        pending.forEach((j) => handleNativeViolation(String(j)));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+    return () =>
+      window.removeEventListener("ujiin-native-violation", onNativeViolation);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNative]);
 
   const handleSelesaiUjian = (isAutoSubmit = false) => {
     if (!isAutoSubmit) {
@@ -208,55 +266,102 @@ export default function RuangUjian({
     executeSubmit();
   };
 
-  const executeSubmit = async () => {
+  // Submit = "permintaan" yang ditulis ke HP lalu dikirim berulang sampai server
+  // menerima (jaringan jelek tidak membuat siswa tertahan atau jawaban hilang).
+  const executeSubmit = () => {
     setShowConfirmModal(false);
-    setIsSubmitting(true);
-    const toastId = toast.loading("Sedang mengumpulkan jawaban...");
-
-    try {
-      const res = await submitUjianSiswa(attemptId, answers);
-      if (res.success) {
-        toast.success(res.message, { id: toastId });
-        clearExam();
-        router.push("/siswa");
-      } else {
-        throw new Error(res.message);
-      }
-    } catch (error: unknown) {
-      toast.error(
-        error instanceof Error ? error.message : "Terjadi kesalahan!",
-        {
-          id: toastId,
-        },
-      );
-      setIsSubmitting(false);
-    }
+    sync.requestSubmit();
   };
-
-  // timer
   useEffect(() => {
-    if (timeLeft <= 0) {
-      setTimeout(() => handleSelesaiUjian(true), 0);
-      return;
-    }
+    submitRef.current = executeSubmit;
+  });
 
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        const newTime = prevTime - 1;
-        if (newTime <= 0) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          setTimeout(() => handleSelesaiUjian(true), 0);
-          return 0;
-        }
-        return newTime;
-      });
-    }, 1000);
+  // selaraskan jam: selisih jam server vs jam HP saat halaman dimuat
+  useEffect(() => {
+    clockOffsetRef.current = new Date(serverTime).getTime() - Date.now();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // timer berbasis deadline
+  useEffect(() => {
+    const computeLeft = () =>
+      Math.max(
+        0,
+        Math.floor(
+          (deadlineRef.current - (Date.now() + clockOffsetRef.current)) / 1000,
+        ),
+      );
+
+    const tick = () => {
+      const left = computeLeft();
+      setTimeLeft(left);
+      if (left <= 0) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        setTimeout(() => submitRef.current(), 0);
+      }
+    };
+
+    tick();
+    timerRef.current = setInterval(tick, 1000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // heartbeat: sinkron waktu server + deteksi sesi yang ditutup/di-reset guru.
+  // Memakai fetch dengan batas waktu sendiri, jadi tidak ikut tertahan oleh
+  // request lain yang sedang macet.
+  useEffect(() => {
+    let stopped = false;
+
+    const beat = async () => {
+      try {
+        const r = await examCall<HeartbeatRes>(
+          { type: "heartbeat", attemptId },
+          10_000,
+        );
+        if (stopped || !r || !r.success) return;
+
+        syncRef.current.noteContact();
+
+        if (r.status === "CHEATED") {
+          router.replace("/siswa?error=pelanggaran");
+          return;
+        }
+        if (r.status === "SUBMITTED") {
+          router.replace("/siswa?error=sudah_selesai");
+          return;
+        }
+
+        if (r.serverTime && typeof r.remainingSeconds === "number") {
+          const serverNow = new Date(r.serverTime).getTime();
+          clockOffsetRef.current = serverNow - Date.now();
+          deadlineRef.current = serverNow + r.remainingSeconds * 1000;
+          if (r.remainingSeconds <= 0) submitRef.current();
+        }
+
+        // koneksi terbukti hidup: dorong apa pun yang masih tertunda
+        void syncRef.current.flush();
+      } catch (error) {
+        if (error instanceof UnauthorizedError) {
+          syncRef.current.noteContact();
+          toast.error("Sesi login berakhir. Silakan login ulang.");
+          router.replace("/login-siswa");
+        }
+        // selain itu: offline, timer lokal tetap jalan
+      }
+    };
+
+    const interval = setInterval(beat, HEARTBEAT_INTERVAL_MS);
+    window.addEventListener("online", beat);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+      window.removeEventListener("online", beat);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -281,18 +386,7 @@ export default function RuangUjian({
   }, [questions]);
 
   const currentQuestion = sortedQuestions[currentIndex];
-
-  const saveToServer = async (newAnswers: AnswersMap) => {
-    setIsSaving(true);
-    try {
-      await autoSaveJawaban(attemptId, newAnswers);
-    } catch (error) {
-      console.error("Gagal nyimpen ke server, tapi data aman di lokal:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
+  usePreloadQuestionImages(sortedQuestions, currentIndex, isHydrated);
   const handleSelectAnswer = (
     questionId: string,
     value: string,
@@ -314,8 +408,7 @@ export default function RuangUjian({
 
     const updatedAnswers = { ...currentAnswers, [questionId]: newValue };
 
-    updateAnswers(updatedAnswers);
-    saveToServer(updatedAnswers);
+    sync.saveAnswers(updatedAnswers);
   };
 
   const handleSelectMatch = (
@@ -330,8 +423,7 @@ export default function RuangUjian({
 
     const updatedAnswers = { ...currentAnswers, [questionId]: newValue };
 
-    updateAnswers(updatedAnswers);
-    saveToServer(updatedAnswers);
+    sync.saveAnswers(updatedAnswers);
     setActiveLeftMatch(null);
   };
 
@@ -344,17 +436,22 @@ export default function RuangUjian({
 
     const updatedAnswers = { ...currentAnswers, [questionId]: currentMatches };
 
-    updateAnswers(updatedAnswers);
-    saveToServer(updatedAnswers);
+    sync.saveAnswers(updatedAnswers);
   };
 
   if (!isHydrated || !sortedQuestions.length) return null;
 
   const isTimeCritical = timeLeft > 0 && timeLeft <= 300;
+  const Guard: React.ComponentType<GuardProps> = isNative
+    ? PassThroughGuard
+    : FullscreenGuard;
 
   return (
-    <FullscreenGuard attemptId={attemptId}>
-      <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col h-screen overflow-hidden">
+    <Guard attemptId={attemptId} onViolation={handlePelanggaran}>
+      <div
+        className="fixed inset-0 z-50 bg-gray-50 flex flex-col h-screen overflow-hidden select-none [&_textarea]:select-text"
+        style={{ WebkitTouchCallout: "none" }}
+      >
         <div className="h-16 bg-white border-b border-gray-200 px-4 md:px-6 flex items-center justify-between shadow-sm shrink-0 z-10">
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex bg-blue-600 text-white p-2 rounded-lg">
@@ -366,9 +463,14 @@ export default function RuangUjian({
               </h2>
               <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider flex items-center gap-2">
                 {examName}
-                {isSaving && (
+                {sync.syncState === "saving" && (
                   <span className="text-blue-500 animate-pulse">
                     Menyimpan...
+                  </span>
+                )}
+                {sync.syncState === "pending" && (
+                  <span className="text-amber-600">
+                    Tersimpan di HP · menunggu sinyal
                   </span>
                 )}
               </p>
@@ -378,15 +480,31 @@ export default function RuangUjian({
           <div className="flex items-center gap-4">
             <div
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs tracking-wide transition-colors shadow-sm ${
-                isOnline
-                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                  : "bg-red-100 text-red-600 border border-red-200 animate-pulse"
+                !isOnline
+                  ? "bg-red-100 text-red-600 border border-red-200 animate-pulse"
+                  : sync.connection === "unstable"
+                    ? "bg-amber-50 text-amber-700 border border-amber-200"
+                    : "bg-emerald-50 text-emerald-600 border border-emerald-100"
               }`}
-              title={isOnline ? "Internet Stabil" : "Koneksi Terputus"}
+              title={
+                !isOnline
+                  ? "Koneksi Terputus"
+                  : sync.connection === "unstable"
+                    ? "Jaringan tidak stabil"
+                    : "Internet Stabil"
+              }
             >
-              {isOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
+              {isOnline && sync.connection === "online" ? (
+                <Wifi size={16} />
+              ) : (
+                <WifiOff size={16} />
+              )}
               <span className="hidden sm:inline">
-                {isOnline ? "Online" : "Offline"}
+                {!isOnline
+                  ? "Offline"
+                  : sync.connection === "unstable"
+                    ? "Tidak stabil"
+                    : "Online"}
               </span>
             </div>
 
@@ -632,20 +750,21 @@ export default function RuangUjian({
                     <textarea
                       className="w-full p-4 sm:p-6 bg-gray-50 border-2 border-gray-100 rounded-2xl sm:rounded-3xl text-sm focus:bg-white focus:border-blue-500 transition-all outline-none min-h-37.5 sm:min-h-50"
                       placeholder="Ketik jawaban Anda..."
-                      onBlur={(e) => {
-                        const updatedAnswers = {
-                          ...answers,
-                          [currentQuestion.id]: e.target.value,
-                        };
-                        updateAnswers(updatedAnswers);
-                        saveToServer(updatedAnswers);
+                      onPaste={(e) => e.preventDefault()}
+                      onDrop={(e) => e.preventDefault()}
+                      spellCheck={false}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      onBlur={() => {
+                        void sync.flush();
                       }}
                       onChange={(e) => {
                         const updatedAnswers = {
                           ...answers,
                           [currentQuestion.id]: e.target.value,
                         };
-                        updateAnswers(updatedAnswers);
+                        // esai: tunda kirim 1,5 detik setelah berhenti mengetik
+                        sync.saveAnswers(updatedAnswers, 1500);
                       }}
                       value={(answers[currentQuestion.id] as string) || ""}
                     />
@@ -794,6 +913,25 @@ export default function RuangUjian({
           </div>
         )}
 
+        {isSubmitting && (
+          <div className="fixed inset-0 z-150 flex items-center justify-center bg-white/90 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl border border-gray-100">
+              <Loader2
+                size={40}
+                className="mx-auto mb-4 animate-spin text-blue-600"
+              />
+              <h2 className="text-lg font-bold text-gray-900 mb-2">
+                Mengumpulkan jawaban...
+              </h2>
+              <p className="text-sm text-gray-500">
+                {sync.connection === "unstable" || !isOnline
+                  ? "Jaringan sedang tidak stabil. Jawaban Anda aman di HP ini dan akan dikirim ulang otomatis. Jangan tutup halaman ini."
+                  : "Mohon tunggu sebentar."}
+              </p>
+            </div>
+          </div>
+        )}
+
         {showConfirmModal && (
           <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md animate-in fade-in zoom-in-95 rounded-3xl bg-white p-6 shadow-2xl text-center">
@@ -879,6 +1017,6 @@ export default function RuangUjian({
           </div>
         )}
       </div>
-    </FullscreenGuard>
+    </Guard>
   );
 }

@@ -8,6 +8,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -49,6 +50,8 @@ vi.mock("next-auth/providers/credentials", () => {
 // Sekarang aman meng-import file utama lu tanpa takut kehilangan instansi fungsi asli
 import "@/lib/auth";
 import { Role } from "@prisma/client";
+
+const sandiUji = (n: string) => `uji-sandi-${n}`; // data palsu khusus tes
 
 // 2. KONTRAK STRUKTUR INTERFACE (ZERO ANY)
 
@@ -130,6 +133,29 @@ describe("Pengujian Konfigurasi Otentikasi - Auth.js (Single File Hoisted Mode)"
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
         where: { username: "pian_palsu" },
       });
+      // lalu dicoba lagi tanpa membedakan huruf besar/kecil
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
+        where: { username: { equals: "pian_palsu", mode: "insensitive" } },
+      });
+    });
+
+    test("Username yang diketik dengan huruf besar tetap ditemukan (data disimpan huruf kecil)", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue({
+        id: "usr-1",
+        name: "Eko",
+        username: "ekoguru",
+        password: "$2a$10$hash",
+        role: "GURU" as Role,
+      } as unknown as MockUserFindUnique);
+      (vi.mocked(bcryptjs.compare) as Mock).mockResolvedValue(true);
+
+      const hasil = await authorizeFn({
+        username: "  EkoGuru ",
+        password: sandiUji("a"),
+      });
+
+      expect(hasil).toMatchObject({ id: "usr-1", role: "GURU" });
     });
 
     test("Harus return null jika kata sandi (password) salah saat dicocokkan via Bcrypt", async () => {
@@ -232,6 +258,44 @@ describe("Pengujian Konfigurasi Otentikasi - Auth.js (Single File Hoisted Mode)"
           role: "ADMIN",
         });
       }
+    });
+
+    test("jwt() sesi yang sudah ada: role & nama dibaca ulang dari database (role baru langsung berlaku)", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        name: "Ruspian",
+        username: "ruspian",
+        role: "GURU",
+      } as unknown as MockUserFindUnique);
+
+      const hasil = await jwtCallback({
+        token: { id: "usr-pian", role: "ADMIN" },
+      });
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: "usr-pian" },
+        select: { name: true, username: true, role: true },
+      });
+      expect(hasil).toMatchObject({ id: "usr-pian", role: "GURU" });
+    });
+
+    test("jwt() akun sudah dihapus: sesi dibatalkan (null)", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+      const hasil = await jwtCallback({
+        token: { id: "usr-hantu", role: "ADMIN" },
+      });
+
+      expect(hasil).toBeNull();
+    });
+
+    test("jwt() database error: pengguna tidak dikeluarkan (token dipakai apa adanya)", async () => {
+      vi.mocked(prisma.user.findUnique).mockRejectedValue(new Error("db down"));
+
+      const hasil = await jwtCallback({
+        token: { id: "usr-pian", role: "ADMIN" },
+      });
+
+      expect(hasil).toMatchObject({ id: "usr-pian", role: "ADMIN" });
     });
   });
 });

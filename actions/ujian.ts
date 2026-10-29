@@ -2,76 +2,42 @@
 
 import { generateRandomPassword } from "@/lib/generateRandomPassword";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { getStudentAuth } from "@/lib/getStudentAuth";
 import { VerifikasiTokenResult } from "@/types/ruang-ujian";
 import { AttemptStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import {
+  TOKEN_MAX_FAILURES,
+  TOKEN_WINDOW_MS,
+  isRateLimited,
+  recordFailure,
+  resetRateLimit,
+} from "@/lib/rate-limit";
 
-export async function masukUjian(nisn: string, token: string) {
+/**
+ * Ambil pengerjaan siswa, atau buat bila belum ada. Aman terhadap klik ganda /
+ * request ulang karena jaringan lambat: bila dua request membuat bersamaan,
+ * yang kalah (error unik P2002) cukup membaca yang sudah dibuat pemenang.
+ */
+async function getOrCreateAttempt(studentId: string, examId: string) {
+  const existing = await prisma.attempt.findFirst({
+    where: { studentId, examId },
+  });
+  if (existing) return existing;
+
   try {
-    const student = await prisma.student.findUnique({
-      where: { nisn },
-      include: { class: true },
+    return await prisma.attempt.create({
+      data: { studentId, examId, status: AttemptStatus.ONGOING },
     });
-
-    if (!student) {
-      return { success: false, message: "NISN tidak terdaftar di sistem!" };
-    }
-
-    const exam = await prisma.exam.findFirst({
-      where: {
-        token: token.toUpperCase(),
-        status: "PUBLISHED",
-      },
-      include: { classes: true },
-    });
-
-    if (!exam) {
-      return {
-        success: false,
-        message: "Token tidak valid atau ujian belum diaktifkan!",
-      };
-    }
-
-    const isClassAllowed = exam.classes.some((c) => c.id === student.classId);
-    if (!isClassAllowed) {
-      return { success: false, message: "Ujian ini bukan untuk kelas Anda!" };
-    }
-
-    const now = new Date();
-    if (exam.startTime && now < exam.startTime)
-      return { success: false, message: "Ujian belum dimulai!" };
-    if (exam.endTime && now > exam.endTime)
-      return { success: false, message: "Waktu ujian sudah berakhir!" };
-
-    let attempt = await prisma.attempt.findFirst({
-      where: {
-        studentId: student.id,
-        examId: exam.id,
-      },
-    });
-
-    if (attempt?.status === "SUBMITTED") {
-      return { success: false, message: "Anda sudah menyelesaikan ujian ini!" };
-    }
-
-    if (!attempt) {
-      attempt = await prisma.attempt.create({
-        data: {
-          studentId: student.id,
-          examId: exam.id,
-          status: "ONGOING",
-        },
-      });
-    }
-
-    return {
-      success: true,
-      message: "Berhasil masuk! Mengalihkan ke ruang ujian...",
-      attemptId: attempt.id,
-    };
   } catch (error) {
-    console.error("Error validasi ujian:", error);
-    return { success: false, message: "Terjadi kesalahan pada server." };
+    if ((error as { code?: string })?.code === "P2002") {
+      const winner = await prisma.attempt.findFirst({
+        where: { studentId, examId },
+      });
+      if (winner) return winner;
+    }
+    throw error;
   }
 }
 
@@ -81,11 +47,23 @@ export async function verifikasiTokenUjian(
   tokenInput: string,
 ): Promise<VerifikasiTokenResult> {
   try {
+    // Identitas siswa diambil dari sesi login, BUKAN dari parameter client.
+    // Sebelumnya studentId dipercaya apa adanya sehingga siswa bisa membuka
+    // sesi atas nama siswa lain.
+    const loggedIn = await getStudentAuth();
+    if (!loggedIn || loggedIn.id !== studentId) {
+      return { success: false, message: "Sesi login tidak valid. Silakan login ulang." };
+    }
+
     // Cari Ujia yang statusnya PUBLISHED
     const exam = await prisma.exam.findUnique({
       where: { id: examId },
       include: { classes: true },
     });
+
+    if (exam && !exam.classes.some((c) => c.id === loggedIn.classId)) {
+      return { success: false, message: "Ujian ini bukan untuk kelas Anda!" };
+    }
 
     if (!exam || exam.status !== "PUBLISHED") {
       return {
@@ -94,12 +72,34 @@ export async function verifikasiTokenUjian(
       };
     }
 
-    // Cocokkan token
-    if (!exam.token || exam.token !== tokenInput.toUpperCase().trim()) {
-      return {
-        success: false,
-        message: "Token salah!",
-      };
+    // Siswa yang SUDAH punya sesi berjalan (mis. HP mati / sinyal putus lalu
+    // masuk lagi) tidak perlu token ulang: token sudah pernah dibuktikan, dan
+    // guru bisa saja mengganti token di tengah ujian. Tanpa ini siswa yang
+    // terputus malah tidak bisa kembali mengerjakan.
+    const existingAttempt = await prisma.attempt.findFirst({
+      where: { studentId: loggedIn.id, examId },
+      select: { status: true },
+    });
+    const isResuming = existingAttempt?.status === AttemptStatus.ONGOING;
+
+    if (!isResuming) {
+      // Cocokkan token (dibatasi agar tidak bisa ditebak berulang-ulang)
+      const tokenKey = `token-ujian:${loggedIn.id}`;
+      if (await isRateLimited(tokenKey, TOKEN_MAX_FAILURES)) {
+        return {
+          success: false,
+          message: "Terlalu banyak token salah. Tunggu 5 menit lalu coba lagi.",
+        };
+      }
+      const tokenClean = String(tokenInput ?? "").toUpperCase().trim();
+      if (!exam.token || exam.token !== tokenClean) {
+        await recordFailure(tokenKey, TOKEN_WINDOW_MS);
+        return {
+          success: false,
+          message: "Token salah!",
+        };
+      }
+      await resetRateLimit(tokenKey);
     }
 
     // Validasi Waktu
@@ -114,31 +114,18 @@ export async function verifikasiTokenUjian(
       };
     }
 
-    //  Buat Pengerjaan
-    let attempt = await prisma.attempt.findFirst({
-      where: { studentId, examId },
-    });
+    // Ambil / buat pengerjaan
+    const attempt = await getOrCreateAttempt(loggedIn.id, examId);
 
-    if (attempt?.status === AttemptStatus.SUBMITTED) {
+    if (attempt.status === AttemptStatus.SUBMITTED) {
       return { success: false, message: "Anda sudah menyelesaikan ujian ini!" };
     }
 
-    if (attempt?.status === AttemptStatus.CHEATED) {
+    if (attempt.status === AttemptStatus.CHEATED) {
       return {
         success: false,
         message: "Akses diblokir karena indikasi kecurangan!",
       };
-    }
-
-    // Kalau belum ada pengerjaan sama sekali, buat baru
-    if (!attempt) {
-      attempt = await prisma.attempt.create({
-        data: {
-          studentId,
-          examId,
-          status: AttemptStatus.ONGOING,
-        },
-      });
     }
 
     return {
@@ -153,6 +140,15 @@ export async function verifikasiTokenUjian(
 }
 
 export async function generateExamToken(examId: string) {
+  // Sebelumnya tanpa pengecekan login: siapa pun bisa me-reset token ujian.
+  const session = await auth();
+  if (
+    !session?.user ||
+    (session.user.role !== "ADMIN" && session.user.role !== "GURU")
+  ) {
+    return { success: false, message: "Akses ditolak!" };
+  }
+
   try {
     const newToken = generateRandomPassword();
 

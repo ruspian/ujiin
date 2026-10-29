@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { finalizeExpiredAttempts } from "@/lib/finalize-attempts";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -23,6 +24,8 @@ export default async function DaftarPesertaKoreksiPage({
   const resolvedParams = await params;
   const subjectId = resolvedParams.subjectId;
   const examId = resolvedParams.examId;
+
+  await finalizeExpiredAttempts({ examIds: [examId] });
 
   const exam = await prisma.exam.findUnique({
     where: { id: examId },
