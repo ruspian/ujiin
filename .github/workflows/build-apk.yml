@@ -34,7 +34,13 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      # Runner ubuntu-latest sudah membawa Android SDK (ANDROID_HOME). Action
+      # android-actions/setup-android gagal di sini ("Failed to find package
+      # 'tools'"), jadi cukup pasang platform & build-tools yang dibutuhkan.
+      - name: Siapkan Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
