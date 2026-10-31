@@ -14,6 +14,11 @@ on:
         required: false
         default: "Ujiin Siswa"
         type: string
+      release_tag:
+        description: "Tag rilis (mis. v1.0.0) untuk menerbitkan APK ke GitHub Releases. Kosongkan jika tidak perlu."
+        required: false
+        default: ""
+        type: string
       strict_device_check:
         description: "Blokir ujian jika USB debugging aktif / HP di-root"
         required: false
@@ -21,7 +26,7 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write # perlu untuk membuat GitHub Release
 
 jobs:
   build:
@@ -46,9 +51,22 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      # Opsional: tanda tangan tetap bila secrets keystore diisi
+      - name: Siapkan keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/ujiin.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/ujiin.jks" >> "$GITHUB_ENV"
+          fi
+
       - name: Build APK release
         working-directory: android
         env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           APP_URL: ${{ inputs.app_url }}
           APP_NAME: ${{ inputs.app_name }}
           STRICT: ${{ inputs.strict_device_check }}
@@ -62,3 +80,19 @@ jobs:
         with:
           name: ujiin-apk
           path: android/app/build/outputs/apk/release/*.apk
+
+      - name: Terbitkan ke GitHub Releases
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | head -n 1)
+          cp "$APK" "ujiin-siswa-${TAG}.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "ujiin-siswa-${TAG}.apk" --clobber
+          else
+            gh release create "$TAG" "ujiin-siswa-${TAG}.apk" \
+              --title "Ujiin Siswa ${TAG}" \
+              --notes "Aplikasi Android Ujiin untuk siswa. Unduh file .apk lalu pasang (izinkan 'sumber tidak dikenal'). Panduan: docs/PANDUAN-UJIAN-HP.md"
+          fi

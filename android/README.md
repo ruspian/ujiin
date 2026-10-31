@@ -11,6 +11,27 @@ login siswa, dashboard siswa, dan ruang ujian. Halaman guru/admin diblokir di ap
 3. Isi `app_url` dengan alamat website Ujiin (wajib `https://`), lalu jalankan.
 4. Setelah selesai, unduh `ujiin-apk` dari bagian Artifacts, ekstrak, dan install `.apk`.
 
+### Publikasi otomatis ke GitHub Releases
+
+Isi `release_tag` (mis. `v1.0.0`) saat menjalankan workflow: APK dibuat lalu dipasang
+sebagai aset pada halaman **Releases** repositori (tag dibuat otomatis; bila tag sudah ada,
+APK-nya diganti). Siswa/guru cukup mengunduh dari sana. Kosongkan `release_tag` bila
+hanya ingin artefak sementara.
+
+### Tanda tangan (opsional, disarankan)
+
+Tanpa keystore, APK memakai kunci debug yang berbeda tiap build, jadi memasang versi baru
+di atas yang lama gagal (uninstall dulu). Agar pembaruan mulus buat keystore sekali:
+
+```bash
+keytool -genkeypair -v -keystore ujiin.jks -alias ujiin -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 ujiin.jks   # salin hasilnya
+```
+
+Lalu di GitHub: **Settings → Secrets and variables → Actions**, buat `KEYSTORE_BASE64`
+(hasil base64), `KEYSTORE_PASSWORD`, `KEY_ALIAS` (mis. `ujiin`), `KEY_PASSWORD`.
+Simpan file `.jks` di tempat aman: bila hilang, pembaruan tidak bisa lagi menimpa aplikasi lama.
+
 ## Cara build (Android Studio / lokal)
 
 Butuh JDK 17 dan Android SDK 34.

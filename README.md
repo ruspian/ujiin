@@ -15,11 +15,14 @@
 - **Manajemen Jenis Ujian Dinamis:** Fleksibilitas dalam membuat dan mengategorikan berbagai jenis ujian sesuai kebutuhan akademik sekolah (misalnya: Ulangan Harian, Penilaian Tengah Semester, hingga Ujian Sekolah).
 - **Role-Based Access Control:** Sistem manajemen hak akses terstruktur yang memisahkan otorisasi dan _dashboard_ untuk **Admin**, **Guru** dan **Siswa**.
 - **Dashboard Analitik & Rekap Nilai Otomatis:** Visualisasi data dan rekapitulasi nilai yang dikalkulasi secara _real-time_ setelah ujian selesai, menghemat waktu evaluasi guru.
-- **Fitur Anti-Cheat:** Mekanisme keamanan bawaan untuk meminimalisir kecurangan (seperti pindah tab atau _copy-paste_) saat siswa mengerjakan ujian.
+- **Fitur Anti-Cheat Berlapis:** Layar penuh wajib (ruang ujian tersembunyi seketika bila siswa keluar), deteksi pindah tab/aplikasi, dan pencatatan pelanggaran di **server**. Pelanggaran ke-3 otomatis mengeluarkan siswa (status `CHEATED`).
+- **Mode Semi Daring (Tahan Jaringan Jelek):** Jawaban disimpan lebih dulu di perangkat siswa lalu dikirim ke server di latar belakang dengan percobaan ulang otomatis. Sinyal putus tidak membuat jawaban hilang, dan siswa bisa melanjutkan ujian setelah halaman ter-refresh tanpa memasukkan token lagi. Gambar soal dimuat di muka (_preload_).
+- **Aplikasi Android Khusus Siswa (APK):** Kunci layar, blokir notifikasi, dan anti-screenshot untuk siswa yang ujian dari HP. Lihat bagian [Aplikasi Android](#-aplikasi-android-ujiin-siswa).
+- **Panel Pengawas Langsung:** Status koneksi (Online/Terputus), jumlah pelanggaran, dan siswa bermasalah diurutkan paling atas.
 - **Manajemen Data Massal:** Mendukung fitur _Import_ data siswa dan soal langsung dari file Excel untuk efisiensi waktu operasional sekolah.
 - **Export Soal ke Word:** Memudahkan pengarsipan, _review_, atau pencetakan soal ujian fisik dengan fitur _Export_ langsung ke format dokumen Word.
 - **Comprehensive Automated Testing:** Memiliki cakupan pengujian yang menyeluruh untuk menjamin aplikasi 100% _production-ready_:
-  - **Vitest:** Menjalankan 275+ _test cases_ (Unit & Component Testing) dalam waktu kurang dari 69 detik, memvalidasi form, logika aplikasi, penanganan error database, hingga Server Actions.
+  - **Vitest:** Menjalankan 330+ _test cases_ (Unit & Component Testing), memvalidasi form, logika aplikasi, penanganan error database, hingga Server Actions.
   - **k6:** Diuji secara ekstrem (_Stress/Load Testing_) untuk menangani lonjakan hingga 200 _Virtual Users_ secara bersamaan tanpa _downtime_.
 - **Strict Type Safety:** Kode dirancang dengan arsitektur TypeScript yang sangat ketat untuk memastikan struktur data konsisten dan meminimalisir _runtime errors_.
 
@@ -51,7 +54,7 @@ Aplikasi Ujiin dirancang dengan alur yang intuitif untuk meminimalisir kebingung
 
 - **Login Peserta:** Masuk menggunakan **NISN** dan kata sandi yang telah diberikan oleh pihak sekolah.
 - **Masuk Sesi Ujian:** Masukkan **Token Ujian** yang diberikan oleh pengawas di halaman _dashboard_. Sistem akan secara otomatis mengarahkan Anda ke mata pelajaran yang sedang diujikan pada jam tersebut sesuai dengan jadwal kelas yang telah diatur oleh Admin.
-- **Pengerjaan Soal:** Jawab soal dengan teliti. **Penting:** Dilarang membuka atau berpindah _tab_ browser lain, karena sistem _Anti-Cheat_ akan mencatat pelanggaran tersebut.
+- **Pengerjaan Soal:** Jawab soal dengan teliti. **Penting:** Ujian berjalan dalam layar penuh. Dilarang keluar dari layar penuh, berpindah _tab_ atau aplikasi lain; setiap pelanggaran dicatat dan **pelanggaran ke-3 otomatis mengeluarkan Anda dari ujian**. Jika sinyal putus, tetap kerjakan: jawaban tersimpan di perangkat dan dikirim otomatis saat sinyal kembali.
 - **Penyelesaian:** Pastikan semua soal telah terjawab. Tekan tombol **Kumpulkan** (atau ujian akan tersubmit otomatis jika _timer_ habis). Nilai akan langsung tersimpan di sistem.
 
 ---
@@ -192,6 +195,24 @@ Format ini digunakan untuk jenis soal pernyataan di mana siswa hanya perlu memil
 - **`Kunci_Jawaban`:** Wajib diisi dengan kata **BENAR** atau **SALAH** (gunakan huruf kapital) sesuai dengan fakta dari pernyataan di kolom soal.
 - **`Skor`:** Wajib diisi dengan angka bulat yang mewakili bobot nilai (Contoh: `2`, `5`).
 
+## 📱 Aplikasi Android (Ujiin Siswa)
+
+Aplikasi khusus siswa (WebView ke website Ujiin yang sudah online). Hanya halaman **login siswa, dashboard siswa, dan ruang ujian** yang bisa dibuka; guru/admin tetap memakai browser. Panduan lengkap build & pasang ada di [`android/README.md`](android/README.md), panduan siswa/pengawas di [`docs/PANDUAN-UJIAN-HP.md`](docs/PANDUAN-UJIAN-HP.md).
+
+**Pengamanan di aplikasi:**
+
+- **Kunci layar (screen pinning):** Home/Recents diblokir. Melepas kunci terdeteksi, dicatat sebagai pelanggaran, dan kunci dipasang ulang.
+- **Notifikasi diblokir** (mode Jangan Ganggu) selama ujian, sehingga pesan WhatsApp/SMS tidak muncul. Pengaturan semula dikembalikan setelah ujian.
+- **Gerbang ujian:** soal baru tampil setelah izin Jangan Ganggu dan kunci layar aktif.
+- Screenshot/perekam layar menghasilkan layar hitam; sentuhan saat ada overlay diabaikan; WebView tidak bisa diinspeksi.
+- Mode kiosk penuh (Device Owner) tersedia untuk HP/tablet milik sekolah; HP pribadi siswa memakai screen pinning biasa.
+
+**Cara mendapatkan APK:** unduh dari halaman [Releases](../../releases), atau bangun sendiri lewat **Actions → Build APK Ujiin → Run workflow** (isi `app_url` dengan alamat website Ujiin; isi `release_tag`, mis. `v1.0.0`, agar APK otomatis dipublikasikan ke Releases).
+
+> **Catatan:** APK yang dibangun tanpa _keystore_ ditandatangani dengan kunci debug yang berbeda di tiap build, sehingga pembaruan di atas versi lama mengharuskan aplikasi lama di-uninstall dulu. Untuk pembaruan mulus, isi _secrets_ `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` di pengaturan repositori (lihat `android/README.md`). Opsional: set env `EXAM_REQUIRE_APP=true` di server agar ujian hanya bisa dibuka lewat aplikasi (memeriksa User-Agent, bukan jaminan mutlak).
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Framework:** Next.js (App Router, Server Actions)
@@ -233,7 +254,12 @@ cp .env.example .env
 Contoh .env:
 
 ```env
-AUTH_SECRET=secret
+# WAJIB di production: acak & panjang (mis. `openssl rand -base64 32`).
+# Dipakai juga untuk menandatangani sesi login siswa.
+AUTH_SECRET=ganti-dengan-string-acak-panjang
+
+# Opsional: wajibkan ujian dikerjakan lewat aplikasi Android
+# EXAM_REQUIRE_APP=true
 
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=YOUR_CLOUDINARY_CLOUD_NAME
 NEXT_PUBLIC_CLOUDINARY_API_KEY=YOUR_CLOUDINARY_API_KEY
@@ -287,6 +313,8 @@ Untuk menjalankan ulang simulasi k6 di mesin lokal:
     k6 run testing/load-testing/login-stress.ts
 
 ## ☁️ Panduan Deployment (Vercel / Serverless)
+
+> Setelah update versi, jalankan `npm run build` (sudah termasuk migrasi database). Bila `AUTH_SECRET` diganti, semua siswa harus login ulang.
 
 Aplikasi ini siap di-deploy ke environment serverless seperti Vercel. Untuk menjaga performa saat ujian serentak, harap penuhi standar berikut:
 
