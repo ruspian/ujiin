@@ -11,9 +11,12 @@ import {
   ShieldAlert,
   Clock,
   UserX,
+  WifiOff,
 } from "lucide-react";
 import AutoRefresh from "@/components/layout/AutoRefresh";
 import { resetSesiSiswa } from "@/actions/monitoring";
+
+const currentTimeMs = () => Date.now();
 
 export default async function DetailMonitoringPage({
   params,
@@ -59,13 +62,40 @@ export default async function DetailMonitoringPage({
     .flatMap((c) => c.students)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const studentStatuses = allStudents.map((student) => {
-    const attempt = exam.attempts.find((a) => a.studentId === student.id);
-    return {
-      student,
-      attempt: attempt || null,
-    };
+  // Heartbeat siswa tiap 15 detik: lewat 45 detik tanpa kabar = terputus
+  const nowMs = currentTimeMs(); // server component: dihitung per permintaan
+  const OFFLINE_AFTER_MS = 45_000;
+
+  const rows = allStudents.map((student) => {
+    const attempt = exam.attempts.find((a) => a.studentId === student.id) ?? null;
+    const lastSeenMs = attempt?.lastSeenAt?.getTime() ?? null;
+    const isOngoing = attempt?.status === "ONGOING";
+    const silentSec =
+      isOngoing && lastSeenMs !== null
+        ? Math.max(0, Math.floor((nowMs - lastSeenMs) / 1000))
+        : null;
+    const isOffline =
+      isOngoing &&
+      (lastSeenMs === null || nowMs - lastSeenMs > OFFLINE_AFTER_MS);
+    return { student, attempt, isOngoing, isOffline, silentSec };
   });
+
+  // Siswa yang perlu perhatian pengawas tampil paling atas
+  const priority = (r: (typeof rows)[number]) => {
+    if (r.attempt?.status === "CHEATED") return 1;
+    if (r.isOngoing && r.isOffline) return 0;
+    if (r.isOngoing && (r.attempt?.violationCount ?? 0) > 0) return 2;
+    if (r.isOngoing) return 3;
+    if (!r.attempt) return 4;
+    return 5;
+  };
+  const studentStatuses = [...rows].sort(
+    (a, b) =>
+      priority(a) - priority(b) ||
+      (b.attempt?.violationCount ?? 0) - (a.attempt?.violationCount ?? 0) ||
+      a.student.name.localeCompare(b.student.name),
+  );
+  const terputus = rows.filter((r) => r.isOffline).length;
 
   //  Statistik
   const totalPeserta = allStudents.length;
@@ -114,7 +144,7 @@ export default async function DetailMonitoringPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center gap-4 shadow-sm">
           <div className="w-12 h-12 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center shrink-0">
             <UserX size={24} />
@@ -161,6 +191,19 @@ export default async function DetailMonitoringPage({
             <p className="text-2xl font-black text-gray-800">{bermasalah}</p>
           </div>
         </div>
+        <div
+          className={`p-5 rounded-2xl border flex items-center gap-4 shadow-sm ${terputus > 0 ? "bg-amber-50 border-amber-300" : "bg-white border-gray-200"}`}
+        >
+          <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+            <WifiOff size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              Terputus
+            </p>
+            <p className="text-2xl font-black text-gray-800">{terputus}</p>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -179,6 +222,7 @@ export default async function DetailMonitoringPage({
                 <th className="px-6 py-4">No</th>
                 <th className="px-6 py-4">Nama Siswa</th>
                 <th className="px-6 py-4">Waktu Mulai</th>
+                <th className="px-6 py-4">Koneksi</th>
                 <th className="px-6 py-4">Pelanggaran</th>
                 <th className="px-6 py-4 text-center">Status Ujian</th>
                 <th className="px-6 py-4 text-right">Opsi</th>
@@ -197,7 +241,7 @@ export default async function DetailMonitoringPage({
                 return (
                 <tr
                   key={row.student.id}
-                  className="hover:bg-gray-50/50 transition-colors"
+                  className={`transition-colors ${row.isOffline ? "bg-amber-50/70" : row.attempt?.status === "CHEATED" ? "bg-red-50/60" : "hover:bg-gray-50/50"}`}
                 >
                   <td className="px-6 py-4 text-xs font-bold text-gray-400">
                     {index + 1}
@@ -219,6 +263,26 @@ export default async function DetailMonitoringPage({
                           second: "2-digit",
                         })
                       : "-"}
+                  </td>
+
+                  <td className="px-6 py-4">
+                    {row.isOngoing ? (
+                      row.isOffline ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-700">
+                          <WifiOff size={14} />
+                          Terputus
+                          {row.silentSec !== null &&
+                            ` ${row.silentSec >= 60 ? `${Math.floor(row.silentSec / 60)} mnt` : `${row.silentSec} dtk`}`}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-600">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                          Online
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-xs text-gray-300 font-bold">-</span>
+                    )}
                   </td>
 
                   <td className="px-6 py-4">

@@ -59,6 +59,7 @@ public class MainActivity extends Activity {
         setContentView(webView);
 
         guard = new ExamGuard(this, webView);
+        guard.restoreNotifications(); // sisa dari ujian yang terputus (app dimatikan paksa)
 
         // Tidak bisa diinspeksi lewat chrome://inspect
         WebView.setWebContentsDebuggingEnabled(false);

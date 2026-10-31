@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Blokir notifikasi (mode Jangan Ganggu) selama ujian; izin diberikan siswa di Pengaturan -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <!-- Android 14+: deteksi screenshot -->
     <uses-permission android:name="android.permission.DETECT_SCREEN_CAPTURE" />
 
