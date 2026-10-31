@@ -28,6 +28,8 @@ import java.util.List;
  *  - Screen pinning (startLockTask): tombol Home/Recents diblokir. Status
  *    pinning dipantau tiap detik: bila siswa melepasnya (Back+Recents) langsung
  *    dicatat sebagai pelanggaran dan pinning dipasang ulang.
+ *  - Bila aplikasi dijadikan Device Owner (KioskAdminReceiver): mode kiosk penuh,
+ *    tanpa dialog dan tanpa jalan keluar bagi siswa
  *  - Sentuhan saat ada jendela lain di atas aplikasi (overlay) diabaikan
  *  - Mode immersive + layar selalu menyala
  *  - Deteksi: kehilangan fokus jendela (notifikasi/overlay), keluar aplikasi,
@@ -161,6 +163,8 @@ final class ExamGuard {
     // ------------------------------------------------------------ screen pinning
 
     private void pinNow() {
+        // Bila Device Owner: izinkan lock task tanpa dialog + matikan Home/Recents/notifikasi
+        KioskAdminReceiver.prepare(activity);
         try {
             activity.startLockTask();
         } catch (Exception ignored) {

@@ -51,10 +51,32 @@ mudah, bukan jaminan mutlak.
 Jalankan migrasi database (sudah termasuk di `npm run build`):
 `prisma/migrations/20261027000000_tambah_essay_scores_dan_last_seen`.
 
+## Mode kiosk (Device Owner) - kunci penuh, khusus HP milik sekolah
+
+Dengan mode ini ujian terkunci tanpa dialog dan siswa tidak bisa keluar lewat
+Back+Recents, Home, atau notifikasi. Aplikasi mendeteksinya otomatis; tanpa ini
+aplikasi tetap jalan dengan screen pinning biasa.
+
+Syarat: HP baru / habis factory reset, belum ada akun Google/akun lain di dalamnya,
+dan USB debugging aktif sementara. Dari komputer yang terhubung ke HP:
+
+```bash
+adb install app-release.apk
+adb shell dpm set-device-owner com.ujiin.exam/.KioskAdminReceiver
+```
+
+Bila berhasil muncul "Success". Setelah itu USB debugging boleh dimatikan.
+Melepas status ini: `adb shell dpm remove-active-admin com.ujiin.exam/.KioskAdminReceiver`
+(atau factory reset). Tidak bisa dipasang di HP pribadi siswa yang sudah dipakai
+karena syarat tanpa akun; pakai HP/tablet sekolah.
+
+Catatan: karena mode ini mengunci HP, pastikan guru tahu cara melepas kunci
+(selesai ujian aplikasi otomatis membuka kunci).
+
 ## Batasan yang perlu diketahui
 
 - Screen pinning tanpa Device Owner tetap menampilkan dialog konfirmasi ke siswa
   sekali, dan siswa yang paham bisa keluar dengan menekan Back + Recents bersamaan.
-  Keluarnya akan terdeteksi dan dihitung sebagai pelanggaran. Kunci penuh tanpa
-  dialog butuh mode kiosk (Device Owner) lewat provisioning HP sekolah.
+  Keluarnya terdeteksi, dihitung pelanggaran, dan kunci dipasang ulang. Untuk kunci
+  penuh tanpa jalan keluar, pakai mode kiosk di bawah.
 - APK belum dites di perangkat nyata. Coba dulu pada 1-2 HP sebelum dipakai ujian.
