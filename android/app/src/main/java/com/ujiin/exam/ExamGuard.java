@@ -1,6 +1,8 @@
 package com.ujiin.exam;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -23,7 +25,10 @@ import java.util.List;
  *
  * Yang dilakukan:
  *  - FLAG_SECURE: screenshot & perekam layar menghasilkan layar hitam
- *  - Screen pinning (startLockTask): tombol Home/Recents diblokir
+ *  - Screen pinning (startLockTask): tombol Home/Recents diblokir. Status
+ *    pinning dipantau tiap detik: bila siswa melepasnya (Back+Recents) langsung
+ *    dicatat sebagai pelanggaran dan pinning dipasang ulang.
+ *  - Sentuhan saat ada jendela lain di atas aplikasi (overlay) diabaikan
  *  - Mode immersive + layar selalu menyala
  *  - Deteksi: kehilangan fokus jendela (notifikasi/overlay), keluar aplikasi,
  *    split-screen, PiP, screenshot (Android 14+)
@@ -33,6 +38,9 @@ final class ExamGuard {
     private static final long GRACE_MS = 4000;       // dialog screen pinning wajar mencuri fokus
     private static final long FOCUS_DEBOUNCE_MS = 450;
     private static final long DEDUPE_MS = 1500;
+    private static final long PIN_POLL_MS = 1000;
+    private static final long PIN_RETRY_MS = 6000;
+    private static final long PIN_NEVER_WARN_MS = 12000;
 
     private final Activity activity;
     private final WebView webView;
@@ -46,6 +54,10 @@ final class ExamGuard {
     private long pausedAt = 0;
     private String lastJenis = "";
     private long lastAt = 0;
+    private boolean everPinned = false;
+    private boolean warnedNoPin = false;
+    private long lastPinRequest = 0;
+    private long enteredAt = 0;
     private Object screenCaptureCallback; // android.app.Activity.ScreenCaptureCallback (API 34)
 
     private final Runnable focusCheck = new Runnable() {
@@ -53,6 +65,15 @@ final class ExamGuard {
             if (active && resumed && !activity.hasWindowFocus()) {
                 report("Aplikasi kehilangan fokus (notifikasi / jendela lain terbuka)");
             }
+        }
+    };
+
+    /** Memantau status screen pinning; dipasang ulang bila dilepas siswa. */
+    private final Runnable pinCheck = new Runnable() {
+        @Override public void run() {
+            if (!active) return;
+            if (resumed) checkPinned();
+            main.postDelayed(this, PIN_POLL_MS);
         }
     };
 
@@ -84,18 +105,24 @@ final class ExamGuard {
             webReady = false;
         }
         active = true;
-        graceUntil = SystemClock.elapsedRealtime() + GRACE_MS;
+        everPinned = false;
+        warnedNoPin = false;
+        enteredAt = SystemClock.elapsedRealtime();
+        graceUntil = enteredAt + GRACE_MS;
 
         Window w = activity.getWindow();
         w.addFlags(WindowManager.LayoutParams.FLAG_SECURE
                 | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemBars();
+        // Bar sistem yang muncul lagi (usap dari tepi layar) langsung disembunyikan
+        activity.getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(
+                visibility -> { if (active) hideSystemBars(); });
+        // Sentuhan saat ada jendela lain menutupi aplikasi diabaikan (anti tapjacking)
+        webView.setFilterTouchesWhenObscured(true);
 
-        try {
-            activity.startLockTask();
-        } catch (Exception ignored) {
-            // beberapa perangkat menolak; deteksi fokus tetap berjalan
-        }
+        pinNow();
+        main.removeCallbacks(pinCheck);
+        main.postDelayed(pinCheck, PIN_POLL_MS);
 
         registerScreenCapture();
 
@@ -109,6 +136,9 @@ final class ExamGuard {
         if (!active) return;
         active = false;
         main.removeCallbacks(focusCheck);
+        main.removeCallbacks(pinCheck);
+        webView.setFilterTouchesWhenObscured(false);
+        activity.getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(null);
 
         unregisterScreenCapture();
         try {
@@ -126,6 +156,58 @@ final class ExamGuard {
             pending.clear();
             webReady = false;
         }
+    }
+
+    // ------------------------------------------------------------ screen pinning
+
+    private void pinNow() {
+        try {
+            activity.startLockTask();
+        } catch (Exception ignored) {
+            // beberapa perangkat menolak; deteksi fokus tetap berjalan
+        }
+    }
+
+    private boolean isPinned() {
+        try {
+            ActivityManager am = (ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE);
+            return am != null
+                    && am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
+        } catch (Throwable t) {
+            return true; // tidak bisa diperiksa: jangan menghukum siswa
+        }
+    }
+
+    private void checkPinned() {
+        long now = SystemClock.elapsedRealtime();
+        if (isPinned()) {
+            everPinned = true;
+            return;
+        }
+        if (everPinned) {
+            // sebelumnya terkunci lalu dilepas = siswa sengaja keluar dari kunci
+            everPinned = false;
+            report("Melepas kunci layar (screen pinning)");
+            pinNow();
+        } else if (now - enteredAt > GRACE_MS) {
+            // belum pernah terkunci: dialog ditolak / tidak didukung perangkat
+            if (now - lastPinRequest > PIN_RETRY_MS) {
+                lastPinRequest = now;
+                pinNow(); // minta lagi; dialog muncul kembali
+            }
+            if (!warnedNoPin && now - enteredAt > PIN_NEVER_WARN_MS) {
+                warnedNoPin = true;
+                android.widget.Toast.makeText(activity,
+                        "Izinkan kunci layar (Mengerti / Start) agar ujian aman.",
+                        android.widget.Toast.LENGTH_LONG).show();
+                report("Kunci layar (screen pinning) tidak diaktifkan");
+            }
+        }
+    }
+
+    /** Tombol Home ditekan / aplikasi akan ditinggalkan. */
+    void onUserLeaveHint() {
+        if (active) report("Menekan tombol Home / berpindah aplikasi");
     }
 
     @SuppressWarnings("deprecation")

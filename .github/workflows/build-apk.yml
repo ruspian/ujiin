@@ -12,7 +12,7 @@ on:
       app_name:
         description: "Nama aplikasi di layar HP"
         required: false
-        default: "Ujiin"
+        default: "Ujiin Siswa"
         type: string
       strict_device_check:
         description: "Blokir ujian jika USB debugging aktif / HP di-root"

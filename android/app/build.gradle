@@ -3,7 +3,7 @@ plugins {
 }
 
 def appUrl = (project.findProperty('ujiinUrl') ?: 'https://GANTI-DENGAN-URL-UJIIN-ANDA').toString().trim()
-def appName = (project.findProperty('ujiinAppName') ?: 'Ujiin').toString()
+def appName = (project.findProperty('ujiinAppName') ?: 'Ujiin Siswa').toString()
 def strict = (project.findProperty('ujiinStrictDeviceCheck') ?: 'true').toString().toBoolean()
 
 if (!appUrl.startsWith('https://')) {

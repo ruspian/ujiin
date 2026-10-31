@@ -1,8 +1,8 @@
 # Ujiin Android (APK)
 
-Aplikasi ini adalah WebView penuh ke website Ujiin yang sudah online. Semua fitur
-web (guru input soal, koreksi nilai, rekap) langsung sama karena memakai server yang sama.
-Yang ditambahkan APK: kunci perangkat saat ujian.
+Aplikasi ini KHUSUS SISWA: WebView ke website Ujiin yang sudah online, hanya untuk
+login siswa, dashboard siswa, dan ruang ujian. Halaman guru/admin diblokir di aplikasi
+(guru dan admin tetap memakai browser). Yang ditambahkan APK: kunci perangkat saat ujian.
 
 ## Cara build (paling mudah: GitHub Actions)
 
@@ -26,7 +26,10 @@ Opsi lain: `-PujiinAppName="CBT Sekolah"`, `-PujiinStrictDeviceCheck=false`.
 ## Pengamanan saat ujian (URL `/ujian/...`)
 
 - Screenshot dan perekam layar menghasilkan layar hitam (FLAG_SECURE).
-- Screen pinning: tombol Home/Recents diblokir. Tombol Back dimatikan.
+- Screen pinning: tombol Home/Recents diblokir. Tombol Back dimatikan. Status pinning
+  dicek tiap detik; bila dilepas siswa (Back+Recents) dicatat sebagai pelanggaran dan
+  dipasang ulang. Bila siswa menolak dialog pinning, diminta lagi dan dicatat.
+- Sentuhan saat ada overlay di atas aplikasi diabaikan; bar sistem langsung disembunyikan lagi.
 - Layar selalu menyala dan mode penuh (immersive).
 - Terdeteksi dan dicatat sebagai pelanggaran: keluar aplikasi, notifikasi/overlay
   yang mencuri fokus, split-screen, PiP, screenshot (Android 14+).
