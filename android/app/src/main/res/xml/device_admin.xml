@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tidak meminta kebijakan admin apa pun; dipakai hanya agar aplikasi bisa
+     dijadikan Device Owner (mode kiosk) pada HP milik sekolah. -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies />
+</device-admin>

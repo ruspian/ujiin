@@ -11,6 +11,12 @@ export interface UjiinNativeBridge {
   drainViolations(): string;
   saveFile(filename: string, mime: string, base64: string): void;
   retry(): void;
+  /** JSON string: { active, dndGranted, dndBlocking, pinned } */
+  lockStatus?(): string;
+  /** Buka layar izin Jangan Ganggu (hanya bisa sebelum layar dikunci). */
+  openDndSettings?(): void;
+  /** Minta kunci layar (screen pinning) lagi. */
+  requestPin?(): void;
 }
 
 declare global {

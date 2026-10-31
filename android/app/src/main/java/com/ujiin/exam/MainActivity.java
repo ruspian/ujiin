@@ -26,8 +26,9 @@ import android.widget.Toast;
 import org.json.JSONObject;
 
 /**
- * Satu-satunya Activity. Isinya WebView penuh ke website Ujiin (tetap online,
- * jadi guru bisa input soal & koreksi nilai langsung seperti di web).
+ * Satu-satunya Activity. Aplikasi ini KHUSUS SISWA: hanya halaman login siswa,
+ * dashboard siswa, dan ruang ujian yang bisa dibuka. Halaman guru/admin
+ * diblokir di aplikasi (guru tetap memakai browser).
  *
  * Saat URL berada di /ujian/... aplikasi masuk "mode ujian" (lihat ExamGuard).
  */
@@ -40,7 +41,9 @@ public class MainActivity extends Activity {
     private WebView webView;
     private ExamGuard guard;
     private String baseHost;
-    private String lastOnlineUrl = BuildConfig.BASE_URL;
+    private static final String START_PATH = "/login-siswa";
+    private static final String HOME_PATH = "/siswa";
+    private String lastOnlineUrl = BuildConfig.BASE_URL + START_PATH;
     private ValueCallback<Uri[]> filePathCallback;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -56,6 +59,7 @@ public class MainActivity extends Activity {
         setContentView(webView);
 
         guard = new ExamGuard(this, webView);
+        guard.restoreNotifications(); // sisa dari ujian yang terputus (app dimatikan paksa)
 
         // Tidak bisa diinspeksi lewat chrome://inspect
         WebView.setWebContentsDebuggingEnabled(false);
@@ -88,7 +92,7 @@ public class MainActivity extends Activity {
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, length) ->
                 handleDownload(url, mimeType));
 
-        webView.loadUrl(BuildConfig.BASE_URL);
+        webView.loadUrl(BuildConfig.BASE_URL + START_PATH);
     }
 
     // ------------------------------------------------------------ navigasi
@@ -96,6 +100,19 @@ public class MainActivity extends Activity {
     private boolean isOurHost(Uri uri) {
         return uri != null && baseHost != null && baseHost.equalsIgnoreCase(uri.getHost())
                 && "https".equalsIgnoreCase(uri.getScheme());
+    }
+
+    /** Hanya halaman siswa yang boleh dibuka di aplikasi ini. */
+    private static boolean isStudentPath(Uri uri) {
+        String path = uri.getPath();
+        if (path == null || path.isEmpty()) return false;
+        return path.equals("/login-siswa") || path.startsWith("/login-siswa/")
+                || path.equals("/siswa") || path.startsWith("/siswa/")
+                || path.equals("/ujian") || path.startsWith("/ujian/")
+                || path.equals("/panduan-siswa") || path.startsWith("/panduan-siswa/")
+                // aset & API yang dipakai halaman siswa
+                || path.startsWith("/_next/") || path.startsWith("/api/ujian/")
+                || path.startsWith("/api/siswa/") || path.equals("/favicon.ico");
     }
 
     private static boolean isExamPath(String url) {
@@ -106,13 +123,21 @@ public class MainActivity extends Activity {
 
     /** Masuk/keluar mode ujian sesuai URL. Dipanggil setiap URL berubah (termasuk SPA). */
     private void syncExamMode(String url) {
+        // navigasi di dalam halaman (SPA) ke halaman non-siswa: kembalikan
+        if (url != null && url.startsWith("https://")) {
+            Uri u = Uri.parse(url);
+            if (isOurHost(u) && !isStudentPath(u)) {
+                webView.post(() -> webView.loadUrl(BuildConfig.BASE_URL + HOME_PATH));
+                return;
+            }
+        }
         if (url != null && url.startsWith("https://") && isOurHost(Uri.parse(url))) {
             lastOnlineUrl = url;
         }
         if (isExamPath(url)) {
             if (!guard.isActive() && !guard.enter()) {
                 // perangkat tidak memenuhi syarat: kembali ke dashboard siswa
-                webView.loadUrl(BuildConfig.BASE_URL + "/siswa");
+                webView.loadUrl(BuildConfig.BASE_URL + HOME_PATH);
             }
         } else {
             guard.exit();
@@ -130,7 +155,16 @@ public class MainActivity extends Activity {
             if ("file".equals(uri.getScheme()) && uri.toString().startsWith("file:///android_asset/")) {
                 return false;
             }
-            if (isOurHost(uri)) return false;
+            if (isOurHost(uri)) {
+                if (isStudentPath(uri)) return false;
+                if (!guard.isActive()) {
+                    Toast.makeText(MainActivity.this,
+                            "Aplikasi ini khusus siswa. Guru/admin pakai browser.",
+                            Toast.LENGTH_LONG).show();
+                }
+                view.post(() -> view.loadUrl(BuildConfig.BASE_URL + HOME_PATH));
+                return true;
+            }
             // Jangan pernah membuka situs lain di dalam / di luar app saat ujian
             if (!guard.isActive()) {
                 Toast.makeText(MainActivity.this,
@@ -254,6 +288,12 @@ public class MainActivity extends Activity {
         super.onPause();
         // WebView sengaja TIDAK di-pause saat ujian agar timer & heartbeat web tetap jalan
         if (!guard.isActive()) webView.onPause();
+    }
+
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        guard.onUserLeaveHint();
     }
 
     @Override

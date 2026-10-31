@@ -49,6 +49,22 @@ final class NativeBridge {
         return json;
     }
 
+    /** JSON: {active, dndGranted, dndBlocking, pinned}. Dipakai gerbang kunci layar di web. */
+    @JavascriptInterface
+    public String lockStatus() {
+        return guard.statusJson();
+    }
+
+    @JavascriptInterface
+    public void openDndSettings() {
+        activity.runOnUiThread(guard::openDndSettings);
+    }
+
+    @JavascriptInterface
+    public void requestPin() {
+        activity.runOnUiThread(guard::requestPin);
+    }
+
     @JavascriptInterface
     public void retry() {
         activity.runOnUiThread(activity::retryLoad);

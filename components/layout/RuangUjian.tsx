@@ -27,6 +27,7 @@ import {
 import { examCall, UnauthorizedError } from "@/lib/exam-api";
 import { useExamSync } from "@/hooks/useExamSync";
 import FullscreenGuard from "./FullscreenGuard";
+import NativeLockGate from "./NativeLockGate";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
 import { isNativeApp } from "@/lib/native-app";
 import { HEARTBEAT_INTERVAL_MS, MAX_VIOLATIONS } from "@/lib/exam-config";
@@ -48,8 +49,6 @@ interface GuardProps {
   onViolation?: (jenis: string) => void;
 }
 
-/** Di APK tidak perlu API fullscreen browser: aplikasi sudah immersive + terkunci. */
-const PassThroughGuard = ({ children }: GuardProps) => <>{children}</>;
 
 type HeartbeatRes = {
   success: boolean;
@@ -442,8 +441,9 @@ export default function RuangUjian({
   if (!isHydrated || !sortedQuestions.length) return null;
 
   const isTimeCritical = timeLeft > 0 && timeLeft <= 300;
+  // Di APK: tidak pakai API fullscreen browser; ganti gerbang kunci layar + blokir notifikasi
   const Guard: React.ComponentType<GuardProps> = isNative
-    ? PassThroughGuard
+    ? NativeLockGate
     : FullscreenGuard;
 
   return (

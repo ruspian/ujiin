@@ -1,6 +1,12 @@
 package com.ujiin.exam;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.NotificationManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.provider.Settings;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -23,7 +29,15 @@ import java.util.List;
  *
  * Yang dilakukan:
  *  - FLAG_SECURE: screenshot & perekam layar menghasilkan layar hitam
- *  - Screen pinning (startLockTask): tombol Home/Recents diblokir
+ *  - Screen pinning (startLockTask): tombol Home/Recents diblokir. Status
+ *    pinning dipantau tiap detik: bila siswa melepasnya (Back+Recents) langsung
+ *    dicatat sebagai pelanggaran dan pinning dipasang ulang.
+ *  - Bila aplikasi dijadikan Device Owner (KioskAdminReceiver): mode kiosk penuh,
+ *    tanpa dialog dan tanpa jalan keluar bagi siswa
+ *  - Notifikasi DIBLOKIR (mode Jangan Ganggu "Tidak ada gangguan") selama ujian,
+ *    sehingga pesan WhatsApp/SMS dari teman tidak muncul. Pengaturan lama
+ *    dikembalikan setelah ujian. Siswa wajib memberi izin Jangan Ganggu dulu.
+ *  - Sentuhan saat ada jendela lain di atas aplikasi (overlay) diabaikan
  *  - Mode immersive + layar selalu menyala
  *  - Deteksi: kehilangan fokus jendela (notifikasi/overlay), keluar aplikasi,
  *    split-screen, PiP, screenshot (Android 14+)
@@ -33,6 +47,9 @@ final class ExamGuard {
     private static final long GRACE_MS = 4000;       // dialog screen pinning wajar mencuri fokus
     private static final long FOCUS_DEBOUNCE_MS = 450;
     private static final long DEDUPE_MS = 1500;
+    private static final long PIN_POLL_MS = 1000;
+    private static final long PIN_RETRY_MS = 6000;
+    private static final long PIN_NEVER_WARN_MS = 12000;
 
     private final Activity activity;
     private final WebView webView;
@@ -46,6 +63,14 @@ final class ExamGuard {
     private long pausedAt = 0;
     private String lastJenis = "";
     private long lastAt = 0;
+    private boolean everPinned = false;
+    private boolean warnedNoPin = false;
+    private long lastPinRequest = 0;
+    private long enteredAt = 0;
+    private boolean dndApplied = false;
+    private boolean pinStarted = false;
+    private static final String PREFS = "ujiin_guard";
+    private static final String PREF_DND = "dnd_saved";
     private Object screenCaptureCallback; // android.app.Activity.ScreenCaptureCallback (API 34)
 
     private final Runnable focusCheck = new Runnable() {
@@ -53,6 +78,21 @@ final class ExamGuard {
             if (active && resumed && !activity.hasWindowFocus()) {
                 report("Aplikasi kehilangan fokus (notifikasi / jendela lain terbuka)");
             }
+        }
+    };
+
+    /** Memantau status screen pinning; dipasang ulang bila dilepas siswa. */
+    private final Runnable pinCheck = new Runnable() {
+        @Override public void run() {
+            if (!active) return;
+            if (resumed) {
+                startLockIfReady();
+                if (pinStarted) {
+                    checkDnd();
+                    checkPinned();
+                }
+            }
+            main.postDelayed(this, PIN_POLL_MS);
         }
     };
 
@@ -84,18 +124,25 @@ final class ExamGuard {
             webReady = false;
         }
         active = true;
-        graceUntil = SystemClock.elapsedRealtime() + GRACE_MS;
+        everPinned = false;
+        warnedNoPin = false;
+        enteredAt = SystemClock.elapsedRealtime();
+        graceUntil = enteredAt + GRACE_MS;
 
         Window w = activity.getWindow();
         w.addFlags(WindowManager.LayoutParams.FLAG_SECURE
                 | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemBars();
+        // Bar sistem yang muncul lagi (usap dari tepi layar) langsung disembunyikan
+        activity.getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(
+                visibility -> { if (active) hideSystemBars(); });
+        // Sentuhan saat ada jendela lain menutupi aplikasi diabaikan (anti tapjacking)
+        webView.setFilterTouchesWhenObscured(true);
 
-        try {
-            activity.startLockTask();
-        } catch (Exception ignored) {
-            // beberapa perangkat menolak; deteksi fokus tetap berjalan
-        }
+        pinStarted = false;
+        startLockIfReady();
+        main.removeCallbacks(pinCheck);
+        main.postDelayed(pinCheck, PIN_POLL_MS);
 
         registerScreenCapture();
 
@@ -109,6 +156,11 @@ final class ExamGuard {
         if (!active) return;
         active = false;
         main.removeCallbacks(focusCheck);
+        main.removeCallbacks(pinCheck);
+        webView.setFilterTouchesWhenObscured(false);
+        restoreNotifications();
+        pinStarted = false;
+        activity.getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(null);
 
         unregisterScreenCapture();
         try {
@@ -126,6 +178,188 @@ final class ExamGuard {
             pending.clear();
             webReady = false;
         }
+    }
+
+    // ------------------------------------------------------- notifikasi / DND
+
+    private NotificationManager nm() {
+        return (NotificationManager) activity.getSystemService(Context.NOTIFICATION_SERVICE);
+    }
+
+    boolean isDndGranted() {
+        try {
+            NotificationManager n = nm();
+            return n != null && n.isNotificationPolicyAccessGranted();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private SharedPreferences prefs() {
+        return activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    /** Aktifkan "Tidak ada gangguan"; simpan pengaturan lama agar bisa dipulihkan. */
+    private void blockNotifications() {
+        try {
+            NotificationManager n = nm();
+            if (n == null || !n.isNotificationPolicyAccessGranted()) return;
+            if (!dndApplied) {
+                int before = n.getCurrentInterruptionFilter();
+                if (before != NotificationManager.INTERRUPTION_FILTER_NONE
+                        && before != NotificationManager.INTERRUPTION_FILTER_UNKNOWN) {
+                    // disimpan permanen: bila aplikasi dimatikan paksa saat ujian,
+                    // pengaturan dipulihkan saat aplikasi dibuka lagi
+                    prefs().edit().putInt(PREF_DND, before).apply();
+                }
+            }
+            n.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE);
+            dndApplied = true;
+        } catch (Throwable ignored) {
+            // perangkat tidak mendukung
+        }
+    }
+
+    /** Kembalikan pengaturan notifikasi semula. Aman dipanggil kapan saja. */
+    void restoreNotifications() {
+        try {
+            SharedPreferences p = prefs();
+            int saved = p.getInt(PREF_DND, -1);
+            NotificationManager n = nm();
+            if (saved >= 0 && n != null && n.isNotificationPolicyAccessGranted()) {
+                n.setInterruptionFilter(saved);
+            }
+            p.edit().remove(PREF_DND).apply();
+        } catch (Throwable ignored) {
+            // abaikan
+        }
+        dndApplied = false;
+    }
+
+    /** Siswa mengubah mode Jangan Ganggu di tengah ujian: pasang lagi + catat. */
+    private void checkDnd() {
+        try {
+            NotificationManager n = nm();
+            if (n == null || !n.isNotificationPolicyAccessGranted()) {
+                if (dndApplied) {
+                    dndApplied = false;
+                    report("Izin Jangan Ganggu dicabut");
+                }
+                return;
+            }
+            if (dndApplied
+                    && n.getCurrentInterruptionFilter()
+                    != NotificationManager.INTERRUPTION_FILTER_NONE) {
+                report("Mengubah pengaturan notifikasi (Jangan Ganggu)");
+            }
+            blockNotifications();
+        } catch (Throwable ignored) {
+            // abaikan
+        }
+    }
+
+    /** Buka layar izin "Akses Jangan Ganggu" (harus sebelum layar dikunci). */
+    void openDndSettings() {
+        // pindah ke Pengaturan resmi dari kita: jangan dihitung pelanggaran
+        graceUntil = SystemClock.elapsedRealtime() + 60000;
+        try {
+            Intent i = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(i);
+        } catch (Throwable t) {
+            android.widget.Toast.makeText(activity,
+                    "Buka Pengaturan > Notifikasi > Akses Jangan Ganggu, lalu izinkan Ujiin.",
+                    android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * Kunci layar dipasang setelah izin Jangan Ganggu ada. Layar yang sudah
+     * dikunci tidak bisa membuka Pengaturan, jadi urutannya harus begini.
+     */
+    private void startLockIfReady() {
+        if (pinStarted || !active) return;
+        if (!isDndGranted()) return;
+        pinStarted = true;
+        long now = SystemClock.elapsedRealtime();
+        enteredAt = now;
+        graceUntil = now + GRACE_MS;
+        blockNotifications();
+        pinNow();
+    }
+
+    /** Status untuk halaman web (gerbang "kunci layar wajib aktif"). */
+    String statusJson() {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("active", active);
+            o.put("dndGranted", isDndGranted());
+            o.put("dndBlocking", dndApplied);
+            o.put("pinned", active && pinStarted && isPinned());
+        } catch (Exception ignored) {
+            // JSONObject.put tidak melempar untuk tipe ini
+        }
+        return o.toString();
+    }
+
+    /** Minta kunci layar lagi (tombol di halaman web). */
+    void requestPin() {
+        startLockIfReady();
+        if (pinStarted) pinNow();
+    }
+
+    // ------------------------------------------------------------ screen pinning
+
+    private void pinNow() {
+        // Bila Device Owner: izinkan lock task tanpa dialog + matikan Home/Recents/notifikasi
+        KioskAdminReceiver.prepare(activity);
+        try {
+            activity.startLockTask();
+        } catch (Exception ignored) {
+            // beberapa perangkat menolak; deteksi fokus tetap berjalan
+        }
+    }
+
+    private boolean isPinned() {
+        try {
+            ActivityManager am = (ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE);
+            return am != null
+                    && am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
+        } catch (Throwable t) {
+            return true; // tidak bisa diperiksa: jangan menghukum siswa
+        }
+    }
+
+    private void checkPinned() {
+        long now = SystemClock.elapsedRealtime();
+        if (isPinned()) {
+            everPinned = true;
+            return;
+        }
+        if (everPinned) {
+            // sebelumnya terkunci lalu dilepas = siswa sengaja keluar dari kunci
+            everPinned = false;
+            report("Melepas kunci layar (screen pinning)");
+            pinNow();
+        } else if (now - enteredAt > GRACE_MS) {
+            // belum pernah terkunci: dialog ditolak / tidak didukung perangkat
+            if (now - lastPinRequest > PIN_RETRY_MS) {
+                lastPinRequest = now;
+                pinNow(); // minta lagi; dialog muncul kembali
+            }
+            if (!warnedNoPin && now - enteredAt > PIN_NEVER_WARN_MS) {
+                warnedNoPin = true;
+                android.widget.Toast.makeText(activity,
+                        "Izinkan kunci layar (Mengerti / Start) agar ujian aman.",
+                        android.widget.Toast.LENGTH_LONG).show();
+                report("Kunci layar (screen pinning) tidak diaktifkan");
+            }
+        }
+    }
+
+    /** Tombol Home ditekan / aplikasi akan ditinggalkan. */
+    void onUserLeaveHint() {
+        if (active) report("Menekan tombol Home / berpindah aplikasi");
     }
 
     @SuppressWarnings("deprecation")
