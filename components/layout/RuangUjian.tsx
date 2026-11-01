@@ -55,6 +55,7 @@ type HeartbeatRes = {
   status?: string;
   remainingSeconds?: number;
   serverTime?: string;
+  announcement?: { text: string; at: string } | null;
 };
 
 export default function RuangUjian({
@@ -66,6 +67,7 @@ export default function RuangUjian({
   initialAnswers,
   initialSeq = 0,
   serverTime,
+  letterByPosition = false,
 }: RuangUjianProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -83,6 +85,12 @@ export default function RuangUjian({
     return difference > 0 ? Math.floor(difference / 1000) : 0;
   });
   const [isNative, setIsNative] = useState(false);
+  // Pengumuman dari pengawas (tampil sebagai banner sampai ditutup siswa)
+  const [announcement, setAnnouncement] = useState<{
+    text: string;
+    at: string;
+  } | null>(null);
+  const lastAnnouncementRef = useRef<string>("");
   // Sisa waktu dihitung dari DEADLINE + selisih jam server, bukan dikurangi
   // per detik. Interval dibekukan saat app/tab di background, sehingga timer
   // lama bisa menampilkan sisa waktu yang lebih banyak dari kenyataan.
@@ -340,6 +348,20 @@ export default function RuangUjian({
           if (r.remainingSeconds <= 0) submitRef.current();
         }
 
+        // pengumuman baru dari pengawas (satu pengumuman hanya tampil sekali)
+        if (r.announcement && r.announcement.at !== lastAnnouncementRef.current) {
+          lastAnnouncementRef.current = r.announcement.at;
+          try {
+            const key = `ujiin-ann-${attemptId}`;
+            if (sessionStorage.getItem(key) !== r.announcement.at) {
+              sessionStorage.setItem(key, r.announcement.at);
+              setAnnouncement(r.announcement);
+            }
+          } catch {
+            setAnnouncement(r.announcement);
+          }
+        }
+
         // koneksi terbukti hidup: dorong apa pun yang masih tertunda
         void syncRef.current.flush();
       } catch (error) {
@@ -452,6 +474,29 @@ export default function RuangUjian({
         className="fixed inset-0 z-50 bg-gray-50 flex flex-col h-screen overflow-hidden select-none [&_textarea]:select-text"
         style={{ WebkitTouchCallout: "none" }}
       >
+        {announcement && (
+          <div
+            role="alert"
+            className="shrink-0 z-20 flex items-start gap-3 bg-amber-500 px-4 py-3 text-white shadow-md"
+          >
+            <span className="mt-0.5 text-lg leading-none">📢</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-90">
+                Pengumuman Pengawas
+              </p>
+              <p className="text-sm font-bold wrap-break-words">
+                {announcement.text}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAnnouncement(null)}
+              className="shrink-0 rounded-lg bg-white/20 px-3 py-1 text-xs font-black hover:bg-white/30"
+            >
+              Tutup
+            </button>
+          </div>
+        )}
         <div className="h-16 bg-white border-b border-gray-200 px-4 md:px-6 flex items-center justify-between shadow-sm shrink-0 z-10">
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex bg-blue-600 text-white p-2 rounded-lg">
@@ -585,7 +630,7 @@ export default function RuangUjian({
                 <div className="space-y-3 mb-10 animate-in slide-in-from-bottom-4 duration-500">
                   {(currentQuestion.type === "MULTIPLE_CHOICE" ||
                     currentQuestion.type === "MULTIPLE_CHOICE_COMPLEX") &&
-                    (currentQuestion.options as OptionMC[]).map((opt) => {
+                    (currentQuestion.options as OptionMC[]).map((opt, optIndex) => {
                       const isComplex =
                         currentQuestion.type === "MULTIPLE_CHOICE_COMPLEX";
                       const isSelected = isComplex
@@ -619,7 +664,9 @@ export default function RuangUjian({
                                 : "border-gray-200 text-gray-400"
                             }`}
                           >
-                            {opt.id}
+                            {letterByPosition
+                              ? String.fromCharCode(65 + optIndex)
+                              : opt.id}
                           </div>
                           <div className="flex-1 min-w-0 pointer-events-none mt-0.5 max-w-full overflow-x-auto whitespace-pre-wrap wrap-break-words">
                             <RichTextReadOnly

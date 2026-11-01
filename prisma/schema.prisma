@@ -245,8 +245,14 @@ model Exam {
   token           String?       @unique
 
   randomizeQuestions Boolean   @default(true) 
+  // Acak urutan pilihan jawaban per siswa (jawaban tersimpan berdasar id opsi)
+  shuffleOptions     Boolean   @default(false)
   showResult         Boolean   @default(false)
   status             ExamStatus @default(DRAFT)
+
+  // Pengumuman dari pengawas yang tampil di layar siswa saat ujian berjalan
+  announcement       String?
+  announcedAt        DateTime?
 
   authorId        String
   author          User         @relation("ExamAuthor", fields: [authorId], references: [id])
@@ -293,6 +299,8 @@ model Attempt {
   // kecil dari yang sudah tersimpan ditolak, sehingga request lama yang tiba
   // terlambat (jaringan jelek) tidak menimpa jawaban yang lebih baru.
   saveSeq         Int       @default(0)
+  // Tambahan waktu (detik) dari pengawas untuk siswa ini
+  extraSeconds    Int       @default(0)
   
   examId      String
   exam        Exam      @relation(fields: [examId], references: [id])

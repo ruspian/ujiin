@@ -38,6 +38,7 @@ export async function finalizeExpiredAttempts(opts?: {
       id: true,
       examId: true,
       startTime: true,
+      extraSeconds: true,
       answers: true,
       essayScores: true,
       exam: { select: { endTime: true, duration: true } },
@@ -50,6 +51,7 @@ export async function finalizeExpiredAttempts(opts?: {
       a.startTime,
       a.exam.endTime,
       a.exam.duration,
+      a.extraSeconds,
     );
     return now > deadline.getTime() + SUBMIT_GRACE_SECONDS * 1000;
   });
@@ -81,6 +83,7 @@ export async function finalizeExpiredAttempts(opts?: {
       a.startTime,
       a.exam.endTime,
       a.exam.duration,
+      a.extraSeconds,
     );
 
     const res = await prisma.attempt.updateMany({

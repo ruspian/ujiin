@@ -52,6 +52,7 @@ export default function JadwalForm({
       : "09:00",
     duration: initialData?.duration || 0,
     randomizeQuestions: initialData?.randomizeQuestions ?? true,
+    shuffleOptions: initialData?.shuffleOptions ?? false,
     showResult: initialData?.showResult ?? false,
   });
 
@@ -128,6 +129,7 @@ export default function JadwalForm({
       endTime: combinedEndTime,
       duration: formData.duration,
       randomizeQuestions: formData.randomizeQuestions,
+      shuffleOptions: formData.shuffleOptions,
       showResult: formData.showResult,
 
       supervisorId:
@@ -428,6 +430,25 @@ export default function JadwalForm({
                 />
                 <span className="text-sm font-bold text-orange-800">
                   Acak Urutan Soal
+                </span>
+              </label>
+              <label
+                className="flex items-center gap-2.5 cursor-pointer"
+                title="Jangan diaktifkan bila ada soal berbunyi 'pilihan A dan B benar' atau opsi 'semua jawaban benar'."
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.shuffleOptions}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      shuffleOptions: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 text-orange-600 bg-white border-gray-300 rounded focus:ring-orange-500"
+                />
+                <span className="text-sm font-bold text-orange-800">
+                  Acak Urutan Pilihan Jawaban
                 </span>
               </label>
               <label className="flex items-center gap-2.5 cursor-pointer">

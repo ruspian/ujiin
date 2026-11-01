@@ -22,15 +22,24 @@ export const VIOLATION_DEDUPE_MS = 3_000;
  * paling cepat antara jam berakhir jadwal DAN (mulai mengerjakan + durasi).
  * Sebelumnya `duration` diabaikan sehingga siswa yang masuk lebih awal
  * bisa mengerjakan lebih lama dari durasi yang ditetapkan guru.
+ *
+ * `extraSeconds` = tambahan waktu khusus siswa ini dari pengawas (mis. HP
+ * error). Ditambahkan SETELAH batas di atas, jadi bisa melewati jam selesai
+ * jadwal untuk siswa tersebut saja.
  */
 export function getAttemptDeadline(
   attemptStart: Date,
   examEnd: Date,
   durationMinutes: number,
+  extraSeconds = 0,
 ): Date {
   const byDuration = attemptStart.getTime() + durationMinutes * 60_000;
-  return new Date(Math.min(byDuration, examEnd.getTime()));
+  const base = Math.min(byDuration, examEnd.getTime());
+  return new Date(base + Math.max(0, extraSeconds) * 1000);
 }
+
+/** Batas tambahan waktu per siswa (menit) agar tidak bisa tak terbatas. */
+export const MAX_EXTRA_MINUTES_TOTAL = 180;
 
 /** Batas waktu (ms) satu panggilan ke server sebelum dianggap gagal & dicoba ulang. */
 export const REQUEST_TIMEOUT_MS = 15_000;

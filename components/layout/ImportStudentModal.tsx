@@ -40,23 +40,7 @@ export default function ImportStudentModal({
     const toastId = toast.loading("Menyiapkan template Excel...");
 
     try {
-      const browserWindow = window as unknown as CustomWindow;
-
-      if (!browserWindow.writeXlsxFile) {
-        const script = document.createElement("script");
-        script.src =
-          "https://unpkg.com/write-excel-file@1.4.30/bundle/write-excel-file.min.js";
-        document.head.appendChild(script);
-
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = () =>
-            reject(new Error("Gagal memuat library Excel"));
-        });
-      }
-
-      const writeXlsxFile = browserWindow.writeXlsxFile;
-      if (!writeXlsxFile) throw new Error("Library tidak tersedia.");
+      const { default: writeXlsxFile } = await import("write-excel-file");
 
       //  format template
       const excelData: ExcelCell[][] = [

@@ -45,7 +45,7 @@ async function getOwnAttempt(
 
   const examSelect =
     questions === "none"
-      ? { endTime: true, duration: true }
+      ? { endTime: true, duration: true, announcement: true, announcedAt: true }
       : {
           endTime: true,
           duration: true,
@@ -67,19 +67,26 @@ async function getOwnAttempt(
   const exam = attempt.exam as unknown as {
     endTime: Date;
     duration: number;
+    announcement?: string | null;
+    announcedAt?: Date | null;
     questions?: QuestionRow[];
   };
   return { ...attempt, exam: { ...exam, questions: exam.questions ?? [] } };
 }
 
 function secondsLeft(
-  attempt: { startTime: Date; exam: { endTime: Date; duration: number } },
+  attempt: {
+    startTime: Date;
+    extraSeconds: number;
+    exam: { endTime: Date; duration: number };
+  },
   now = new Date(),
 ) {
   const deadline = getAttemptDeadline(
     attempt.startTime,
     attempt.exam.endTime,
     attempt.exam.duration,
+    attempt.extraSeconds,
   );
   return Math.floor((deadline.getTime() - now.getTime()) / 1000);
 }
@@ -392,6 +399,16 @@ export async function heartbeatUjian(attemptId: string) {
       violationCount: attempt.violationCount,
       saveSeq: attempt.saveSeq,
       serverTime: now.toISOString(),
+      // pengumuman pengawas: hanya yang masih baru (2 jam terakhir)
+      announcement:
+        attempt.exam.announcement &&
+        attempt.exam.announcedAt &&
+        now.getTime() - attempt.exam.announcedAt.getTime() < 2 * 3600_000
+          ? {
+              text: attempt.exam.announcement,
+              at: attempt.exam.announcedAt.toISOString(),
+            }
+          : null,
     };
   } catch (error) {
     console.error("Gagal heartbeat:", error);

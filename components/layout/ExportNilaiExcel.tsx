@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import {
-  CustomWindow,
   ExcelCell,
   ExcelColumn,
   ExportExcelProps,
@@ -25,26 +24,8 @@ export default function ExportNilaiExcel({
     const toastId = toast.loading("Menyiapkan file Excel...");
 
     try {
-      const browserWindow = window as unknown as CustomWindow;
-
-      if (!browserWindow.writeXlsxFile) {
-        const script = document.createElement("script");
-        script.src =
-          "https://unpkg.com/write-excel-file@1.4.30/bundle/write-excel-file.min.js";
-        document.head.appendChild(script);
-
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = () =>
-            reject(new Error("Gagal memuat library Excel dari internet"));
-        });
-      }
-
-      const writeXlsxFile = browserWindow.writeXlsxFile;
-
-      if (!writeXlsxFile) {
-        throw new Error("Library writeXlsxFile tidak tersedia.");
-      }
+      // Library dibundel bersama aplikasi: tidak butuh internet saat ekspor
+      const { default: writeXlsxFile } = await import("write-excel-file");
 
       const titleRow: ExcelCell[] = [
         {
@@ -127,7 +108,7 @@ export default function ExportNilaiExcel({
     } catch (error) {
       console.error(error);
       toast.error(
-        "Gagal mengunduh file Excel. Pastikan koneksi internet stabil.",
+        "Gagal membuat file Excel. Coba lagi.",
         { id: toastId },
       );
     } finally {

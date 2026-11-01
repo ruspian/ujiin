@@ -9,6 +9,7 @@ export const examSchema = z.object({
   endTime: z.string().min(1, "Waktu selesai wajib diisi!"),
   duration: z.coerce.number().min(1, "Durasi minimal 1 menit!"),
   randomizeQuestions: z.boolean().default(true),
+  shuffleOptions: z.boolean().default(false),
   showResult: z.boolean().default(false),
   status: z.enum(["DRAFT", "PUBLISHED", "COMPLETED"]).default("DRAFT"),
   classes: z.array(z.string()).min(1, "Minimal pilih satu kelas!"),
