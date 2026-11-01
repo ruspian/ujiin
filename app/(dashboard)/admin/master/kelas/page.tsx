@@ -27,7 +27,7 @@ export default async function DataKelasPage({
       orderBy: [{ level: "asc" }, { name: "asc" }],
       include: {
         _count: {
-          select: { students: true },
+          select: { students: { where: { status: "ACTIVE" } } },
         },
       },
     }),

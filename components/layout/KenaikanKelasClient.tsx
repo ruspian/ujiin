@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { prosesKenaikanKelas } from "@/actions/kenaikan-kelas";
 import {
   ArrowRight,
@@ -22,6 +23,7 @@ export default function KenaikanKelasClient({
   classes,
   allStudents,
 }: KenaikanKelasClientProps) {
+  const router = useRouter();
   const [classAsal, setClassAsal] = useState("");
   const [classTujuan, setClassTujuan] = useState("");
   const [actionType, setActionType] = useState<"NAIK_KELAS" | "LULUS">(
@@ -42,11 +44,27 @@ export default function KenaikanKelasClient({
       s.nisn.includes(searchTerm),
   );
 
+  // Tingkat tertinggi (mis. kelas 3 / XII): siswanya tidak punya kelas tujuan,
+  // jadi aksinya otomatis "Lulus" agar admin tidak salah memilih kelas tujuan.
+  const highestLevel = classes.reduce((m, c) => Math.max(m, c.level), -Infinity);
+  const asalClass = classes.find((c) => c.id === classAsal);
+  const isFinalLevel = !!asalClass && asalClass.level === highestLevel;
+
   const handleClassAsalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setClassAsal(e.target.value);
+    const id = e.target.value;
+    setClassAsal(id);
     setSelectedIds([]);
     setSearchTerm("");
+    setClassTujuan("");
+    const picked = classes.find((c) => c.id === id);
+    if (picked) {
+      setActionType(picked.level === highestLevel ? "LULUS" : "NAIK_KELAS");
+    }
   };
+
+  const tujuanActiveCount = classTujuan
+    ? allStudents.filter((s) => s.classId === classTujuan).length
+    : 0;
 
   const handleSelectAll = () => {
     if (selectedIds.length === filteredStudents.length) {
@@ -73,7 +91,8 @@ export default function KenaikanKelasClient({
       return;
     }
 
-    if (classAsal === classTujuan) {
+    // Hanya relevan untuk Naik Kelas (saat Lulus tidak ada kelas tujuan)
+    if (actionType === "NAIK_KELAS" && classAsal === classTujuan) {
       toast.error("Kelas asal dan kelas tujuan tidak boleh sama!");
       return;
     }
@@ -97,6 +116,8 @@ export default function KenaikanKelasClient({
       setClassAsal("");
       setClassTujuan("");
       setIsConfirmModalOpen(false);
+      // ambil ulang daftar siswa aktif agar yang sudah diproses tidak muncul lagi
+      router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Terjadi kesalahan!",
@@ -177,13 +198,32 @@ export default function KenaikanKelasClient({
                 className="block w-full rounded-xl border-gray-300 bg-gray-50 px-3 py-2.5 text-sm transition-colors focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">Pilih Kelas Tujuan</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    Kelas {c.name}
-                  </option>
-                ))}
+                {classes
+                  .filter((c) => c.id !== classAsal)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      Kelas {c.name}
+                    </option>
+                  ))}
               </select>
+              {tujuanActiveCount > 0 && (
+                <p className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] font-medium text-amber-800">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                  Kelas tujuan masih berisi {tujuanActiveCount} siswa aktif.
+                  Pastikan kelas tertinggi sudah diluluskan lebih dulu agar
+                  siswa lama dan baru tidak tercampur.
+                </p>
+              )}
             </div>
+          )}
+
+          {isFinalLevel && (
+            <p className="flex items-start gap-1.5 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] font-medium text-rose-800">
+              <GraduationCap size={14} className="mt-0.5 shrink-0" />
+              Ini kelas tingkat akhir. Siswa yang diluluskan tidak dihapus:
+              data dan riwayat nilainya tetap tersimpan, hanya tidak bisa login
+              dan tidak tampil di kelas aktif.
+            </p>
           )}
 
           <hr className="border-gray-100" />

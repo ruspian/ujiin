@@ -251,7 +251,7 @@ export async function randomizeSessions(formData: FormData) {
 
   try {
     const students = await prisma.student.findMany({
-      where: { classId },
+      where: { classId, status: "ACTIVE" },
       select: { id: true },
     });
 
@@ -325,7 +325,7 @@ export async function prepareExamCards(classId: string) {
   }
   try {
     const students = await prisma.student.findMany({
-      where: { classId },
+      where: { classId, status: "ACTIVE" },
       include: { class: true },
       orderBy: { name: "asc" },
     });

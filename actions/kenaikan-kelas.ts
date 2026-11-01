@@ -40,24 +40,45 @@ export async function prosesKenaikanKelas(
       return { success: false, message: "Aksi tidak dikenal!" };
     }
 
+    // Hanya siswa AKTIF yang diproses: siswa yang sudah lulus/keluar tidak ikut
+    // berubah (mis. tombol ditekan dua kali, atau daftar di layar sudah usang).
+    const activeOnly = { id: { in: studentIds }, status: "ACTIVE" as const };
+
+    let processed = 0;
     if (action === "LULUS") {
-      await prisma.student.updateMany({
-        where: { id: { in: studentIds } },
-        data: {
-          status: "GRADUATED",
-        },
+      // Data siswa & riwayat ujiannya tetap tersimpan; hanya statusnya berubah
+      // sehingga tidak bisa login lagi dan tidak muncul di daftar kelas aktif.
+      const res = await prisma.student.updateMany({
+        where: activeOnly,
+        data: { status: "GRADUATED" },
       });
-    } else if (action === "NAIK_KELAS" && targetClassId) {
-      await prisma.student.updateMany({
-        where: { id: { in: studentIds } },
-        data: {
-          classId: targetClassId,
-        },
+      processed = res.count;
+    } else if (targetClassId) {
+      const res = await prisma.student.updateMany({
+        where: activeOnly,
+        data: { classId: targetClassId },
       });
+      processed = res.count;
     }
 
+    revalidatePath("/admin/kenaikan-kelas");
     revalidatePath("/admin/master/siswa");
-    return { success: true, message: "Proses berhasil dieksekusi!" };
+    revalidatePath("/admin/master/kelas");
+
+    if (processed === 0) {
+      return {
+        success: false,
+        message: "Tidak ada siswa aktif yang diproses (mungkin sudah lulus/dipindah).",
+      };
+    }
+    const skipped = studentIds.length - processed;
+    const verb = action === "LULUS" ? "diluluskan" : "dinaikkan kelasnya";
+    return {
+      success: true,
+      message:
+        `${processed} siswa berhasil ${verb}.` +
+        (skipped > 0 ? ` ${skipped} dilewati karena sudah tidak aktif.` : ""),
+    };
   } catch (error) {
     console.error("ERROR_KENAIKAN_KELAS:", error);
     return { success: false, message: "Gagal memproses aksi." };
