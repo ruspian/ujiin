@@ -5,9 +5,16 @@ import { FileText, Printer } from "lucide-react";
 import { toast } from "sonner";
 import type { DocBlock } from "@/lib/report-doc";
 
+/** Hasil pemuatan dokumen yang berat (diambil saat tombol ditekan). */
+export type LoadedDoc =
+  | { success: true; blocks: DocBlock[]; title: string; fileName: string }
+  | { success: false; message: string };
+
 interface DocActionButtonsProps {
-  /** Isi dokumen (sudah disusun di server). */
-  blocks: DocBlock[];
+  /** Isi dokumen (sudah disusun di server). Kosongkan bila memakai `loadDoc`. */
+  blocks?: DocBlock[];
+  /** Ambil dokumen saat dibutuhkan (untuk dokumen besar, mis. seluruh kelas). */
+  loadDoc?: () => Promise<LoadedDoc>;
   /** Judul jendela cetak / awalan nama file. */
   title: string;
   fileName: string;
@@ -18,6 +25,7 @@ interface DocActionButtonsProps {
 /** Tombol "Word" dan "Cetak / PDF" untuk satu dokumen. */
 export default function DocActionButtons({
   blocks,
+  loadDoc,
   title,
   fileName,
   landscape = false,
@@ -27,12 +35,34 @@ export default function DocActionButtons({
 
   const safeName = fileName.replace(/[\\/:*?"<>|]+/g, "_");
 
+  /** Dokumen yang akan dicetak/diunduh; null bila gagal (pesan sudah ditampilkan). */
+  const resolveDoc = async () => {
+    if (!loadDoc) {
+      return { blocks: blocks ?? [], title, fileName: safeName };
+    }
+    const res = await loadDoc();
+    if (!res.success) {
+      toast.error(res.message);
+      return null;
+    }
+    return {
+      blocks: res.blocks,
+      title: res.title,
+      fileName: res.fileName.replace(/[\\/:*?"<>|]+/g, "_"),
+    };
+  };
+
   const handleWord = async () => {
     setBusy(true);
     const id = toast.loading("Menyiapkan dokumen Word...");
     try {
+      const doc = await resolveDoc();
+      if (!doc) {
+        toast.dismiss(id);
+        return;
+      }
       const { downloadDocx } = await import("@/lib/report-docx");
-      await downloadDocx(blocks, safeName, { landscape });
+      await downloadDocx(doc.blocks, doc.fileName, { landscape });
       toast.success("Dokumen Word diunduh!", { id });
     } catch (error) {
       console.error(error);
@@ -43,13 +73,18 @@ export default function DocActionButtons({
   };
 
   const handlePrint = async () => {
+    setBusy(true);
     try {
+      const doc = await resolveDoc();
+      if (!doc) return;
       const { printDoc } = await import("@/lib/report-doc");
-      printDoc(title, blocks, { landscape });
+      printDoc(doc.title, doc.blocks, { landscape });
       toast.message("Di jendela cetak, pilih \"Simpan sebagai PDF\" untuk PDF.");
     } catch (error) {
       console.error(error);
       toast.error("Gagal membuka jendela cetak.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -70,6 +105,7 @@ export default function DocActionButtons({
       <button
         type="button"
         onClick={handlePrint}
+        disabled={busy}
         className={`${base} border-gray-200 bg-white text-gray-700 hover:bg-gray-50`}
       >
         <Printer size={compact ? 14 : 16} /> Cetak / PDF
