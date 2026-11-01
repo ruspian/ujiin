@@ -12,6 +12,8 @@ import {
   FileEdit,
   Eye,
 } from "lucide-react";
+import DocActionButtons from "@/components/layout/DocActionButtons";
+import { getHasilKelasDokumen } from "@/actions/cetak";
 
 export default async function DaftarPesertaKoreksiPage({
   params,
@@ -70,6 +72,28 @@ export default async function DaftarPesertaKoreksiPage({
     );
   }
 
+  // Hanya kelas yang diampu guru ini (atau semua kelas bila pengawas ujian)
+  const myAssignments = await prisma.subjectAssignment.findMany({
+    where: { subjectId: exam.subjectId, teacherId: session.user.id },
+    select: { classId: true },
+  });
+  const myClassIds = new Set(myAssignments.map((a) => a.classId));
+  const isSupervisor = exam.supervisorId === session.user.id;
+  const visibleClasses = isSupervisor
+    ? exam.classes
+    : exam.classes.filter((c) => myClassIds.has(c.id));
+
+  if (visibleClasses.length === 0) {
+    return (
+      <div className="p-8 text-center bg-red-50 rounded-2xl border border-red-100 max-w-2xl mx-auto mt-10">
+        <h2 className="text-red-600 font-bold text-lg">Akses ditolak!</h2>
+        <p className="text-sm text-red-500 mt-1">
+          Anda bukan guru pengampu / pengawas untuk ujian ini.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -98,18 +122,24 @@ export default async function DaftarPesertaKoreksiPage({
       </div>
 
       <div className="space-y-8">
-        {exam.classes.map((cls) => (
+        {visibleClasses.map((cls) => (
           <div
             key={cls.id}
             className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
           >
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex flex-wrap justify-between items-center gap-3">
               <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 Kelas {cls.name}
                 <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
                   {cls.students.length} Siswa
                 </span>
               </h2>
+              <DocActionButtons
+                compact
+                title={`Hasil ${exam.title} - ${cls.name}`}
+                fileName={`Hasil_${exam.title}_${cls.name}`}
+                loadDoc={getHasilKelasDokumen.bind(null, examId, cls.id)}
+              />
             </div>
 
             <div className="overflow-x-auto">
