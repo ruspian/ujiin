@@ -5,6 +5,8 @@ import { X, CalendarClock, Info, Clock, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { AddJadwalModalProps } from "@/types/exam";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function AddJadwalModal({
   setIsModalOpen,
@@ -70,7 +72,7 @@ export default function AddJadwalModal({
     };
 
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await createExam(payload);
       if (!result.success) throw new Error(result.message);
       toast.success(result.message);
@@ -364,7 +366,12 @@ export default function AddJadwalModal({
               disabled={isSubmitting}
               className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition-colors"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Jadwal"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Simpan Jadwal"}
             </button>
           </div>
         </form>

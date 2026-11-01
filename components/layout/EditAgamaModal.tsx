@@ -5,6 +5,7 @@ import { X, BookHeart } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { EditAgamaModalProps } from "@/types/religion";
+import { flushSync } from "react-dom";
 
 interface ExtendedProps extends EditAgamaModalProps {
   forceLoading?: boolean;
@@ -21,7 +22,7 @@ export default function EditAgamaModal({
 
   const handleEdit = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await updateReligion(formData);
 
       if (!result.success) throw new Error(result.message);

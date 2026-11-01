@@ -4,6 +4,8 @@ import { deleteClass } from "@/actions/class";
 import { DeleteKelasModalProps } from "@/types/class";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function DeleteKelasModal({
   data,
@@ -14,7 +16,7 @@ export default function DeleteKelasModal({
 }: DeleteKelasModalProps) {
   const handleDelete = async (id: string) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await deleteClass(id);
 
       if (!result.success) {
@@ -59,7 +61,12 @@ export default function DeleteKelasModal({
             disabled={isSubmitting}
             className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50 transition-all"
           >
-            {isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+            {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menghapus...
+                </>
+              ) : "Ya, Hapus"}
           </button>
         </div>
       </div>

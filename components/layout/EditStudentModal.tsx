@@ -4,6 +4,8 @@ import { updateStudent } from "@/actions/student";
 import { EditStudentModalProps } from "@/types/student";
 import { X } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function EditStudentModal({
   studentData,
@@ -15,7 +17,7 @@ export default function EditStudentModal({
 }: EditStudentModalProps) {
   const handleEditStudent = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await updateStudent(formData);
 
       if (!result.success) {
@@ -126,7 +128,12 @@ export default function EditStudentModal({
               disabled={isSubmitting}
               className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-700 disabled:opacity-50"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Simpan Perubahan"}
             </button>
           </div>
         </form>

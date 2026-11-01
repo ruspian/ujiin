@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import {
   School,
   Users,
@@ -10,72 +11,49 @@ import {
   ClipboardList,
 } from "lucide-react";
 
+const TABS = [
+  { key: "kelas", href: "/admin/master/kelas", label: "Data Kelas", Icon: School },
+  { key: "siswa", href: "/admin/master/siswa", label: "Data Siswa", Icon: Users },
+  { key: "mapel", href: "/admin/master/mapel", label: "Mata Pelajaran", Icon: BookOpen },
+  { key: "tahun-ajaran", href: "/admin/master/tahun-ajaran", label: "Tahun Ajaran", Icon: Calendar },
+  { key: "agama", href: "/admin/master/agama", label: "Agama", Icon: BookHeart },
+  { key: "jenis-ujian", href: "/admin/master/jenis-ujian", label: "Jenis Ujian", Icon: ClipboardList },
+];
+
+/**
+ * Tab master data. Di layar kecil tab bisa digeser ke samping (tidak lagi
+ * mendorong halaman melebar ke kanan), dan tab aktif otomatis terlihat.
+ */
 const MasterAdminNavbar = ({ active }: { active: string }) => {
+  const activeRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView?.({
+      block: "nearest",
+      inline: "center",
+    });
+  }, [active]);
+
   return (
-    <nav className="-mb-px flex gap-6" aria-label="Tabs">
-      <Link
-        href="/admin/master/kelas"
-        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-          active === "kelas"
-            ? "border-teal-600 text-teal-600"
-            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-        }`}
-      >
-        <School size={18} /> Data Kelas
-      </Link>
-      <Link
-        href="/admin/master/siswa"
-        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-          active === "siswa"
-            ? "border-teal-600 text-teal-600"
-            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-        }`}
-      >
-        <Users size={18} /> Data Siswa
-      </Link>
-      <Link
-        href="/admin/master/mapel"
-        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-          active === "mapel"
-            ? "border-teal-600 text-teal-600"
-            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-        }`}
-      >
-        <BookOpen size={18} /> Mata Pelajaran
-      </Link>
-      <Link
-        href="/admin/master/tahun-ajaran"
-        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-          active === "tahun-ajaran"
-            ? "border-teal-600 text-teal-600"
-            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-        }`}
-      >
-        <Calendar size={18} /> Tahun Ajaran
-      </Link>
-
-      <Link
-        href="/admin/master/agama"
-        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-          active === "agama"
-            ? "border-teal-600 text-teal-600"
-            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-        }`}
-      >
-        <BookHeart size={18} /> Agama
-      </Link>
-
-      <Link
-        href="/admin/master/jenis-ujian"
-        className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-          active === "jenis-ujian"
-            ? "border-teal-600 text-teal-600"
-            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-        }`}
-      >
-        <ClipboardList size={18} /> Jenis Ujian
-      </Link>
-    </nav>
+    <div className="w-full max-w-full overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav className="-mb-px flex w-max min-w-full gap-5 sm:gap-6" aria-label="Tabs">
+        {TABS.map(({ key, href, label, Icon }) => (
+          <Link
+            key={key}
+            href={href}
+            ref={active === key ? activeRef : undefined}
+            aria-current={active === key ? "page" : undefined}
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+              active === key
+                ? "border-teal-600 text-teal-600"
+                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+            }`}
+          >
+            <Icon size={18} /> {label}
+          </Link>
+        ))}
+      </nav>
+    </div>
   );
 };
 

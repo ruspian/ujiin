@@ -145,23 +145,23 @@ export default async function DetailMonitoringPage({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center gap-4 shadow-sm">
-          <div className="w-12 h-12 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center shrink-0">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 flex items-center gap-3 sm:gap-4 shadow-sm min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center shrink-0">
             <UserX size={24} />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wide sm:tracking-widest truncate">
               Belum Mulai
             </p>
             <p className="text-2xl font-black text-gray-800">{belumMulai}</p>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center gap-4 shadow-sm">
-          <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 flex items-center gap-3 sm:gap-4 shadow-sm min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
             <RefreshCcw size={24} className="animate-spin-slow" />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wide sm:tracking-widest truncate">
               Mengerjakan
             </p>
             <p className="text-2xl font-black text-gray-800">
@@ -169,36 +169,36 @@ export default async function DetailMonitoringPage({
             </p>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center gap-4 shadow-sm">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 flex items-center gap-3 sm:gap-4 shadow-sm min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
             <CheckCircle2 size={24} />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wide sm:tracking-widest truncate">
               Selesai
             </p>
             <p className="text-2xl font-black text-gray-800">{sudahSubmit}</p>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center gap-4 shadow-sm">
-          <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center shrink-0">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 flex items-center gap-3 sm:gap-4 shadow-sm min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center shrink-0">
             <AlertCircle size={24} />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wide sm:tracking-widest truncate">
               Pelanggaran
             </p>
             <p className="text-2xl font-black text-gray-800">{bermasalah}</p>
           </div>
         </div>
         <div
-          className={`p-5 rounded-2xl border flex items-center gap-4 shadow-sm ${terputus > 0 ? "bg-amber-50 border-amber-300" : "bg-white border-gray-200"}`}
+          className={`p-3.5 sm:p-5 rounded-2xl border flex items-center gap-3 sm:gap-4 shadow-sm min-w-0 ${terputus > 0 ? "bg-amber-50 border-amber-300" : "bg-white border-gray-200"}`}
         >
-          <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
             <WifiOff size={24} />
           </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-wide sm:tracking-widest truncate">
               Terputus
             </p>
             <p className="text-2xl font-black text-gray-800">{terputus}</p>
@@ -216,7 +216,7 @@ export default async function DetailMonitoringPage({
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full min-w-[820px] text-left">
             <thead>
               <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
                 <th className="px-6 py-4">No</th>

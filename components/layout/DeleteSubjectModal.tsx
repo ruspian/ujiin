@@ -4,6 +4,8 @@ import { deleteSubject } from "@/actions/subject";
 import { DeleteSubjectModalProps } from "@/types/data.master";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function DeleteSubjectModal({
   subjectData,
@@ -13,7 +15,7 @@ export default function DeleteSubjectModal({
 }: DeleteSubjectModalProps) {
   const handleDelete = async () => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
 
       const result = await deleteSubject(subjectData.id);
 
@@ -63,7 +65,12 @@ export default function DeleteSubjectModal({
             disabled={isSubmitting}
             className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-700 disabled:opacity-50"
           >
-            {isSubmitting ? "Menghapus..." : "Ya, Hapus Mapel"}
+            {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menghapus...
+                </>
+              ) : "Ya, Hapus Mapel"}
           </button>
         </div>
       </div>

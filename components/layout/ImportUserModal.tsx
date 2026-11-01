@@ -4,6 +4,8 @@ import { X, UploadCloud, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { importUsersBulk } from "@/actions/user";
 import { ImportUserModalProps } from "@/types/user.admin";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 interface CustomWindow extends Window {
   readXlsxFile?: (
@@ -24,7 +26,7 @@ export default function ImportUserModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsSubmitting(true);
+    flushSync(() => setIsSubmitting(true));
     const toastId = toast.loading("Menyiapkan library & membaca file...");
 
     try {
@@ -130,11 +132,21 @@ export default function ImportUserModal({
 
         <div className="flex items-center justify-center w-full">
           <label
-            className={`flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-xl transition-colors ${isSubmitting ? "bg-gray-100 cursor-not-allowed" : "bg-gray-50 hover:bg-gray-100 cursor-pointer"}`}
+            className={`flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-xl transition-colors ${isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  bg-gray-100 cursor-not-allowed
+                </>
+              ) : "bg-gray-50 hover:bg-gray-100 cursor-pointer"}`}
           >
             <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
               <UploadCloud
-                className={`w-10 h-10 mb-3 ${isSubmitting ? "text-blue-400 animate-pulse" : "text-gray-400"}`}
+                className={`w-10 h-10 mb-3 ${isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  text-blue-400 animate-pulse
+                </>
+              ) : "text-gray-400"}`}
               />
               <p className="mb-2 text-sm text-gray-500">
                 {isSubmitting ? (

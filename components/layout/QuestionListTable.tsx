@@ -10,6 +10,7 @@ import Loader2 from "./Loader2";
 import { QuestionListTableProps } from "@/types/question";
 import "katex/dist/katex.min.css";
 import RichTextReadOnly from "./RichTextReadOnly";
+import { flushSync } from "react-dom";
 
 export default function QuestionListTable({
   questions,
@@ -37,7 +38,7 @@ export default function QuestionListTable({
   };
 
   const handleBulkDelete = async () => {
-    setIsDeleting(true);
+    flushSync(() => setIsDeleting(true));
     const toastId = toast.loading(`Menghapus ${selectedIds.length} soal...`);
 
     try {

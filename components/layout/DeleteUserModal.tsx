@@ -4,6 +4,8 @@ import { deleteUser } from "@/actions/user";
 import { DeleteUserModalProps } from "@/types/user.admin";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function DeleteUserModal({
   data,
@@ -14,7 +16,7 @@ export default function DeleteUserModal({
 }: DeleteUserModalProps) {
   const handleDelete = async (id: string) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await deleteUser(id);
 
       if (!result.success) {
@@ -61,7 +63,12 @@ export default function DeleteUserModal({
             disabled={isSubmitting}
             className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50 transition-all"
           >
-            {isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+            {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menghapus...
+                </>
+              ) : "Ya, Hapus"}
           </button>
         </div>
       </div>

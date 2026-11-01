@@ -2,6 +2,8 @@ import { createUser } from "@/actions/user";
 import { AddUserModalProps } from "@/types/user.admin";
 import { X } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 const AddUserModal = ({
   setIsModalOpen,
@@ -10,7 +12,7 @@ const AddUserModal = ({
 }: AddUserModalProps) => {
   const handleAddUser = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await createUser(formData);
 
       if (!result.success) {
@@ -107,7 +109,12 @@ const AddUserModal = ({
               disabled={isSubmitting}
               className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition-all"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Data"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Simpan Data"}
             </button>
           </div>
         </form>

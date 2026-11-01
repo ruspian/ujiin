@@ -4,6 +4,8 @@ import { deleteAcademicYear } from "@/actions/academic";
 import { DeleteAcademicModalProps } from "@/types/academic";
 import { X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function DeleteAcademicModal({
   itemData,
@@ -13,7 +15,7 @@ export default function DeleteAcademicModal({
 }: DeleteAcademicModalProps) {
   const handleDelete = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await deleteAcademicYear(formData);
 
       if (!result.success) throw new Error(result.message);
@@ -84,7 +86,12 @@ export default function DeleteAcademicModal({
               disabled={isSubmitting || itemData.active}
               className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Menghapus..." : "Ya, Hapus Data"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menghapus...
+                </>
+              ) : "Ya, Hapus Data"}
             </button>
           </div>
         </form>

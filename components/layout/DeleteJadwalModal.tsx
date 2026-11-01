@@ -5,6 +5,7 @@ import { X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { DeleteJadwalModalProps } from "@/types/exam";
+import { flushSync } from "react-dom";
 
 interface Props extends DeleteJadwalModalProps {
   forceLoading?: boolean;
@@ -21,7 +22,7 @@ export default function DeleteJadwalModal({
 
   const handleDelete = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await deleteExam(formData);
 
       if (!result.success) throw new Error(result.message);

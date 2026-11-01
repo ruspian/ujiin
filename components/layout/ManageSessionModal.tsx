@@ -6,6 +6,8 @@ import { X, Dices, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useRef } from "react";
 import { ManageSessionModalProps } from "@/types/student";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function ManageSessionModal({
   classes,
@@ -24,7 +26,7 @@ export default function ManageSessionModal({
     if (!formData.get("totalSessions")) return toast.error("Isi jumlah sesi!");
 
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await randomizeSessions(formData);
       if (!result.success) throw new Error(result.message);
       toast.success(result.message);
@@ -46,7 +48,7 @@ export default function ManageSessionModal({
       return toast.error("Pilih kelas yang mau direset!");
 
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await resetSessions(formData);
       if (!result.success) throw new Error(result.message);
       toast.success(result.message);
@@ -146,7 +148,12 @@ export default function ManageSessionModal({
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:opacity-50"
             >
               <Dices size={18} />
-              {isSubmitting ? "Memproses..." : "Acak & Bagi Sesi"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Memproses...
+                </>
+              ) : "Acak & Bagi Sesi"}
             </button>
 
             <button

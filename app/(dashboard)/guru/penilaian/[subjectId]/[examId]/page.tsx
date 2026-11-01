@@ -107,7 +107,7 @@ export default async function DaftarPesertaKoreksiPage({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full min-w-[640px] text-left border-collapse">
                 <thead>
                   <tr className="bg-white border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500 font-bold">
                     <th className="px-6 py-4">No</th>

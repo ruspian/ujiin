@@ -5,6 +5,8 @@ import { createSubject } from "@/actions/subject";
 import { AddSubjectModalProps } from "@/types/data.master";
 import { X, BookHeart, Plus, Trash2, Users, School } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function AddSubjectModal({
   teachers,
@@ -47,7 +49,7 @@ export default function AddSubjectModal({
 
   const handleAddSubject = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
 
       const hasEmpty = assignments.some((a) => !a.classId || !a.teacherId);
       if (hasEmpty) {
@@ -245,7 +247,12 @@ export default function AddSubjectModal({
               disabled={isSubmitting}
               className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-700 disabled:opacity-50"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Mapel"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Simpan Mapel"}
             </button>
           </div>
         </form>
