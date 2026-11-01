@@ -6,6 +6,15 @@ import { Calculator, FileSpreadsheet, Filter, ShieldAlert } from "lucide-react";
 import FilterRekap from "@/components/layout/FilterRekap";
 import { PageProps } from "@/types/rekap-nilai";
 import ExportNilaiExcel from "@/components/layout/ExportNilaiExcel";
+import DocActionButtons from "@/components/layout/DocActionButtons";
+import { buildRekapBlocks } from "@/lib/rekap-nilai-report";
+
+const todayLabel = () =>
+  new Date().toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
 export default async function RekapNilaiPage({ searchParams }: PageProps) {
   const session = await auth();
@@ -71,7 +80,25 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
 
       [students, exams] = await Promise.all([
         prisma.student.findMany({
-          where: { classId },
+          // siswa aktif + siswa yang pernah mengerjakan ujian ini (mis. alumni
+          // pada tahun ajaran lama), agar lulusan tahun lalu tidak ikut tercampur
+          where: {
+            classId,
+            OR: [
+              { status: "ACTIVE" },
+              {
+                attempts: {
+                  some: {
+                    exam: {
+                      academicYearId: yearId,
+                      subjectId,
+                      classes: { some: { id: classId } },
+                    },
+                  },
+                },
+              },
+            ],
+          },
           orderBy: { name: "asc" },
           select: { id: true, name: true, nisn: true },
         }),
@@ -117,6 +144,20 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
     ? `${selectedYearObj.year} - ${selectedYearObj.semester}`
     : "Tahun Ajaran";
 
+  const rekapBlocks =
+    isGuruPengampu && exams.length > 0
+      ? buildRekapBlocks({
+          subjectName: selectedSubject?.name || "Mapel",
+          className: selectedClassName,
+          academicYear: academicYearLabel,
+          teacherName: session.user.name ?? "Guru",
+          students,
+          exams,
+          attemptsMap,
+          dateLabel: todayLabel(),
+        })
+      : null;
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
@@ -143,6 +184,16 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
                 <FileSpreadsheet size={18} className="text-emerald-600" /> Tabel
                 Nilai
               </h2>
+              <div className="flex flex-wrap items-center gap-2">
+              {rekapBlocks && (
+                <DocActionButtons
+                  blocks={rekapBlocks}
+                  title={`Rekap Nilai ${selectedSubject?.name ?? ""} ${selectedClassName}`}
+                  fileName={`Rekap_Nilai_${selectedSubject?.name ?? "Mapel"}_${selectedClassName}`}
+                  landscape={exams.length > 3}
+                  compact
+                />
+              )}
               <ExportNilaiExcel
                 students={students}
                 exams={exams}
@@ -151,6 +202,7 @@ export default async function RekapNilaiPage({ searchParams }: PageProps) {
                 className={selectedClassName}
                 academicYear={academicYearLabel}
               />
+              </div>
             </div>
 
             {exams.length === 0 ? (

@@ -35,6 +35,12 @@ export default async function DaftarPesertaKoreksiPage({
       classes: {
         include: {
           students: {
+            where: {
+              OR: [
+                { status: "ACTIVE" },
+                { attempts: { some: { examId: examId } } },
+              ],
+            },
             orderBy: { name: "asc" },
             include: {
               attempts: {

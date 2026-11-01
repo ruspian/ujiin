@@ -11,6 +11,12 @@ import {
   Award,
 } from "lucide-react";
 import RichTextReadOnly from "@/components/layout/RichTextReadOnly";
+import DocActionButtons from "@/components/layout/DocActionButtons";
+import {
+  buildStudentWorkBlocks,
+  type WorkQuestion,
+} from "@/lib/student-work-report";
+import type { AnswerValue as GradingAnswer } from "@/lib/grading";
 
 type AnswerValue = string | string[] | Record<string, string>;
 type OptionMC = { id: string; text: string };
@@ -30,7 +36,7 @@ export default async function ViewJawabanSiswaPage({
   const attempt = await prisma.attempt.findUnique({
     where: { id: attemptId },
     include: {
-      student: true,
+      student: { include: { class: true } },
       exam: {
         include: {
           subject: true,
@@ -58,6 +64,33 @@ export default async function ViewJawabanSiswaPage({
     );
   }
 
+  // Hanya guru pengampu mapel di kelas siswa (atau pengawas ujian ini) yang boleh
+  // melihat jawaban siswa. Dulu semua guru bisa membuka lewat ID.
+  const [assignment, isSupervisor] = await Promise.all([
+    prisma.subjectAssignment.findUnique({
+      where: {
+        subjectId_classId: {
+          subjectId: attempt.exam.subjectId,
+          classId: attempt.student.classId,
+        },
+      },
+      select: { teacherId: true },
+    }),
+    prisma.exam.count({
+      where: { id: attempt.examId, supervisorId: session.user.id },
+    }),
+  ]);
+  if (assignment?.teacherId !== session.user.id && isSupervisor === 0) {
+    return (
+      <div className="p-8 text-center bg-red-50 rounded-2xl border border-red-100 max-w-2xl mx-auto mt-10">
+        <h2 className="text-red-600 font-bold text-lg">Akses ditolak!</h2>
+        <p className="text-sm text-red-500 mt-1">
+          Anda bukan guru pengampu / pengawas untuk siswa ini.
+        </p>
+      </div>
+    );
+  }
+
   let studentAnswers: Record<string, AnswerValue> = {};
   try {
     if (typeof attempt.answers === "string") {
@@ -71,6 +104,28 @@ export default async function ViewJawabanSiswaPage({
   } catch (e) {
     console.error("Gagal parse jawaban siswa", e);
   }
+
+  const reportBlocks = buildStudentWorkBlocks({
+    studentName: attempt.student.name,
+    nisn: attempt.student.nisn,
+    className: attempt.student.class?.name ?? "-",
+    examTitle: attempt.exam.title,
+    subjectName: attempt.exam.subject.name,
+    status: attempt.status,
+    score: attempt.score,
+    answers: studentAnswers as Record<string, GradingAnswer>,
+    essayScores: (attempt.essayScores as Record<string, number> | null) ?? null,
+    questions: attempt.exam.questions.map(
+      (q): WorkQuestion => ({
+        id: q.id,
+        type: q.type,
+        score: q.score,
+        correctAnswer: q.correctAnswer,
+        text: q.text,
+        options: q.options,
+      }),
+    ),
+  });
 
   return (
     <div className="space-y-6 pb-10">
@@ -113,6 +168,12 @@ export default async function ViewJawabanSiswaPage({
             </div>
           </div>
 
+          <div className="flex flex-col items-stretch gap-3 md:items-end">
+          <DocActionButtons
+            blocks={reportBlocks}
+            title={`Hasil ${attempt.student.name} - ${attempt.exam.title}`}
+            fileName={`Hasil_${attempt.student.name}_${attempt.exam.title}`}
+          />
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl text-center min-w-35">
             <p className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
               <Award size={14} /> Total Skor
@@ -120,6 +181,7 @@ export default async function ViewJawabanSiswaPage({
             <p className="text-3xl font-black text-blue-700">
               {attempt.score !== null ? Math.round(attempt.score) : "-"}
             </p>
+          </div>
           </div>
         </div>
       </div>

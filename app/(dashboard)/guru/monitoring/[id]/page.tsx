@@ -40,7 +40,12 @@ export default async function DetailMonitoringPage({
       attempts: true,
       classes: {
         include: {
-          students: { orderBy: { name: "asc" } },
+          students: {
+            where: {
+              OR: [{ status: "ACTIVE" }, { attempts: { some: { examId: id } } }],
+            },
+            orderBy: { name: "asc" },
+          },
         },
       },
     },
