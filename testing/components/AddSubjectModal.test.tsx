@@ -47,10 +47,22 @@ describe("Pengujian Komponen UI - AddSubjectModal (Form Action Mode)", () => {
       />,
     );
 
+  // Isi baris plot pertama: pilih kelas lalu guru
+  const isiBarisPlot = (
+    container: HTMLElement,
+    classId: string,
+    teacherId: string,
+    row = 0,
+  ) => {
+    const selects = container.querySelectorAll("select[required]");
+    fireEvent.change(selects[row * 2], { target: { value: classId } });
+    fireEvent.change(selects[row * 2 + 1], { target: { value: teacherId } });
+  };
+
   // SKENARIO 1: RENDERING & RELASI DATA
 
-  test("Harus sukses merender form input dan seluruh daftar relasi checkbox", () => {
-    const { getByText, container } = renderModal();
+  test("Harus sukses merender form input dan pilihan relasi kelas/guru/agama", () => {
+    const { getByText, getAllByText, container } = renderModal();
 
     expect(getByText("Tambah Mata Pelajaran")).toBeInTheDocument();
 
@@ -62,9 +74,9 @@ describe("Pengujian Komponen UI - AddSubjectModal (Form Action Mode)", () => {
 
     // Verifikasi data opsi render dengan benar
     expect(getByText("Islam")).toBeInTheDocument();
-    expect(getByText("Budi Santoso, S.Pd")).toBeInTheDocument();
-    expect(getByText("10 RPL 1")).toBeInTheDocument();
-    expect(getByText("10 RPL 2")).toBeInTheDocument();
+    expect(getAllByText("Budi Santoso, S.Pd").length).toBeGreaterThan(0);
+    expect(getAllByText("10 RPL 1").length).toBeGreaterThan(0);
+    expect(getAllByText("10 RPL 2").length).toBeGreaterThan(0);
   });
 
   // SKENARIO 2: AKSI BATAL DAN PENUTUPAN MODAL
@@ -90,7 +102,7 @@ describe("Pengujian Komponen UI - AddSubjectModal (Form Action Mode)", () => {
       message: "Mata Pelajaran berhasil ditambahkan!",
     });
 
-    const { getByRole, getByText, container } = renderModal();
+    const { getByRole, container } = renderModal();
 
     const inputName = container.querySelector('input[name="name"]');
     const selectReligion = container.querySelector('select[name="religionId"]');
@@ -104,16 +116,10 @@ describe("Pengujian Komponen UI - AddSubjectModal (Form Action Mode)", () => {
     fireEvent.change(inputName, { target: { value: "Pemrograman Web" } });
     fireEvent.change(selectReligion, { target: { value: "rel-1" } });
 
-    // 2. Klik text label untuk mencentang checkbox Guru & Kelas secara ajaib (simulasi native browser)
-    fireEvent.click(getByText("Budi Santoso, S.Pd"));
-    fireEvent.click(getByText("10 RPL 1"));
-    fireEvent.click(getByText("10 RPL 2"));
-
-    // Pastikan checkbox-nya beneran nyala (opsional tapi nambah kekokohan tes)
-    const checkboxGuru = container.querySelector(
-      'input[name="teacherIds"][value="t-1"]',
-    ) as HTMLInputElement;
-    expect(checkboxGuru.checked).toBe(true);
+    // 2. Plot guru-kelas: dua baris (satu guru boleh mengampu banyak kelas)
+    isiBarisPlot(container, "cls-1", "t-1", 0);
+    fireEvent.click(getByRole("button", { name: /tambah baris/i }));
+    isiBarisPlot(container, "cls-2", "t-1", 1);
 
     // 3. Eksekusi pengiriman form menggunakan act()
     await act(async () => {
@@ -126,6 +132,13 @@ describe("Pengujian Komponen UI - AddSubjectModal (Form Action Mode)", () => {
     // 5. Pastikan efek pasca-aksi (toast & penutupan) ter-trigger sempurna
     await waitFor(() => {
       expect(createSubject).toHaveBeenCalled();
+      const sent = vi.mocked(createSubject).mock.calls[0][0] as FormData;
+      expect(sent.get("name")).toBe("Pemrograman Web");
+      expect(sent.get("religionId")).toBe("rel-1");
+      expect(JSON.parse(sent.get("assignments") as string)).toEqual([
+        { classId: "cls-1", teacherId: "t-1" },
+        { classId: "cls-2", teacherId: "t-1" },
+      ]);
       expect(toast.success).toHaveBeenCalledWith(
         "Mata Pelajaran berhasil ditambahkan!",
       );
@@ -150,7 +163,7 @@ describe("Pengujian Komponen UI - AddSubjectModal (Form Action Mode)", () => {
       message: "Nama mata pelajaran sudah ada!",
     });
 
-    const { getByRole, getByText, container } = renderModal();
+    const { getByRole, container } = renderModal();
 
     const inputName = container.querySelector('input[name="name"]');
     const tombolSimpan = getByRole("button", { name: /simpan mapel/i });
@@ -159,7 +172,7 @@ describe("Pengujian Komponen UI - AddSubjectModal (Form Action Mode)", () => {
 
     // Simulasi data bentrok
     fireEvent.change(inputName, { target: { value: "Matematika" } });
-    fireEvent.click(getByText("Budi Santoso, S.Pd"));
+    isiBarisPlot(container, "cls-1", "t-1");
 
     await act(async () => {
       fireEvent.click(tombolSimpan);
