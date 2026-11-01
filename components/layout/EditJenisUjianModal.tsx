@@ -5,6 +5,7 @@ import { X, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { EditJenisUjianModalProps } from "@/types/examType";
+import { flushSync } from "react-dom";
 
 interface ExtendedProps extends EditJenisUjianModalProps {
   forceLoading?: boolean;
@@ -21,7 +22,7 @@ export default function EditJenisUjianModal({
 
   const handleEdit = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await updateExamType(formData);
 
       if (!result.success) throw new Error(result.message);

@@ -4,6 +4,8 @@ import { resetPassword } from "@/actions/user";
 import { ResetPasswordModalProps } from "@/types/user.admin";
 import { X, Key } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function ResetPasswordUserModal({
   user,
@@ -13,7 +15,7 @@ export default function ResetPasswordUserModal({
 }: ResetPasswordModalProps) {
   const handleReset = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await resetPassword(formData);
 
       if (!result.success) {
@@ -82,7 +84,12 @@ export default function ResetPasswordUserModal({
               disabled={isSubmitting}
               className="w-full rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-amber-600 disabled:opacity-50"
             >
-              {isSubmitting ? "Menyimpan..." : "Reset Password"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Reset Password"}
             </button>
           </div>
         </form>

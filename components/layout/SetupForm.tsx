@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { User, Lock, ShieldCheck, Database } from "lucide-react";
 import { createFirstAdmin } from "@/actions/setup";
 import { toast } from "sonner";
+import { flushSync } from "react-dom";
 
 export default function SetupForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleAction = async (formData: FormData) => {
-    setLoading(true);
+    flushSync(() => setLoading(true));
 
     const result = await createFirstAdmin(formData);
 

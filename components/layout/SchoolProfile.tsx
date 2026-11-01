@@ -4,6 +4,8 @@ import { updateSchoolProfile } from "@/actions/school";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
 import { useState } from "react";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 type SchoolProfileProps = {
   id: string;
@@ -21,7 +23,7 @@ export default function SchoolProfileForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function clientAction(formData: FormData) {
-    setIsSubmitting(true);
+    flushSync(() => setIsSubmitting(true));
     try {
       const result = await updateSchoolProfile(formData);
 
@@ -101,7 +103,12 @@ export default function SchoolProfileForm({
           className="flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 transition-all active:scale-95 disabled:opacity-50"
         >
           <Save size={18} />
-          {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+          {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Simpan Perubahan"}
         </button>
       </div>
     </form>

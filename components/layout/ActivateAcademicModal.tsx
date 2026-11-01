@@ -5,6 +5,8 @@ import { setActiveAcademicYear } from "@/actions/academic";
 import { X, Power, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { ActivateAcademicModalProps } from "@/types/academic";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function ActivateAcademicModal({
   itemData,
@@ -13,7 +15,7 @@ export default function ActivateAcademicModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleActivate = async () => {
-    setIsSubmitting(true);
+    flushSync(() => setIsSubmitting(true));
     const formData = new FormData();
     formData.append("id", itemData.id);
 
@@ -86,7 +88,12 @@ export default function ActivateAcademicModal({
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 disabled:opacity-50"
           >
             <Power size={18} />
-            {isSubmitting ? "Memproses..." : "Aktifkan"}
+            {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Memproses...
+                </>
+              ) : "Aktifkan"}
           </button>
         </div>
       </div>

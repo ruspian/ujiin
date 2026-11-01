@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { KenaikanKelasClientProps } from "@/types/kenaikan-kelas";
+import { flushSync } from "react-dom";
 
 export default function KenaikanKelasClient({
   classes,
@@ -82,7 +83,7 @@ export default function KenaikanKelasClient({
 
   const executePromotionAction = async () => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await prosesKenaikanKelas(
         selectedIds,
         actionType,
@@ -253,7 +254,7 @@ export default function KenaikanKelasClient({
             </div>
           ) : (
             <div className="overflow-x-auto max-h-120 overflow-y-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full min-w-[560px] text-left text-xs border-collapse">
                 <thead className="bg-gray-50 text-gray-500 uppercase font-bold sticky top-0 z-10 shadow-[0_1px_0_0_#e5e7eb]">
                   <tr>
                     <th className="p-4 w-12 text-center">

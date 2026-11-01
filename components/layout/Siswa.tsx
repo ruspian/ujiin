@@ -94,7 +94,7 @@ export default function Siswa({
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 [&>button]:grow [&>button]:whitespace-nowrap sm:[&>button]:grow-0">
           <button
             onClick={() => setIsModalSessionOpen(true)}
             className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-all active:scale-95"
@@ -191,7 +191,7 @@ export default function Siswa({
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
               <tr>
                 <th className="px-6 py-4 font-semibold">NISN</th>

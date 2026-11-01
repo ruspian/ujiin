@@ -4,6 +4,8 @@ import { updateAcademicYear } from "@/actions/academic";
 import { EditAcademicModalProps } from "@/types/academic";
 import { X, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function EditAcademicModal({
   itemData,
@@ -13,7 +15,7 @@ export default function EditAcademicModal({
 }: EditAcademicModalProps) {
   const handleEdit = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await updateAcademicYear(formData);
 
       if (!result.success) throw new Error(result.message);
@@ -94,7 +96,12 @@ export default function EditAcademicModal({
               disabled={isSubmitting}
               className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Simpan Perubahan"}
             </button>
           </div>
         </form>

@@ -5,6 +5,7 @@ import { X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { DeleteJenisUjianModalProps } from "@/types/examType";
+import { flushSync } from "react-dom";
 
 interface ExtendedProps extends DeleteJenisUjianModalProps {
   forceLoading?: boolean;
@@ -21,7 +22,7 @@ export default function DeleteJenisUjianModal({
 
   const handleDelete = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await deleteExamType(formData);
 
       if (!result.success) throw new Error(result.message);

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { resetStudentPassword } from "@/actions/student";
 import { Key, X, CheckCircle, Copy, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 interface ResetPasswordModalProps {
   studentData: { id: string; name: string };
@@ -18,7 +20,7 @@ export default function ResetPasswordModal({
   const [newPassword, setNewPassword] = useState<string | null>(null);
 
   const handleReset = async () => {
-    setIsSubmitting(true);
+    flushSync(() => setIsSubmitting(true));
     const formData = new FormData();
     formData.append("id", studentData.id);
 
@@ -125,7 +127,12 @@ export default function ResetPasswordModal({
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-orange-600 disabled:opacity-50"
               >
                 <Key size={18} />
-                {isSubmitting ? "Mereset..." : "Reset"}
+                {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Mereset...
+                </>
+              ) : "Reset"}
               </button>
             </div>
           </div>

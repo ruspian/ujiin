@@ -5,6 +5,7 @@ import { ImportStudentModalProps } from "@/types/student";
 import { X, UploadCloud, Download, AlertCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { flushSync } from "react-dom";
 
 type ExcelCellType =
   | StringConstructor
@@ -98,7 +99,7 @@ export default function ImportStudentModal({
     if (!file) return;
 
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       setErrorLogs([]);
       const toastId = toast.loading("Membaca file Excel...");
 

@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { EditJadwalModalProps } from "@/types/exam";
 import { extractDateAndTime } from "@/lib/formatDateTime";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function EditJadwalModal({
   itemData,
@@ -80,7 +82,7 @@ export default function EditJadwalModal({
     };
 
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
       const result = await updateExam(payload);
       if (!result.success) throw new Error(result.message);
       toast.success(result.message);
@@ -363,7 +365,12 @@ export default function EditJadwalModal({
               disabled={isSubmitting}
               className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 disabled:opacity-50 transition-colors"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Simpan Perubahan"}
             </button>
           </div>
         </form>

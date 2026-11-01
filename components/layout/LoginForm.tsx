@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { loginSchema } from "@/schemas/loginSchema";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 export default function LoginForm({
   forceLoading = false,
@@ -14,11 +16,12 @@ export default function LoginForm({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const isLoadingButton = forceLoading || loading;
 
   const handleLogin = async (formData: FormData) => {
-    setLoading(true);
+    flushSync(() => setLoading(true));
 
     const rawLoginData = Object.fromEntries(formData.entries());
 
@@ -44,6 +47,8 @@ export default function LoginForm({
       setLoading(false);
     } else {
       toast.success("Berhasil masuk!");
+      // tombol tetap berputar sampai halaman dashboard benar-benar terbuka
+      setRedirecting(true);
       router.push("/dashboard");
       router.refresh();
     }
@@ -62,6 +67,8 @@ export default function LoginForm({
               name="username"
               type="text"
               required
+              disabled={isLoadingButton}
+              autoComplete="username"
               className="block w-full rounded-lg py-3 pl-10 text-gray-900 focus:border-teal-500 focus:ring-teal-500 sm:text-sm bg-gray-50 border ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:bg-white transition-colors"
               placeholder="Username"
             />
@@ -78,6 +85,8 @@ export default function LoginForm({
               name="password"
               type="password"
               required
+              disabled={isLoadingButton}
+              autoComplete="current-password"
               className="block w-full rounded-lg py-3 pl-10 text-gray-900 focus:border-teal-500 focus:ring-teal-500 sm:text-sm bg-gray-50 border ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:bg-white transition-colors"
               placeholder="Password"
             />
@@ -88,9 +97,15 @@ export default function LoginForm({
       <button
         type="submit"
         disabled={isLoadingButton}
-        className="flex w-full justify-center rounded-lg bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-700  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:opacity-50 transition-all"
+        aria-busy={isLoadingButton}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-700  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:opacity-50 transition-all"
       >
-        {isLoadingButton ? "Memeriksa data..." : "Masuk"}
+        {isLoadingButton && <Loader2 size={18} className="animate-spin" />}
+        {redirecting
+          ? "Membuka dashboard..."
+          : isLoadingButton
+            ? "Memeriksa data..."
+            : "Masuk"}
       </button>
     </form>
   );

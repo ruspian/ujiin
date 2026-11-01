@@ -5,6 +5,8 @@ import { updateSubject } from "@/actions/subject";
 import { EditSubjectModalProps } from "@/types/data.master";
 import { X, Users, School, BookHeart, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import Loader2 from "./Loader2";
+import { flushSync } from "react-dom";
 
 interface ExtendProps extends Omit<EditSubjectModalProps, "subjectData"> {
   subjectData: EditSubjectModalProps["subjectData"] & {
@@ -73,7 +75,7 @@ export default function EditSubjectModal({
 
   const handleEditSubject = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
+      flushSync(() => setIsSubmitting(true));
 
       const hasEmpty = assignments.some(
         (a: AssignmentItem) => !a.classId || !a.teacherId,
@@ -276,7 +278,12 @@ export default function EditSubjectModal({
               disabled={isSubmitting}
               className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-700 disabled:opacity-50"
             >
-              {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="mr-2 inline-block animate-spin align-[-3px]" />
+                  Menyimpan...
+                </>
+              ) : "Simpan Perubahan"}
             </button>
           </div>
         </form>
