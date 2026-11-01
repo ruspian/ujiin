@@ -1,4 +1,5 @@
 import KenaikanKelasClient from "@/components/layout/KenaikanKelasClient";
+import ArsipCard from "@/components/layout/ArsipCard";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
@@ -30,6 +31,11 @@ export default async function KenaikanKelasPage() {
     orderBy: { name: "asc" },
   });
 
+  const years = await prisma.academicYear.findMany({
+    orderBy: [{ active: "desc" }, { createdAt: "desc" }],
+    select: { id: true, year: true, semester: true },
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -41,6 +47,13 @@ export default async function KenaikanKelasPage() {
           alumni.
         </p>
       </div>
+
+      <ArsipCard
+        years={years.map((y) => ({
+          id: y.id,
+          label: `${y.year} - ${y.semester}`,
+        }))}
+      />
 
       <KenaikanKelasClient classes={classes} allStudents={allStudents} />
     </div>

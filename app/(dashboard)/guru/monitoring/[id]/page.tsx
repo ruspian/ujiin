@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import AutoRefresh from "@/components/layout/AutoRefresh";
 import { resetSesiSiswa } from "@/actions/monitoring";
+import { PengumumanForm, TambahWaktu } from "@/components/layout/MonitoringTools";
 
 const currentTimeMs = () => Date.now();
 
@@ -211,6 +212,20 @@ export default async function DetailMonitoringPage({
         </div>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <PengumumanForm examId={id} />
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-gray-600">
+            Tambah Waktu (semua yang sedang mengerjakan)
+          </h3>
+          <TambahWaktu examId={id} label="Tambah untuk Semua" />
+          <p className="mt-2 text-[11px] font-medium text-gray-400">
+            Untuk satu siswa saja, pakai tombol di kolom Opsi pada tabel. Tambahkan
+            sebelum waktu siswa habis.
+          </p>
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
           <h3 className="text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
@@ -221,7 +236,7 @@ export default async function DetailMonitoringPage({
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left">
+          <table className="w-full min-w-[900px] text-left">
             <thead>
               <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
                 <th className="px-6 py-4">No</th>
@@ -338,6 +353,16 @@ export default async function DetailMonitoringPage({
                   </td>
 
                   <td className="px-6 py-4 text-right">
+                    {row.isOngoing && (
+                      <div className="mb-2 flex justify-end">
+                        <TambahWaktu
+                          examId={id}
+                          studentId={row.student.id}
+                          label="+ Waktu"
+                          compact
+                        />
+                      </div>
+                    )}
                     {row.attempt ? (
                       <form action={resetSesiSiswa}>
                         <input type="hidden" name="examId" value={id} />

@@ -18,6 +18,7 @@ export interface ExamData {
   endTime: Date;
   duration: number;
   randomizeQuestions: boolean;
+  shuffleOptions: boolean;
   showResult: boolean;
   status: "DRAFT" | "PUBLISHED" | "COMPLETED";
   _count: { questions: number; attempts: number };
@@ -75,6 +76,7 @@ export interface ExamInitialData {
   endTime: Date;
   duration: number;
   randomizeQuestions: boolean;
+  shuffleOptions: boolean;
   showResult: boolean;
   status: "DRAFT" | "PUBLISHED" | "COMPLETED";
   classes: { id: string }[];

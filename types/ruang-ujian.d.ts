@@ -44,4 +44,6 @@ export interface RuangUjianProps {
   /** Nomor urut simpan terakhir yang sudah ada di server. */
   initialSeq?: number;
   serverTime: Date | string;
+  /** Pilihan diacak: huruf A, B, C... mengikuti urutan tampil, bukan id opsi. */
+  letterByPosition?: boolean;
 }

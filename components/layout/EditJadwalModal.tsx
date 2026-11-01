@@ -76,6 +76,7 @@ export default function EditJadwalModal({
       endTime: finalEndDateTime,
       duration: calculatedDuration,
       randomizeQuestions: formData.get("randomizeQuestions") === "true",
+      shuffleOptions: formData.get("shuffleOptions") === "true",
       showResult: formData.get("showResult") === "true",
       status: formData.get("status") as "DRAFT" | "PUBLISHED" | "COMPLETED",
       classes: selectedClasses,
@@ -320,6 +321,23 @@ export default function EditJadwalModal({
                       <option value="false">Tidak</option>
                     </select>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-700">
+                      Acak Urutan Pilihan Jawaban?
+                    </label>
+                    <select
+                      name="shuffleOptions"
+                      defaultValue={(itemData.shuffleOptions ?? false).toString()}
+                      className="rounded-lg border-gray-300 text-xs py-1.5 pl-2 pr-8 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+                    >
+                      <option value="false">Tidak</option>
+                      <option value="true">Ya</option>
+                    </select>
+                  </div>
+                  <p className="text-[10px] text-gray-400 -mt-1">
+                    Jangan diaktifkan bila ada soal berbunyi &quot;pilihan A dan B
+                    benar&quot; atau opsi &quot;semua jawaban benar&quot;.
+                  </p>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-medium text-gray-700">
                       Tampilkan Nilai ke Siswa?
