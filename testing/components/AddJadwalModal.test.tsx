@@ -170,7 +170,9 @@ describe("Pengujian Komponen UI - AddJadwalModal (Complex Form Mode)", () => {
           title: "PAS Matematika 2026",
           duration: 120,
           classes: ["cls-1"],
-          startTime: "2026-05-20T08:00:00+08:00", // Pastikan offset timezone lu sama dengan string +08:00 di komponen asli
+          // Komponen memakai zona waktu perangkat; bandingkan sebagai instan waktu
+          startTime: new Date("2026-05-20T08:00:00").toISOString(),
+          endTime: new Date("2026-05-20T10:00:00").toISOString(),
         }),
       );
       expect(toast.success).toHaveBeenCalledWith("Jadwal berhasil dibuat!");

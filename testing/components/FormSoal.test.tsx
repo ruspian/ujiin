@@ -65,7 +65,7 @@ describe("Pengujian Komponen UI - FormSoal", () => {
   // SKENARIO 1: RENDERING AWAL (MODE BUAT SOAL)
   // ==========================================
   test("Harus merender form pembuatan soal dengan default Pilihan Ganda", () => {
-    const { getByText, getByTestId, getByRole } = renderComponent();
+    const { getByText, getAllByTestId, getByRole } = renderComponent();
 
     // Pastikan tombol submit bertuliskan "Simpan Soal"
     expect(getByText("Simpan Soal")).toBeInTheDocument();
@@ -78,7 +78,7 @@ describe("Pengujian Komponen UI - FormSoal", () => {
     expect(getByText("Opsi Jawaban & Kunci")).toBeInTheDocument();
 
     // Pastikan mock RichTextEditor terender
-    expect(getByTestId("mock-rich-text")).toBeInTheDocument();
+    expect(getAllByTestId("mock-rich-text")[0]).toBeInTheDocument();
   });
 
   // ==========================================
@@ -95,7 +95,7 @@ describe("Pengujian Komponen UI - FormSoal", () => {
       options: [],
     } as unknown as ExtendedFormSoalProps["initialData"];
 
-    const { getByText, getByTestId, getByDisplayValue } = renderComponent({
+    const { getByText, getAllByTestId, getByDisplayValue } = renderComponent({
       questionId: "q-99",
       initialData: mockInitialData,
     });
@@ -103,7 +103,7 @@ describe("Pengujian Komponen UI - FormSoal", () => {
     expect(getByText("Update Soal")).toBeInTheDocument();
 
     // Verifikasi teks soal masuk ke dalam mock editor
-    const editor = getByTestId("mock-rich-text") as HTMLTextAreaElement;
+    const editor = getAllByTestId("mock-rich-text")[0] as HTMLTextAreaElement;
     expect(editor.value).toBe("<p>Jelaskan cara kerja React!</p>");
 
     // Verifikasi nilai bobot score
@@ -141,22 +141,21 @@ describe("Pengujian Komponen UI - FormSoal", () => {
       message: "Soal berhasil ditambahkan!",
     });
 
-    const { getByRole, getByTestId, getByPlaceholderText } = renderComponent();
+    const { getByRole, getAllByTestId } = renderComponent();
 
     // 1. Ubah tipe soal ke Essay
     const selectType = getByRole("combobox") as HTMLSelectElement;
     fireEvent.change(selectType, { target: { value: "ESSAY" } });
 
     // 2. Isi teks pertanyaan
-    const editor = getByTestId("mock-rich-text") as HTMLTextAreaElement;
+    const editor = getAllByTestId("mock-rich-text")[0] as HTMLTextAreaElement;
     fireEvent.change(editor, {
       target: { value: "<p>Sebutkan 3 rukun iman!</p>" },
     });
 
     // 3. Isi kunci jawaban
-    const inputAnswer = getByPlaceholderText(
-      /Contoh: Siswa menjawab A mendapat skor 5/i,
-    ) as HTMLTextAreaElement;
+    // Editor ke-2 pada tipe Esai = kunci jawaban / rubrik
+    const inputAnswer = getAllByTestId("mock-rich-text")[1] as HTMLTextAreaElement;
     fireEvent.change(inputAnswer, {
       target: { value: "Iman kepada Allah, Malaikat, dan Kitab-kitabnya" },
     });
@@ -171,7 +170,7 @@ describe("Pengujian Komponen UI - FormSoal", () => {
     await waitFor(() => {
       expect(createQuestion).toHaveBeenCalledWith({
         subjectId: "sbj-1",
-        classId: "cls-1",
+        classIds: ["cls-1"],
         typeId: "type-1",
         type: "ESSAY",
         score: 10,

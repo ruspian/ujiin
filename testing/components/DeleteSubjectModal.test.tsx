@@ -48,16 +48,11 @@ describe("Pengujian Komponen UI - DeleteSubjectModal", () => {
   // ==========================================
   // SKENARIO 1: RENDERING AWAL
   // ==========================================
-  test("Harus sukses merender judul modal, nama mapel secara dinamis, dan hidden input ID", () => {
-    const { getByText, getByRole, container } = renderModal();
+  test("Harus sukses merender judul modal, nama mapel secara dinamis, ", () => {
+    const { getByText, getByRole } = renderModal();
 
     expect(getByText("Hapus Mata Pelajaran?")).toBeInTheDocument();
     expect(getByText("Informatika")).toBeInTheDocument();
-
-    const inputHidden = container.querySelector(
-      'input[name="id"]',
-    ) as HTMLInputElement;
-    expect(inputHidden.value).toBe("sbj-101");
 
     expect(
       getByRole("button", { name: /ya, hapus mapel/i }),
@@ -83,17 +78,14 @@ describe("Pengujian Komponen UI - DeleteSubjectModal", () => {
       message: "Mata pelajaran berhasil dihapus!",
     });
 
-    const { container } = renderModal();
-    const formElement = container.querySelector("form");
-    if (!formElement) throw new Error("Elemen form tidak ditemukan");
+    const { getByRole } = renderModal();
 
-    // Picu submit form langsung lewat dispatch event untuk menghindari restriksi tombol submit JSDOM
     await act(async () => {
-      fireEvent.submit(formElement);
+      fireEvent.click(getByRole("button", { name: /ya, hapus mapel/i }));
     });
 
     expect(setIsSubmittingMock).toHaveBeenCalledWith(true);
-    expect(deleteSubject).toHaveBeenCalled();
+    expect(deleteSubject).toHaveBeenCalledWith("sbj-101");
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith(
@@ -113,12 +105,10 @@ describe("Pengujian Komponen UI - DeleteSubjectModal", () => {
         "Gagal menghapus! Mapel ini sudah terikat dengan bank soal aktif.",
     });
 
-    const { container } = renderModal();
-    const formElement = container.querySelector("form");
-    if (!formElement) throw new Error("Elemen form tidak ditemukan");
+    const { getByRole } = renderModal();
 
     await act(async () => {
-      fireEvent.submit(formElement);
+      fireEvent.click(getByRole("button", { name: /ya, hapus mapel/i }));
     });
 
     await waitFor(() => {

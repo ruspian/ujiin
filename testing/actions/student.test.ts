@@ -81,6 +81,7 @@ describe("Pengujian Server Action - Manajemen Data Siswa & Sesi", () => {
       religionId: "rel-1",
       session: null,
       room: null,
+      status: "ACTIVE",
       createdAt: new Date(),
       updatedAt: new Date(),
       ...overrides,

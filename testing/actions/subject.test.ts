@@ -15,14 +15,19 @@ vi.mock("@/lib/prisma", () => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
-    question: {
-      count: vi.fn(),
-    },
-    exam: {
-      count: vi.fn(),
-    },
+    $transaction: vi.fn(),
   },
 }));
+
+// Objek transaksi yang dipakai di dalam prisma.$transaction
+const tx = {
+  subject: { create: vi.fn(), update: vi.fn() },
+  subjectAssignment: {
+    upsert: vi.fn(),
+    deleteMany: vi.fn(),
+    createMany: vi.fn(),
+  },
+};
 
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
@@ -44,6 +49,9 @@ vi.mock("next/navigation", () => ({
 describe("Pengujian Server Action - Manajemen Mata Pelajaran (Subject)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation((async (
+      fn: (t: typeof tx) => Promise<unknown>,
+    ) => fn(tx)) as never);
   });
 
   type MockSubjectFindFirst = Awaited<
@@ -56,10 +64,13 @@ describe("Pengujian Server Action - Manajemen Mata Pelajaran (Subject)", () => {
     if (overrides?.id) formData.append("id", overrides.id);
     formData.append("name", overrides?.name ?? "Pemrograman Web Next.js");
     formData.append("religionId", "rel-umum");
-    formData.append("teacherIds", "guru-pian");
-    formData.append("teacherIds", "guru-zaki");
-    formData.append("classIds", "class-rpl1");
-    formData.append("classIds", "class-rpl2");
+    formData.append(
+      "assignments",
+      JSON.stringify([
+        { classId: "class-rpl1", teacherId: "guru-pian" },
+        { classId: "class-rpl2", teacherId: "guru-zaki" },
+      ]),
+    );
     return formData;
   };
 
@@ -95,50 +106,62 @@ describe("Pengujian Server Action - Manajemen Mata Pelajaran (Subject)", () => {
       });
     });
 
-    test("Harus gagal jika nama mata pelajaran sudah terdaftar (Case-Insensitive)", async () => {
-      // Pura-pura nama mapel sudah kembar di DB
+    test("Harus gagal jika data nama/plot guru tidak lengkap", async () => {
+      const fd = new FormData();
+      fd.append("name", "Mapel");
+      const hasil = await createSubject(fd);
+      expect(hasil.success).toBe(false);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    test("Mapel yang sudah ada (case-insensitive) dipakai ulang, tidak dibuat ganda", async () => {
       vi.mocked(prisma.subject.findFirst).mockResolvedValue({
         id: "sub-old",
         name: "PEMROGRAMAN WEB NEXT.JS",
       } as unknown as MockSubjectFindFirst);
 
-      const mockFormData = createMockFormData({
-        name: "  pemrograman web next.js  ",
-      }); // Simulasikan spasi kotor
-      const hasil = await createSubject(mockFormData);
-
-      expect(hasil).toEqual({
-        success: false,
-        message: "Mata pelajaran sudah ada!",
-      });
-      expect(prisma.subject.create).not.toHaveBeenCalled();
-    });
-
-    test("Harus sukses menyimpan data mapel beserta koneksi array Many-to-Many", async () => {
-      vi.mocked(prisma.subject.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.subject.create).mockResolvedValue(
-        {} as unknown as Awaited<ReturnType<typeof prisma.subject.create>>,
+      const hasil = await createSubject(
+        createMockFormData({ name: "  pemrograman web next.js  " }),
       );
 
-      const mockFormData = createMockFormData({ name: "Dasar Desain Grafis" });
-      const hasil = await createSubject(mockFormData);
+      expect(hasil.success).toBe(true);
+      expect(tx.subject.create).not.toHaveBeenCalled();
+      expect(tx.subjectAssignment.upsert).toHaveBeenCalledTimes(2);
+      expect(tx.subjectAssignment.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: {
+            subjectId: "sub-old",
+            classId: "class-rpl1",
+            teacherId: "guru-pian",
+          },
+        }),
+      );
+    });
+
+    test("Harus sukses membuat mapel baru beserta plot guru per kelas", async () => {
+      vi.mocked(prisma.subject.findFirst).mockResolvedValue(null);
+      tx.subject.create.mockResolvedValue({ id: "sub-baru" });
+
+      const hasil = await createSubject(
+        createMockFormData({ name: "Dasar Desain Grafis" }),
+      );
 
       expect(hasil).toEqual({
         success: true,
-        message: "Mata pelajaran berhasil ditambahkan!",
+        message: "Mata pelajaran & jadwal berhasil disimpan!",
       });
-
-      // Verifikasi struktur data connect relasi Prisma
-      expect(prisma.subject.create).toHaveBeenCalledWith({
-        data: {
-          name: "Dasar Desain Grafis",
-          religionId: "rel-umum",
-          teachers: {
-            connect: [{ id: "guru-pian" }, { id: "guru-zaki" }],
-          },
-          classes: {
-            connect: [{ id: "class-rpl1" }, { id: "class-rpl2" }],
-          },
+      expect(tx.subject.create).toHaveBeenCalledWith({
+        data: { name: "Dasar Desain Grafis", religionId: "rel-umum" },
+      });
+      expect(tx.subjectAssignment.upsert).toHaveBeenCalledWith({
+        where: {
+          subjectId_classId: { subjectId: "sub-baru", classId: "class-rpl2" },
+        },
+        update: { teacherId: "guru-zaki" },
+        create: {
+          subjectId: "sub-baru",
+          classId: "class-rpl2",
+          teacherId: "guru-zaki",
         },
       });
       expect(revalidatePath).toHaveBeenCalledWith("/admin/master/mapel");
@@ -155,36 +178,49 @@ describe("Pengujian Server Action - Manajemen Mata Pelajaran (Subject)", () => {
       });
     });
 
-    test("Harus sukses memperbarui mapel dan mengganti relasi lama via method SET", async () => {
-      vi.mocked(prisma.subject.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.subject.update).mockResolvedValue(
-        {} as unknown as Awaited<ReturnType<typeof prisma.subject.update>>,
+    test("Harus gagal jika nama dipakai mapel lain", async () => {
+      vi.mocked(prisma.subject.findFirst).mockResolvedValue({
+        id: "sub-lain",
+      } as unknown as MockSubjectFindFirst);
+      const hasil = await updateSubject(
+        createMockFormData({ id: "sub-123", name: "Sama" }),
       );
-
-      const mockFormData = createMockFormData({
-        id: "sub-123",
-        name: "Pemrograman Berorientasi Objek",
+      expect(hasil).toEqual({
+        success: false,
+        message: "Nama mata pelajaran sudah dipakai!",
       });
-      const hasil = await updateSubject(mockFormData);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    test("Harus sukses memperbarui mapel dan mengganti seluruh plot guru-kelas", async () => {
+      vi.mocked(prisma.subject.findFirst).mockResolvedValue(null);
+
+      const hasil = await updateSubject(
+        createMockFormData({
+          id: "sub-123",
+          name: "Pemrograman Berorientasi Objek",
+        }),
+      );
 
       expect(hasil).toEqual({
         success: true,
         message: "Mata pelajaran berhasil diperbarui!",
       });
-
-      // Verifikasi penggunaan method SET untuk pembersihan relasi Many-to-Many lama
-      expect(prisma.subject.update).toHaveBeenCalledWith({
+      expect(tx.subject.update).toHaveBeenCalledWith({
         where: { id: "sub-123" },
         data: {
           name: "Pemrograman Berorientasi Objek",
           religionId: "rel-umum",
-          teachers: {
-            set: [{ id: "guru-pian" }, { id: "guru-zaki" }],
-          },
-          classes: {
-            set: [{ id: "class-rpl1" }, { id: "class-rpl2" }],
-          },
         },
+      });
+      expect(tx.subjectAssignment.deleteMany).toHaveBeenCalledWith({
+        where: { subjectId: "sub-123" },
+      });
+      expect(tx.subjectAssignment.createMany).toHaveBeenCalledWith({
+        data: [
+          { subjectId: "sub-123", classId: "class-rpl1", teacherId: "guru-pian" },
+          { subjectId: "sub-123", classId: "class-rpl2", teacherId: "guru-zaki" },
+        ],
       });
     });
   });
@@ -199,34 +235,24 @@ describe("Pengujian Server Action - Manajemen Mata Pelajaran (Subject)", () => {
       });
     });
 
-    test("Harus gagal menghapus jika mapel terikat dengan bank soal atau jadwal ujian", async () => {
-      // Pura-pura mapel terikat di 5 soal dan 2 jadwal ujian
-      vi.mocked(prisma.question.count).mockResolvedValue(5);
-      vi.mocked(prisma.exam.count).mockResolvedValue(2);
+    test("Harus gagal (tanpa melempar) jika database menolak penghapusan", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.mocked(prisma.subject.delete).mockRejectedValue(new Error("FK"));
 
-      const formData = new FormData();
-      formData.append("id", "sub-terikat");
+      const hasil = await deleteSubject("sub-terikat");
 
-      const hasil = await deleteSubject(formData);
-
-      expect(hasil.success).toBe(false);
-      expect(hasil.message).toContain(
-        "Gagal! Mapel ini sedang digunakan pada 5 soal dan 2 jadwal ujian.",
-      );
-      expect(prisma.subject.delete).not.toHaveBeenCalled();
+      expect(hasil).toEqual({
+        success: false,
+        message: "Gagal menghapus mata pelajaran!",
+      });
     });
 
-    test("Harus sukses menghapus mapel jika tidak memiliki keterikatan data", async () => {
-      vi.mocked(prisma.question.count).mockResolvedValue(0);
-      vi.mocked(prisma.exam.count).mockResolvedValue(0);
+    test("Harus sukses menghapus mapel", async () => {
       vi.mocked(prisma.subject.delete).mockResolvedValue(
         {} as unknown as Awaited<ReturnType<typeof prisma.subject.delete>>,
       );
 
-      const formData = new FormData();
-      formData.append("id", "sub-aman");
-
-      const hasil = await deleteSubject(formData);
+      const hasil = await deleteSubject("sub-aman");
 
       expect(hasil.success).toBe(true);
       expect(hasil.message).toBe("Mata pelajaran berhasil dihapus!");

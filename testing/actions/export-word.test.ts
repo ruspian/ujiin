@@ -43,7 +43,6 @@ describe("Pengujian Utilitas - Export Soal ke Microsoft Word (.docx)", () => {
       options: options as unknown as Question["options"], // Aman dari Prisma JsonValue constraint
       score: 10,
       correctAnswer: "A",
-      classId: "class-1",
       authorId: "auth-1",
       subjectId: "sub-1",
       examTypeId: "ext-1",

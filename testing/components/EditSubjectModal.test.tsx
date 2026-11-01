@@ -27,9 +27,10 @@ describe("Pengujian Komponen UI - EditSubjectModal", () => {
   const mockSubjectData = {
     id: "sbj-999",
     name: "Pemrograman Web Dasar",
-    teachers: [{ id: "t-1", name: "Budi Santoso" }],
-    classes: [{ id: "c-1", name: "X RPL 1" }],
+    assignments: [{ classId: "c-1", teacherId: "t-1" }],
   } as unknown as EditSubjectModalProps["subjectData"];
+
+  const mockReligions = [{ id: "r-1", name: "Islam" }];
 
   const mockTeachers = [
     { id: "t-1", name: "Budi Santoso" },
@@ -53,6 +54,7 @@ describe("Pengujian Komponen UI - EditSubjectModal", () => {
         subjectData={mockSubjectData}
         teachers={mockTeachers}
         classes={mockClasses}
+        religions={mockReligions}
         isSubmitting={isSubmitting}
         setIsModalEditOpen={setIsModalEditOpenMock}
         setIsSubmitting={setIsSubmittingMock}
@@ -62,43 +64,26 @@ describe("Pengujian Komponen UI - EditSubjectModal", () => {
   // ==========================================
   // SKENARIO 1: RENDERING AWAL & VALUE DEFAULT
   // ==========================================
-  test("Harus sukses merender judul modal, default value nama mapel, hidden input ID, dan state checkbox", () => {
+  test("Harus sukses merender judul modal, nama mapel, hidden input ID, dan plot guru-kelas awal", () => {
     const { getByText, getByRole, container } = renderModal();
 
     expect(getByText("Edit Mata Pelajaran")).toBeInTheDocument();
 
-    // Verifikasi hidden input ID
     const inputHidden = container.querySelector(
       'input[name="id"]',
     ) as HTMLInputElement;
     expect(inputHidden.value).toBe("sbj-999");
 
-    // Verifikasi default value input nama mapel menggunakan selector (kebal dari peringatan label)
     const inputName = container.querySelector(
       'input[name="name"]',
     ) as HTMLInputElement;
-    expect(inputName).toBeInTheDocument();
     expect(inputName.value).toBe("Pemrograman Web Dasar");
 
-    // Verifikasi checkbox relasi Guru (T-1 harusnya checked, T-2 unchecked)
-    const cbTeacher1 = container.querySelector(
-      'input[name="teacherIds"][value="t-1"]',
-    ) as HTMLInputElement;
-    const cbTeacher2 = container.querySelector(
-      'input[name="teacherIds"][value="t-2"]',
-    ) as HTMLInputElement;
-    expect(cbTeacher1.checked).toBe(true);
-    expect(cbTeacher2.checked).toBe(false);
-
-    // Verifikasi checkbox relasi Kelas (C-1 harusnya checked, C-2 unchecked)
-    const cbClass1 = container.querySelector(
-      'input[name="classIds"][value="c-1"]',
-    ) as HTMLInputElement;
-    const cbClass2 = container.querySelector(
-      'input[name="classIds"][value="c-2"]',
-    ) as HTMLInputElement;
-    expect(cbClass1.checked).toBe(true);
-    expect(cbClass2.checked).toBe(false);
+    // Satu baris plot awal: kelas c-1 diampu guru t-1
+    const selects = container.querySelectorAll("select[required]");
+    expect(selects).toHaveLength(2);
+    expect((selects[0] as HTMLSelectElement).value).toBe("c-1");
+    expect((selects[1] as HTMLSelectElement).value).toBe("t-1");
 
     expect(
       getByRole("button", { name: /simpan perubahan/i }),
@@ -124,26 +109,20 @@ describe("Pengujian Komponen UI - EditSubjectModal", () => {
   // ==========================================
   // SKENARIO 3: INTERAKSI CHECKBOX RELASI
   // ==========================================
-  test("Harus bisa berinteraksi (centang/hapus centang) dengan daftar pilihan Guru dan Kelas", () => {
-    const { container } = renderModal();
+  test("Harus bisa menambah baris plot, dan menolak menghapus baris terakhir", () => {
+    const { container, getByRole, getAllByTitle } = renderModal();
 
-    const cbTeacher2 = container.querySelector(
-      'input[name="teacherIds"][value="t-2"]',
-    ) as HTMLInputElement;
+    fireEvent.click(getByRole("button", { name: /tambah baris/i }));
+    expect(container.querySelectorAll("select[required]")).toHaveLength(4);
 
-    // Status awal T-2 belum dicentang, kita klik supaya dicentang
-    expect(cbTeacher2.checked).toBe(false);
-    fireEvent.click(cbTeacher2);
-    expect(cbTeacher2.checked).toBe(true);
-
-    const cbClass1 = container.querySelector(
-      'input[name="classIds"][value="c-1"]',
-    ) as HTMLInputElement;
-
-    // Status awal C-1 sudah dicentang, kita klik supaya batal dicentang
-    expect(cbClass1.checked).toBe(true);
-    fireEvent.click(cbClass1);
-    expect(cbClass1.checked).toBe(false);
+    // hapus satu baris -> sisa satu; hapus lagi ditolak dengan toast
+    fireEvent.click(getAllByTitle("Hapus baris")[1]);
+    expect(container.querySelectorAll("select[required]")).toHaveLength(2);
+    fireEvent.click(getAllByTitle("Hapus baris")[0]);
+    expect(container.querySelectorAll("select[required]")).toHaveLength(2);
+    expect(toast.error).toHaveBeenCalledWith(
+      "Minimal harus ada satu pengampu mata pelajaran!",
+    );
   });
 
   // ==========================================
@@ -166,6 +145,11 @@ describe("Pengujian Komponen UI - EditSubjectModal", () => {
 
     expect(setIsSubmittingMock).toHaveBeenCalledWith(true);
     expect(updateSubject).toHaveBeenCalled();
+    const sent = vi.mocked(updateSubject).mock.calls[0][0] as FormData;
+    expect(sent.get("id")).toBe("sbj-999");
+    expect(JSON.parse(sent.get("assignments") as string)).toEqual([
+      { classId: "c-1", teacherId: "t-1" },
+    ]);
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith(
