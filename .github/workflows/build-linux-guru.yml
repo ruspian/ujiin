@@ -1,0 +1,72 @@
+name: Build Aplikasi Linux Guru
+
+# Jalankan manual: tab Actions -> "Build Aplikasi Linux Guru" -> Run workflow.
+# Juga berjalan otomatis (tes + build) saat ada perubahan di folder desktop/.
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Alamat website Ujiin yang diisi otomatis di layar login. Boleh kosong."
+        required: false
+        default: ""
+        type: string
+      release_tag:
+        description: "Tag rilis (mis. v1.0.0) untuk menerbitkan ke GitHub Releases. Kosongkan jika tidak perlu."
+        required: false
+        default: ""
+        type: string
+  pull_request:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/build-linux-guru.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # Ubuntu 22.04 supaya biner kompatibel dengan distro yang lebih lama (glibc 2.35)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+
+      - name: Tes
+        run: cargo test
+
+      - name: Build rilis
+        env:
+          UJIIN_DEFAULT_SERVER: ${{ inputs.server_url }}
+        run: cargo build --release
+
+      - name: Kemas
+        run: |
+          mkdir -p dist/ujiin-guru
+          cp target/release/ujiin-guru dist/ujiin-guru/ujiin-guru
+          cp linux/ujiin-guru.desktop dist/ujiin-guru/
+          tar -C dist -czf dist/UjiinGuru-linux-x86_64.tar.gz ujiin-guru
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ujiin-guru-linux
+          path: desktop/dist/UjiinGuru-linux-x86_64.tar.gz
+
+      - name: Terbitkan ke GitHub Releases
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/UjiinGuru-linux-x86_64.tar.gz --clobber
+          else
+            gh release create "$TAG" dist/UjiinGuru-linux-x86_64.tar.gz \
+              --title "Ujiin Guru ${TAG}" \
+              --notes "Aplikasi Ujiin untuk guru & admin. Panduan: desktop/README.md"
+          fi

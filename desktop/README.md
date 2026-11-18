@@ -1,7 +1,7 @@
 # Ujiin Guru (Windows)
 
 Aplikasi desktop ringan untuk **guru & admin** Ujiin, ditulis dengan Rust ([egui](https://github.com/emilk/egui)).
-Satu berkas `.exe` (±5 MB), tanpa instalasi, tanpa WebView.
+Windows: satu berkas `.exe` (±5 MB), tanpa instalasi, tanpa WebView. Linux: satu biner (±9 MB) dalam `.tar.gz`.
 
 ## Fitur
 **Guru & admin:** beranda, monitoring ujian (status siswa, pelanggaran, tambah waktu, pengumuman, token, reset sesi, notifikasi desktop),
@@ -13,8 +13,17 @@ menjodohkan, esai; teks tebal/miring/garis bawah/sub/sup; unggah gambar ke Cloud
 Daftar tersimpan di komputer sehingga tetap terlihat saat internet putus (mode offline, hanya baca).
 
 Catatan: editor teks kaya memakai tombol tag dengan pratinjau (bukan WYSIWYG); gambar tampil sebagai `[gambar]` di editor.
-Dialog pilih berkas hanya di Windows; di OS lain gunakan seret-lepas. Unggah gambar butuh Cloudinary aktif di server.
+Dialog pilih berkas: Windows asli, Linux lewat xdg-desktop-portal (GNOME/KDE sudah punya); jika tidak ada, gunakan seret-lepas. Unggah gambar butuh Cloudinary aktif di server.
 Hak akses mengikuti web: hanya guru yang membuat/ubah soal dan koreksi esai; hanya admin yang membuat jadwal, mapel, impor, kenaikan kelas.
+
+## Linux
+Unduh `UjiinGuru-linux-x86_64.tar.gz` (artifact workflow *Build Aplikasi Linux Guru* atau Releases), lalu:
+```
+tar xzf UjiinGuru-linux-x86_64.tar.gz && ./ujiin-guru/ujiin-guru
+```
+Opsional: salin `ujiin-guru.desktop` ke `~/.local/share/applications/` dan biner ke `~/.local/bin/` agar muncul di menu aplikasi.
+Butuh X11 atau Wayland dengan OpenGL (Mesa), dan daemon notifikasi desktop untuk peringatan pengawas (GNOME/KDE sudah ada).
+Cache offline di `~/.cache`, alamat server terakhir di `~/.config` (XDG).
 
 ## Cara pakai
 1. Unduh `UjiinGuru.exe` dari GitHub Releases (atau artifact workflow), jalankan.
