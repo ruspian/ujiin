@@ -212,7 +212,23 @@ describe("Pengujian Server Action - Autentikasi Token & Akses Ujian", () => {
   // TES RE-GENERATE TOKEN JADWAL
 
   describe("generateExamToken", () => {
+    test("Guru yang bukan pembuat/pengawas ujian ditolak", async () => {
+      vi.mocked(prisma.exam.findUnique).mockResolvedValue({
+        authorId: "guru-lain",
+        supervisorId: "guru-lain",
+      } as unknown as Awaited<ReturnType<typeof prisma.exam.findUnique>>);
+
+      const hasil = await generateExamToken("exam-uts");
+
+      expect(hasil.success).toBe(false);
+      expect(prisma.exam.update).not.toHaveBeenCalled();
+    });
+
     test("Harus sukses meng-update token acak baru ke dalam database jadwal terkait", async () => {
+      vi.mocked(prisma.exam.findUnique).mockResolvedValue({
+        authorId: "guru-lain",
+        supervisorId: "guru-1",
+      } as unknown as Awaited<ReturnType<typeof prisma.exam.findUnique>>);
       vi.mocked(prisma.exam.update).mockResolvedValue(
         {} as unknown as Awaited<ReturnType<typeof prisma.exam.update>>,
       );
