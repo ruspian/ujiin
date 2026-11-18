@@ -38,8 +38,16 @@ jobs:
         with:
           workspaces: desktop
 
-      - name: Tes
-        run: cargo test
+      - name: Tes (satu per satu, untuk melacak crash)
+        shell: bash
+        run: |
+          cargo test --no-run
+          fail=0
+          for t in $(cargo test -- --list 2>/dev/null | grep ': test' | sed 's/: test//'); do
+            echo "=== $t"
+            cargo test -q -- --exact "$t" --nocapture || { echo "GAGAL: $t"; fail=1; }
+          done
+          exit $fail
 
       - name: Build rilis
         env:
