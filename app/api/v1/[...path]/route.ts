@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { finalizeExpiredAttempts } from "@/lib/finalize-attempts";
 import { fail, json, requireStaff, type StaffUser } from "@/lib/api-v1";
+import * as forms from "@/lib/api-v1-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -376,6 +377,8 @@ async function adminList({ segs }: Ctx) {
               religion: { select: { name: true } },
               assignments: {
                 select: {
+                  classId: true,
+                  teacherId: true,
                   class: { select: { name: true } },
                   teacher: { select: { name: true } },
                 },
@@ -386,6 +389,8 @@ async function adminList({ segs }: Ctx) {
           id: s.id,
           name: s.name,
           religion: s.religion?.name ?? null,
+          religionId: s.religionId,
+          plot: s.assignments.map((a) => ({ classId: a.classId, teacherId: a.teacherId })),
           assignments: s.assignments.map((a) => ({
             class: a.class.name,
             teacher: a.teacher.name,
@@ -440,6 +445,10 @@ async function adminList({ segs }: Ctx) {
       );
     case "sekolah":
       return json(await prisma.schoolProfile.findFirst());
+    case "kenaikan":
+      return forms.kenaikanData();
+    case "jadwal-item":
+      return segs[2] ? forms.jadwalItem(segs[2]) : fail("id wajib.", 400);
     default:
       return fail("Sumber data tidak dikenal.", 404);
   }
@@ -466,6 +475,12 @@ export async function GET(
     }
     if (head === "soal") {
       return segs[1] ? await soalList(ctx) : await soalSubjects(ctx);
+    }
+    if (head === "options") return await forms.optionsList(user);
+    if (head === "soal-form" && segs[1]) return await forms.soalForm(user, segs[1]);
+    if (head === "soal-item" && segs[1]) return await forms.soalItem(user, segs[1]);
+    if (head === "penilaian" && segs[1] === "attempt" && segs[2]) {
+      return await forms.attemptDetail(user, segs[2]);
     }
     if (head === "penilaian") {
       return segs[1] ? await penilaianDetail(ctx) : await penilaianExams(ctx);

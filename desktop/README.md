@@ -5,12 +5,16 @@ Satu berkas `.exe` (±5 MB), tanpa instalasi, tanpa WebView.
 
 ## Fitur
 **Guru & admin:** beranda, monitoring ujian (status siswa, pelanggaran, tambah waktu, pengumuman, token, reset sesi, notifikasi desktop),
-penilaian & rekap (simpan Excel/CSV ke komputer), bank soal (lihat/cari/hapus).
-**Admin:** jadwal, siswa, kelas, mapel, jenis ujian, agama, tahun ajaran, pengguna (tambah/hapus), arsip CSV.
+penilaian & rekap (simpan Excel/CSV), bank soal, **editor soal** (semua jenis: pilihan ganda, PG kompleks, benar/salah,
+menjodohkan, esai; teks tebal/miring/garis bawah/sub/sup; unggah gambar ke Cloudinary lewat tombol atau seret-lepas berkas),
+**koreksi esai** (guru).
+**Admin:** **form jadwal ujian**, **mapel + pengampu per kelas**, **impor siswa dari Excel** (dengan unduh templat),
+**kenaikan kelas / kelulusan**, siswa, kelas, jenis ujian, agama, tahun ajaran, pengguna, arsip CSV.
 Daftar tersimpan di komputer sehingga tetap terlihat saat internet putus (mode offline, hanya baca).
 
-Yang tetap dikerjakan di web (tombol "buka di web" tersedia): editor soal (teks kaya/gambar), form jadwal,
-pengampu mapel, impor siswa, koreksi esai, kenaikan kelas.
+Catatan: editor teks kaya memakai tombol tag dengan pratinjau (bukan WYSIWYG); gambar tampil sebagai `[gambar]` di editor.
+Dialog pilih berkas hanya di Windows; di OS lain gunakan seret-lepas. Unggah gambar butuh Cloudinary aktif di server.
+Hak akses mengikuti web: hanya guru yang membuat/ubah soal dan koreksi esai; hanya admin yang membuat jadwal, mapel, impor, kenaikan kelas.
 
 ## Cara pakai
 1. Unduh `UjiinGuru.exe` dari GitHub Releases (atau artifact workflow), jalankan.

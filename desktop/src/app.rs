@@ -105,6 +105,8 @@ pub struct App {
     pub confirm: Option<Confirm>,
     /// Status terakhir tiap siswa pada ujian yang dipantau: id -> (status, pelanggaran, offline)
     mon_prev: HashMap<String, (String, i64, bool)>,
+    pub forms: crate::forms::Forms,
+    rpc_done: Vec<(String, bool)>,
 }
 
 #[derive(Clone)]
@@ -141,6 +143,8 @@ impl App {
             minutes: 10,
             confirm: None,
             mon_prev: HashMap::new(),
+            forms: Default::default(),
+            rpc_done: Vec::new(),
         };
         // Untuk pengujian otomatis: UJIIN_SERVER / UJIIN_USER / UJIIN_PASS
         if let (Ok(s), Ok(u), Ok(p)) = (
@@ -160,6 +164,25 @@ impl App {
                     app.tab = *tab;
                 }
                 app.sel = std::env::var("UJIIN_SEL").ok();
+            }
+            if let Ok(f) = std::env::var("UJIIN_FORM") {
+                use crate::forms::*;
+                match f.as_str() {
+                    "soal" => app.forms.soal = Some(SoalForm::new("m1", "Informatika", None)),
+                    "soal-edit" => {
+                        app.forms.soal = Some(SoalForm::new("m1", "Informatika", Some("q1".into())))
+                    }
+                    "jadwal" => app.forms.jadwal = Some(JadwalForm::new(None)),
+                    "mapel" => app.forms.mapel = Some(MapelForm::new(None)),
+                    "import" => app.forms.import = Some(Default::default()),
+                    "koreksi" => {
+                        app.forms.koreksi = Some(KoreksiForm {
+                            attempt_id: "a1".into(),
+                            ..Default::default()
+                        })
+                    }
+                    _ => {}
+                }
             }
         }
         app
@@ -250,7 +273,14 @@ impl App {
         net.rpc(&refresh.join("\n"), body);
     }
 
+    /// Ambil hasil RPC bertanda `marker` (true = sukses) bila sudah selesai.
+    pub fn take_rpc(&mut self, marker: &str) -> Option<bool> {
+        let i = self.rpc_done.iter().position(|(m, _)| m == marker)?;
+        Some(self.rpc_done.remove(i).1)
+    }
+
     pub fn logout(&mut self) {
+        self.forms = Default::default();
         self.net = None;
         self.user = None;
         self.store.clear();
@@ -289,8 +319,16 @@ impl App {
                                 msg
                             };
                             self.push_toast(msg, ok);
+                            if let Some(m) =
+                                label.lines().next().filter(|l| l.starts_with("@form:"))
+                            {
+                                self.rpc_done.push((m.to_string(), ok));
+                            }
                             if ok {
-                                for p in label.split('\n').filter(|p| !p.is_empty()) {
+                                for p in label
+                                    .split('\n')
+                                    .filter(|p| !p.is_empty() && !p.starts_with('@'))
+                                {
                                     self.fetch(p);
                                 }
                                 // token baru dari generateExamToken ikut tampil lewat refresh
@@ -301,11 +339,17 @@ impl App {
                                 self.logout();
                                 self.login_err = e;
                             } else {
+                                if let Some(m) =
+                                    label.lines().next().filter(|l| l.starts_with("@form:"))
+                                {
+                                    self.rpc_done.push((m.to_string(), false));
+                                }
                                 self.push_toast(e, false);
                             }
                         }
                     }
                 }
+                Msg::Upload { res } => crate::forms::on_upload_done(self, res),
                 Msg::File { res } => match res {
                     Ok(path) => self.push_toast(format!("Tersimpan: {path}"), true),
                     Err(e) => self.push_toast(e, false),
@@ -411,7 +455,17 @@ impl App {
 }
 
 impl eframe::App for App {
-    fn logic(&mut self, _ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let dropped: Vec<std::path::PathBuf> = ctx.input(|i| {
+            i.raw
+                .dropped_files
+                .iter()
+                .map(|f| f.path().to_path_buf())
+                .collect()
+        });
+        if !dropped.is_empty() {
+            crate::forms::on_files_dropped(self, dropped);
+        }
         self.handle_msgs();
         self.toasts
             .retain(|t| t.at.elapsed() < Duration::from_secs(6));

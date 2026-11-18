@@ -18,6 +18,10 @@ pub enum Msg {
     File {
         res: Result<String, String>,
     },
+    /// Hasil unggah gambar soal: alamat gambar (Cloudinary).
+    Upload {
+        res: Result<String, String>,
+    },
 }
 
 /// Dipanggil setelah hasil jaringan siap agar UI digambar ulang.
@@ -194,9 +198,119 @@ impl Net {
         });
     }
 
+    /// Unggah gambar soal ke Cloudinary (tanda tangan diminta dari server Ujiin).
+    pub fn upload_image(&self, path: std::path::PathBuf) {
+        let (agent, url, tx, ctx) = (
+            self.agent.clone(),
+            format!("{}/api/v1/rpc", self.base),
+            self.tx.clone(),
+            self.repaint.clone(),
+        );
+        std::thread::spawn(move || {
+            let res = (|| -> Result<String, String> {
+                let ext = path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
+                    .to_ascii_lowercase();
+                let mime = match ext.as_str() {
+                    "png" => "image/png",
+                    "jpg" | "jpeg" => "image/jpeg",
+                    "gif" => "image/gif",
+                    "webp" => "image/webp",
+                    _ => return Err("Format gambar harus PNG, JPG, GIF, atau WEBP.".into()),
+                };
+                let bytes =
+                    std::fs::read(&path).map_err(|e| format!("Gagal membaca gambar ({e})"))?;
+                if bytes.len() > 5 * 1024 * 1024 {
+                    return Err("Ukuran gambar maksimal 5 MB.".into());
+                }
+                let sig = read_json(
+                    agent
+                        .post(url)
+                        .send_json(
+                            &serde_json::json!({"action": "getCloudinarySignature", "args": []}),
+                        )
+                        .map_err(net_err)?,
+                )?;
+                let g = |k: &str| {
+                    sig.get(k)
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string()
+                };
+                let (cloud, key) = (g("cloudName"), g("apiKey"));
+                if cloud.is_empty() || key.is_empty() {
+                    return Err("Cloudinary belum diatur di server.".into());
+                }
+                let (body, ctype) = multipart(
+                    &[
+                        ("api_key", key),
+                        ("timestamp", g("timestamp")),
+                        ("signature", g("signature")),
+                        ("folder", g("folder")),
+                    ],
+                    path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("gambar"),
+                    mime,
+                    &bytes,
+                );
+                let mut resp = agent
+                    .post(format!(
+                        "https://api.cloudinary.com/v1_1/{cloud}/image/upload"
+                    ))
+                    .header("Content-Type", ctype)
+                    .send(&body[..])
+                    .map_err(net_err)?;
+                let v: Value = resp
+                    .body_mut()
+                    .read_json()
+                    .map_err(|_| "Respons Cloudinary tidak valid.".to_string())?;
+                v.get("secure_url")
+                    .and_then(|u| u.as_str())
+                    .map(|u| u.to_string())
+                    .ok_or_else(|| {
+                        v.pointer("/error/message")
+                            .and_then(|m| m.as_str())
+                            .unwrap_or("Unggah gambar gagal.")
+                            .to_string()
+                    })
+            })();
+            Self::send(&tx, &ctx, Msg::Upload { res });
+        });
+    }
+
     pub fn open_web(&self, path: &str) {
         let _ = open::that(format!("{}{}", self.base, path));
     }
+}
+
+/// Badan multipart/form-data sederhana: kolom teks + satu berkas bernama `file`.
+pub(crate) fn multipart(
+    fields: &[(&str, String)],
+    file_name: &str,
+    mime: &str,
+    data: &[u8],
+) -> (Vec<u8>, String) {
+    let boundary = "----ujiin7f3a9c1e5b";
+    let mut body = Vec::new();
+    for (k, v) in fields {
+        body.extend_from_slice(
+            format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n")
+                .as_bytes(),
+        );
+    }
+    let safe = file_name.replace(['"', '\r', '\n'], "_");
+    body.extend_from_slice(
+        format!(
+            "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{safe}\"\r\nContent-Type: {mime}\r\n\r\n"
+        )
+        .as_bytes(),
+    );
+    body.extend_from_slice(data);
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    (body, format!("multipart/form-data; boundary={boundary}"))
 }
 
 #[cfg(test)]
@@ -312,6 +426,21 @@ mod tests {
             Msg::Data { res: Err(e), .. } => assert!(e.contains("Sesi berakhir")),
             _ => panic!("tanpa login harus 401"),
         }
+    }
+
+    #[test]
+    fn multipart_berisi_kolom_dan_berkas() {
+        let (b, ct) = multipart(
+            &[("api_key", "k".into())],
+            "a\"b.png",
+            "image/png",
+            &[1, 2, 3],
+        );
+        let t = String::from_utf8_lossy(&b);
+        assert!(ct.starts_with("multipart/form-data; boundary="));
+        assert!(t.contains("name=\"api_key\"\r\n\r\nk"));
+        assert!(t.contains("filename=\"a_b.png\""));
+        assert!(t.trim_end().ends_with("--"));
     }
 
     #[test]

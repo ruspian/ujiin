@@ -5,6 +5,7 @@ edition = "2021"
 description = "Aplikasi desktop Windows untuk guru & admin Ujiin (CBT)"
 
 [dependencies]
+calamine = { version = "0.38.0", default-features = false }
 dirs = "7.0.0"
 eframe = { version = "0.37.0", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
 open = "5.4.5"
@@ -21,4 +22,5 @@ panic = "abort"
 strip = true
 
 [target."cfg(windows)".dependencies]
+rfd = { version = "0.18.0", default-features = false }
 winrt-notification = "0.5.1"

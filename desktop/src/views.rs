@@ -211,6 +211,18 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
         )
         .show(ui, |ui| {
             theme::page_header(ui, app.tab.title(), tab_hint(app.tab));
+            if app.forms.soal.is_some() {
+                return crate::forms::soal_form(app, ui);
+            }
+            if app.forms.jadwal.is_some() {
+                return crate::forms::jadwal_form(app, ui);
+            }
+            if app.forms.mapel.is_some() {
+                return crate::forms::mapel_form(app, ui);
+            }
+            if app.forms.koreksi.is_some() {
+                return crate::forms::koreksi_form(app, ui);
+            }
             match app.tab {
                 Tab::Dashboard => dashboard(app, ui),
                 Tab::Monitoring => monitoring(app, ui),
@@ -331,7 +343,7 @@ pub fn confirm_dialog(app: &mut App, ctx: &egui::Context) {
     }
 }
 
-fn ask(app: &mut App, text: &str, body: Value, refresh: &[&str]) {
+pub(crate) fn ask(app: &mut App, text: &str, body: Value, refresh: &[&str]) {
     app.confirm = Some(Confirm {
         text: text.to_string(),
         body,
@@ -342,7 +354,7 @@ fn ask(app: &mut App, text: &str, body: Value, refresh: &[&str]) {
 // ───────────────────────── helper tampilan ─────────────────────────
 
 /// Muat data + tampilkan status (memuat / offline / galat). None bila belum ada data.
-fn load(app: &mut App, ui: &mut egui::Ui, path: &str, ttl: u64) -> Option<Arc<Value>> {
+pub(crate) fn load(app: &mut App, ui: &mut egui::Ui, path: &str, ttl: u64) -> Option<Arc<Value>> {
     app.ensure(path, ttl);
     let e = app.store.get(path)?;
     if e.offline {
@@ -397,7 +409,7 @@ fn status_badge(ui: &mut egui::Ui, status: &str, offline: bool) {
     }
 }
 
-fn arr(v: &Value) -> &[Value] {
+pub(crate) fn arr(v: &Value) -> &[Value] {
     v.as_array().map(|a| a.as_slice()).unwrap_or(&[])
 }
 
@@ -785,18 +797,19 @@ fn penilaian_detail(app: &mut App, ui: &mut egui::Ui, id: &str) {
                 Err(e) => app.push_toast(format!("Gagal menyimpan: {e}"), false),
             }
         }
-        if ui.button("Koreksi esai / cetak di web").clicked() {
+        if ui.button("Cetak di web").clicked() {
             if let Some(n) = &app.net {
                 n.open_web("/guru/penilaian");
             }
         }
     });
+    let is_guru = !app.is_admin();
     ui.separator();
     theme::card_scroll(ui, |ui| {
         egui::Grid::new("pen_detail")
             .striped(true)
             .spacing(theme::GRID_SPACING)
-            .num_columns(7)
+            .num_columns(8)
             .show(ui, |ui| {
                 for h in [
                     "No",
@@ -806,6 +819,7 @@ fn penilaian_detail(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     "Status",
                     "Pelanggaran",
                     "Nilai",
+                    "",
                 ] {
                     theme::th(ui, h);
                 }
@@ -818,6 +832,16 @@ fn penilaian_detail(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     status_badge(ui, &text(r, "status"), false);
                     ui.label(path_text(r, "violationCount"));
                     ui.label(RichText::new(path_text(r, "score")).strong());
+                    if is_guru && text(r, "status") != "ONGOING" {
+                        if theme::row_button(ui, "Koreksi", false) {
+                            app.forms.koreksi = Some(crate::forms::KoreksiForm {
+                                attempt_id: text(r, "attemptId"),
+                                ..Default::default()
+                            });
+                        }
+                    } else {
+                        ui.label("");
+                    }
                     ui.end_row();
                 }
             });
@@ -840,19 +864,15 @@ fn bank_soal(app: &mut App, ui: &mut egui::Ui) {
         return;
     }
     ui.horizontal(|ui| {
-        if ui.button("Tambah / ubah soal di web").clicked() {
-            if let Some(n) = &app.net {
-                n.open_web("/guru/soal");
-            }
-        }
+        ui.label(RichText::new("Pilih mata pelajaran, lalu tambah atau ubah soal.").color(GRAY));
     });
     theme::card_scroll(ui, |ui| {
         egui::Grid::new("soal_subjects")
             .striped(true)
             .spacing(theme::GRID_SPACING)
-            .num_columns(4)
+            .num_columns(5)
             .show(ui, |ui| {
-                for h in ["Mata pelajaran", "Kelas", "Jumlah soal", ""] {
+                for h in ["Mata pelajaran", "Kelas", "Jumlah soal", "", ""] {
                     theme::th(ui, h);
                 }
                 ui.end_row();
@@ -868,6 +888,13 @@ fn bank_soal(app: &mut App, ui: &mut egui::Ui) {
                         app.sel = Some(text(s, "id"));
                         app.page = 0;
                         app.filter.clear();
+                    }
+                    if theme::row_button(ui, "Tambah soal", false) {
+                        app.forms.soal = Some(crate::forms::SoalForm::new(
+                            &text(s, "id"),
+                            &text(s, "name"),
+                            None,
+                        ));
                     }
                     ui.end_row();
                 }
@@ -885,6 +912,10 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
                 .hint_text("Cari teks soal...")
                 .desired_width(260.0),
         );
+        if ui.add(theme::primary("Tambah soal")).clicked() {
+            let name = load_name(app, subject_id);
+            app.forms.soal = Some(crate::forms::SoalForm::new(subject_id, &name, None));
+        }
         if ui.add(theme::primary("Cari")).clicked() {
             app.page = 0;
             let k = format!("soal/{subject_id}?q={}&page=1", urlenc(&app.filter));
@@ -915,9 +946,9 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
         egui::Grid::new("soal_items")
             .striped(true)
             .spacing(theme::GRID_SPACING)
-            .num_columns(6)
+            .num_columns(7)
             .show(ui, |ui| {
-                for h in ["Soal", "Jenis", "Skor", "Kunci", "Kelas", ""] {
+                for h in ["Soal", "Jenis", "Skor", "Kunci", "Kelas", "", ""] {
                     theme::th(ui, h);
                 }
                 ui.end_row();
@@ -945,6 +976,14 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
                         .collect();
                     ui.label(key_txt);
                     ui.label(path_text(q, "classes"));
+                    if theme::row_button(ui, "Ubah", false) {
+                        let name = load_name(app, subject_id);
+                        app.forms.soal = Some(crate::forms::SoalForm::new(
+                            subject_id,
+                            &name,
+                            Some(text(q, "id")),
+                        ));
+                    }
                     if theme::row_button(ui, "Hapus", true) {
                         ask(
                             app,
@@ -957,6 +996,19 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
                 }
             });
     });
+}
+
+fn load_name(app: &App, subject_id: &str) -> String {
+    app.store
+        .get("soal")
+        .map(|e| {
+            arr(&e.value)
+                .iter()
+                .find(|s| text(s, "id") == subject_id)
+                .map(|s| text(s, "name"))
+                .unwrap_or_default()
+        })
+        .unwrap_or_default()
 }
 
 fn urlenc(s: &str) -> String {
@@ -1156,7 +1208,7 @@ static MAPEL: Spec = Spec {
         kind: Kind::Arg,
         danger: true,
     }],
-    web: Some(("Tambah / atur pengampu di web", "/admin/master/mapel")),
+    web: None,
 };
 static SISWA: Spec = Spec {
     tab: "siswa",
@@ -1176,7 +1228,7 @@ static SISWA: Spec = Spec {
         kind: Kind::Arg,
         danger: true,
     }],
-    web: Some(("Tambah / impor siswa di web", "/admin/master/siswa")),
+    web: None,
 };
 static JADWAL: Spec = Spec {
     tab: "jadwal",
@@ -1207,7 +1259,7 @@ static JADWAL: Spec = Spec {
             danger: true,
         },
     ],
-    web: Some(("Buat / ubah jadwal di web", "/admin/jadwal")),
+    web: None,
 };
 
 fn cell_text(row: &Value, path: &str) -> String {
@@ -1246,10 +1298,31 @@ fn admin_table(app: &mut App, ui: &mut egui::Ui, spec: &'static Spec) {
                 }
             }
         }
+        match spec.tab {
+            "jadwal" => {
+                if ui.add(theme::primary("Buat jadwal")).clicked() {
+                    app.forms.jadwal = Some(crate::forms::JadwalForm::new(None));
+                }
+            }
+            "mapel" => {
+                if ui.add(theme::primary("Tambah mapel")).clicked() {
+                    app.forms.mapel = Some(crate::forms::MapelForm::new(None));
+                }
+            }
+            "siswa" => {
+                if ui.add(theme::primary("Impor dari Excel")).clicked() {
+                    app.forms.import = Some(Default::default());
+                }
+            }
+            _ => {}
+        }
         if ui.button("Muat ulang").clicked() {
             app.fetch(spec.path);
         }
     });
+    if spec.tab == "siswa" && app.forms.import.is_some() {
+        crate::forms::import_panel(app, ui);
+    }
 
     if let Some((action, fields)) = spec.create {
         ui.collapsing("Tambah baru", |ui| {
@@ -1349,6 +1422,13 @@ fn admin_table(app: &mut App, ui: &mut egui::Ui, spec: &'static Spec) {
                     }
                     ui.horizontal(|ui| {
                         let id = text(r, "id");
+                        if spec.tab == "jadwal" && theme::row_button(ui, "Ubah", false) {
+                            app.forms.jadwal =
+                                Some(crate::forms::JadwalForm::new(Some(id.clone())));
+                        }
+                        if spec.tab == "mapel" && theme::row_button(ui, "Ubah", false) {
+                            app.forms.mapel = Some(crate::forms::MapelForm::new(Some(r)));
+                        }
                         for a in spec.acts {
                             if theme::row_button(ui, a.label, a.danger) {
                                 let body = match a.kind {
@@ -1428,14 +1508,15 @@ fn arsip(app: &mut App, ui: &mut egui::Ui) {
         });
     });
     ui.add_space(14.0);
-    theme::card(ui, |ui| {
-        ui.label(RichText::new("Kenaikan kelas & kelulusan").strong());
-        ui.label("Proses ini memilih banyak siswa sekaligus, jadi dikerjakan di versi web.");
-        if ui.button("Buka Kenaikan Kelas di web").clicked() {
-            if let Some(n) = &app.net {
-                n.open_web("/admin/kenaikan-kelas");
-            }
-        }
-    });
+    ui.label(RichText::new("Kenaikan kelas & kelulusan").strong());
+    crate::forms::kenaikan(app, ui);
     let _ = util::text;
+}
+
+pub(crate) fn semester_label(s: &str) -> &str {
+    match s {
+        "GANJIL" => "Ganjil",
+        "GENAP" => "Genap",
+        o => o,
+    }
 }

@@ -51,12 +51,29 @@ def route(path, q, role):
     if path == "admin/siswa": return [{"id": "s%d" % i, "nisn": "%03d" % i, "name": "Siswa %d" % i, "status": "ACTIVE",
                                        "class": {"id": "c1", "name": "X RPL 1"}, "religion": {"name": "Islam"}} for i in range(1, 251)]
     if path == "admin/mapel": return [{"id": "m1", "name": "Informatika", "religion": None,
-                                       "assignments": [{"class": "X RPL 1", "teacher": "Pak Guru"}]}]
+                                       "religionId": "", "assignments": [{"class": "X RPL 1", "teacher": "Pak Guru"}],
+                                       "plot": [{"classId": "c1", "teacherId": "g1"}]}]
     if path == "admin/agama": return [{"id": "r1", "name": "Islam"}]
     if path == "admin/jenis-ujian": return [{"id": "t1", "name": "Ulangan Harian", "code": "UH"}]
     if path == "admin/tahun-ajaran": return [{"id": "y1", "year": "2026/2027", "semester": "GANJIL", "active": True}]
     if path == "admin/pengguna": return [{"id": "u1", "name": "Admin Sekolah", "username": "admin", "role": "ADMIN"}]
     if path == "admin/jadwal": return [dict(EXAM, year="2026/2027 GANJIL")]
+    if path == "options": return {"subjects": [{"id": "m1", "name": "Informatika"}], "examTypes": [{"id": "t1", "name": "Ulangan Harian"}],
+        "academicYears": [{"id": "y1", "year": "2026/2027", "semester": "GANJIL"}], "classes": [{"id": "c1", "name": "X RPL 1"}, {"id": "c2", "name": "X RPL 2"}],
+        "religions": [{"id": "r1", "name": "Islam"}], "teachers": [{"id": "g1", "name": "Pak Guru"}, {"id": "g2", "name": "Bu Sari"}]}
+    if path == "soal-form/m1": return {"subject": {"id": "m1", "name": "Informatika"}, "classes": [{"id": "c1", "name": "X RPL 1"}, {"id": "c2", "name": "X RPL 2"}],
+        "examTypes": [{"id": "t1", "name": "Ulangan Harian"}]}
+    if path == "soal-item/q1": return {"id": "q1", "subjectId": "m1", "typeId": "t1", "type": "MULTIPLE_CHOICE", "text": "<p>Apa kepanjangan <b>CPU</b>?</p>", "score": 10,
+        "options": ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Control Process Unit"], "correctAnswer": "A", "classIds": ["c1"]}
+    if path == "admin/jadwal-item/e1": return {"id": "e1", "title": "UH Informatika", "subjectId": "m1", "examTypeId": "t1", "academicYearId": "y1",
+        "startTime": "2026-11-18T01:00:00.000Z", "endTime": "2026-11-18T03:00:00.000Z", "duration": 60, "status": "PUBLISHED", "classIds": ["c1"], "randomize": True,
+        "supervisorId": "g1", "token": "AB12CD"}
+    if path == "penilaian/attempt/a1": return {"id": "a1", "status": "SUBMITTED", "score": 60, "answers": {"q2": "RAM menyimpan data sementara saat komputer menyala.", "q1": "A"},
+        "essayScores": {}, "student": {"name": "Ahmad", "nisn": "001", "className": "X RPL 1"}, "exam": {"id": "e1", "title": "UH Informatika", "subjectId": "m1"},
+        "questions": [{"id": "q1", "text": "<p>Apa kepanjangan <b>CPU</b>?</p>", "type": "MULTIPLE_CHOICE", "score": 10, "options": ["Central Processing Unit", "Computer Personal Unit"], "correctAnswer": "A"},
+                      {"id": "q2", "text": "<p>Jelaskan fungsi RAM.</p>", "type": "ESSAY", "score": 20, "options": [], "correctAnswer": "<p>Penyimpanan sementara</p>"}]}
+    if path == "admin/kenaikan": return {"classes": [{"id": "c1", "name": "X RPL 1"}, {"id": "c2", "name": "XI RPL 1"}],
+        "students": [{"id": "s%d" % i, "nisn": "%03d" % i, "name": "Siswa %d" % i, "classId": "c1"} for i in range(1, 9)]}
     return None
 
 class H(BaseHTTPRequestHandler):

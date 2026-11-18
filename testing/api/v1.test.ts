@@ -31,8 +31,18 @@ vi.mock("@/actions/class", () => ({
   deleteClass: (...a: unknown[]) => deleteClass(...a),
   updateClass: vi.fn(),
 }));
+const createExam = vi.fn();
 vi.mock("@/actions/exam", () => ({
   deleteExam: vi.fn(),
+  createExam: (...a: unknown[]) => createExam(...a),
+  updateExam: vi.fn(),
+  getQuestionsForExam: vi.fn(),
+}));
+vi.mock("@/actions/penilaian", () => ({
+  simpanKoreksi: vi.fn(),
+}));
+vi.mock("@/actions/cloudinary", () => ({
+  getCloudinarySignature: vi.fn(),
 }));
 vi.mock("@/actions/exam-type", () => ({
   createExamType: vi.fn(),
@@ -47,7 +57,10 @@ vi.mock("@/actions/monitoring", () => ({
   resetSesiSiswa: vi.fn(),
   tambahWaktuUjian: (...a: unknown[]) => tambahWaktuUjian(...a),
 }));
+const createQuestion = vi.fn();
 vi.mock("@/actions/question", () => ({
+  createQuestion: (...a: unknown[]) => createQuestion(...a),
+  updateQuestion: vi.fn(),
   deleteManyQuestions: vi.fn(),
   deleteQuestion: vi.fn(),
 }));
@@ -60,6 +73,7 @@ vi.mock("@/actions/school", () => ({
   updateSchoolProfile: vi.fn(),
 }));
 vi.mock("@/actions/student", () => ({
+  importStudents: vi.fn(),
   createStudent: vi.fn(),
   deleteStudent: vi.fn(),
   resetStudentPassword: vi.fn(),
@@ -103,6 +117,20 @@ describe("POST /api/v1/rpc", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     as("GURU");
+  });
+
+  test("createQuestion hanya dijalankan lewat aksi server (dilanjutkan ke action)", async () => {
+    createQuestion.mockResolvedValue({ success: true, message: "ok" });
+    const res = await rpc({ action: "createQuestion", args: [{ text: "x" }] });
+    expect(res.status).toBe(200);
+    expect(createQuestion).toHaveBeenCalledWith({ text: "x" });
+  });
+
+  test("createExam diteruskan ke aksi (cek peran tetap di server action)", async () => {
+    createExam.mockResolvedValue({ success: false, message: "Hanya admin" });
+    const res = await rpc({ action: "createExam", args: [{ title: "x" }] });
+    expect(res.status).toBe(200);
+    expect(createExam).toHaveBeenCalled();
   });
 
   test("tanpa login ditolak 401", async () => {

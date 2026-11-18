@@ -12,6 +12,9 @@ import * as student from "@/actions/student";
 import * as user from "@/actions/user";
 import * as kenaikan from "@/actions/kenaikan-kelas";
 import * as school from "@/actions/school";
+import * as penilaian from "@/actions/penilaian";
+import * as cloudinary from "@/actions/cloudinary";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +29,30 @@ const form = (fn: unknown): Entry => ({ fn: fn as Fn, kind: "form" });
  * memeriksa role/kepemilikan sendiri; daftar ini hanya membatasi apa yang
  * bisa dijangkau lewat endpoint ini.
  */
+/**
+ * simpanKoreksi(subjectId, examId, attemptId, formData) berakhir dengan redirect()
+ * (untuk halaman web). Di API, redirect berarti "tersimpan": args = [subjectId, examId, attemptId],
+ * nilai esai lewat form `nilai_<idSoal>`.
+ */
+function koreksi(): Entry {
+  return {
+    kind: "args",
+    fn: (async (subjectId: string, examId: string, attemptId: string, scores: Record<string, unknown>) => {
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(scores ?? {})) {
+        if (v !== null && v !== undefined) fd.append(`nilai_${k}`, String(v));
+      }
+      try {
+        const r = await penilaian.simpanKoreksi(subjectId, examId, attemptId, fd);
+        return r ?? { success: true, message: "Nilai tersimpan." };
+      } catch (error) {
+        if (isRedirectError(error)) return { success: true, message: "Nilai tersimpan." };
+        throw error;
+      }
+    }) as unknown as Fn,
+  };
+}
+
 const ACTIONS: Record<string, Entry> = {
   // guru & admin
   tambahWaktuUjian: args(monitoring.tambahWaktuUjian),
@@ -35,6 +62,11 @@ const ACTIONS: Record<string, Entry> = {
   deleteQuestion: args(question.deleteQuestion),
   deleteManyQuestions: args(question.deleteManyQuestions),
   deleteExam: form(exam.deleteExam),
+  createQuestion: args(question.createQuestion),
+  updateQuestion: args(question.updateQuestion),
+  getQuestionsForExam: args(exam.getQuestionsForExam),
+  getCloudinarySignature: args(cloudinary.getCloudinarySignature),
+  simpanKoreksi: koreksi(),
   // admin
   createSubject: form(subject.createSubject),
   updateSubject: form(subject.updateSubject),
@@ -60,6 +92,9 @@ const ACTIONS: Record<string, Entry> = {
   updateUser: form(user.updateUser),
   deleteUser: args(user.deleteUser),
   resetPassword: form(user.resetPassword),
+  createExam: args(exam.createExam),
+  updateExam: args(exam.updateExam),
+  importStudents: args(student.importStudents),
   prosesKenaikanKelas: args(kenaikan.prosesKenaikanKelas),
   updateSchoolProfile: form(school.updateSchoolProfile),
 };
