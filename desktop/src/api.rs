@@ -179,7 +179,6 @@ mod tests {
         let child = ["python3", "python"]
             .iter()
             .find_map(|py| Command::new(py).args([script, &port.to_string()]).stdout(Stdio::null()).stderr(Stdio::null()).spawn().ok())?;
-        eprintln!("[tes] python berjalan");
         std::thread::sleep(Duration::from_millis(900));
         Some(Mock(child))
     }
@@ -193,15 +192,16 @@ mod tests {
         rx.recv_timeout(Duration::from_secs(10)).expect("tidak ada respons")
     }
 
+    // Memakai server tiruan Python; di runner Windows spawn python membuat proses crash,
+    // jadi tes ini dijalankan di Linux/macOS saja.
     #[test]
+    #[cfg_attr(windows, ignore)]
     fn alur_login_data_rpc_dan_unduh() {
-        eprintln!("[tes] memulai mock");
         let Some(_mock) = start_mock(18765) else {
             eprintln!("python tidak tersedia, tes dilewati");
             return;
         };
 
-        eprintln!("[tes] mock siap, login salah");
         // password salah
         let (n, rx) = net(18765);
         n.login("admin".into(), "salah".into());
@@ -210,7 +210,6 @@ mod tests {
             _ => panic!("login salah harus gagal"),
         }
 
-        eprintln!("[tes] login guru");
         // guru: boleh monitoring, tidak boleh data admin
         let (n, rx) = net(18765);
         n.login("guru".into(), "rahasia123".into());
