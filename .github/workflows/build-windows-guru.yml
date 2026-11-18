@@ -1,0 +1,75 @@
+name: Build Aplikasi Windows Guru
+
+# Jalankan manual: tab Actions -> "Build Aplikasi Windows Guru" -> Run workflow.
+# Juga berjalan otomatis (tes + build) saat ada perubahan di folder desktop/.
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Alamat website Ujiin yang diisi otomatis di layar login (mis. https://ujian.sekolah.sch.id). Boleh kosong."
+        required: false
+        default: ""
+        type: string
+      release_tag:
+        description: "Tag rilis (mis. v1.0.0) untuk menerbitkan .exe ke GitHub Releases. Kosongkan jika tidak perlu."
+        required: false
+        default: ""
+        type: string
+  pull_request:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/build-windows-guru.yml"
+
+permissions:
+  contents: write # perlu untuk membuat GitHub Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      # Dikunci ke 1.97.0: Rust stable terbaru (1.100) membuat biner tes crash di runner Windows
+      - uses: dtolnay/rust-toolchain@1.97.0
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+
+      - name: Tes
+        run: cargo test
+
+      - name: Build rilis
+        env:
+          UJIIN_DEFAULT_SERVER: ${{ inputs.server_url }}
+        run: cargo build --release
+
+      - name: Siapkan berkas
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/ujiin-guru.exe dist/UjiinGuru.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ujiin-guru-windows
+          path: desktop/dist/UjiinGuru.exe
+
+      - name: Terbitkan ke GitHub Releases
+        if: ${{ inputs.release_tag != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          cp dist/UjiinGuru.exe "UjiinGuru-${TAG}.exe"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "UjiinGuru-${TAG}.exe" --clobber
+          else
+            gh release create "$TAG" "UjiinGuru-${TAG}.exe" \
+              --title "Ujiin Guru ${TAG}" \
+              --notes "Aplikasi Windows Ujiin untuk guru & admin. Unduh file .exe lalu jalankan (tanpa instalasi). Panduan: desktop/README.md"
+          fi

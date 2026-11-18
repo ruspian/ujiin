@@ -45,6 +45,7 @@ describe("Pengujian Server Action - Manajemen Ujian & Pelanggaran", () => {
     endTime: "2026-05-20T10:00:00.000Z",
     duration: 90,
     randomizeQuestions: true,
+    shuffleOptions: false,
     showResult: false,
     status: "PUBLISHED" as const,
     classes: ["class-rpl1", "class-rpl2"],

@@ -149,6 +149,21 @@ export async function generateExamToken(examId: string) {
     return { success: false, message: "Akses ditolak!" };
   }
 
+  // Guru hanya boleh me-reset token ujian miliknya (pembuat/pengawas).
+  if (session.user.role === "GURU") {
+    const exam = await prisma.exam.findUnique({
+      where: { id: examId },
+      select: { authorId: true, supervisorId: true },
+    });
+    if (
+      !exam ||
+      (exam.authorId !== session.user.id &&
+        exam.supervisorId !== session.user.id)
+    ) {
+      return { success: false, message: "Akses ditolak!" };
+    }
+  }
+
   try {
     const newToken = generateRandomPassword();
 
