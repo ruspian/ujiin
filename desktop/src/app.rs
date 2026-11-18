@@ -370,7 +370,8 @@ impl App {
         self.server = base.clone();
         self.logging_in = true;
         self.login_err.clear();
-        let net = Net::new(base, self.tx.clone(), self.ctx.clone());
+        let ctx = self.ctx.clone();
+        let net = Net::new(base, self.tx.clone(), std::sync::Arc::new(move || ctx.request_repaint()));
         net.login(self.username.clone(), self.password.clone());
         self.net = Some(net);
     }

@@ -12,12 +12,15 @@ pub enum Msg {
     File { res: Result<String, String> },
 }
 
+/// Dipanggil setelah hasil jaringan siap agar UI digambar ulang.
+pub type Repaint = std::sync::Arc<dyn Fn() + Send + Sync>;
+
 #[derive(Clone)]
 pub struct Net {
     agent: ureq::Agent,
     pub base: String,
     tx: Sender<Msg>,
-    ctx: eframe::egui::Context,
+    repaint: Repaint,
 }
 
 pub fn normalize_base(input: &str) -> String {
@@ -60,17 +63,17 @@ fn net_err(e: ureq::Error) -> String {
 }
 
 impl Net {
-    pub fn new(base: String, tx: Sender<Msg>, ctx: eframe::egui::Context) -> Self {
-        Self { agent: new_agent(), base, tx, ctx }
+    pub fn new(base: String, tx: Sender<Msg>, repaint: Repaint) -> Self {
+        Self { agent: new_agent(), base, tx, repaint }
     }
 
-    fn send(tx: &Sender<Msg>, ctx: &eframe::egui::Context, msg: Msg) {
+    fn send(tx: &Sender<Msg>, repaint: &Repaint, msg: Msg) {
         let _ = tx.send(msg);
-        ctx.request_repaint();
+        repaint();
     }
 
     pub fn login(&self, username: String, password: String) {
-        let (agent, base, tx, ctx) = (self.agent.clone(), self.base.clone(), self.tx.clone(), self.ctx.clone());
+        let (agent, base, tx, ctx) = (self.agent.clone(), self.base.clone(), self.tx.clone(), self.repaint.clone());
         std::thread::spawn(move || {
             let res = (|| -> Result<Value, String> {
                 let csrf = read_json(agent.get(format!("{base}/api/auth/csrf")).call().map_err(net_err)?)?;
@@ -104,7 +107,7 @@ impl Net {
             self.agent.clone(),
             format!("{}/api/v1/{}", self.base, path),
             self.tx.clone(),
-            self.ctx.clone(),
+            self.repaint.clone(),
             key.to_string(),
         );
         std::thread::spawn(move || {
@@ -119,7 +122,7 @@ impl Net {
             self.agent.clone(),
             format!("{}/api/v1/rpc", self.base),
             self.tx.clone(),
-            self.ctx.clone(),
+            self.repaint.clone(),
             label.to_string(),
         );
         std::thread::spawn(move || {
@@ -134,7 +137,7 @@ impl Net {
             self.agent.clone(),
             format!("{}{}", self.base, path),
             self.tx.clone(),
-            self.ctx.clone(),
+            self.repaint.clone(),
         );
         std::thread::spawn(move || {
             let res = (|| -> Result<String, String> {
@@ -182,7 +185,7 @@ mod tests {
 
     fn net(port: u16) -> (Net, Receiver<Msg>) {
         let (tx, rx) = channel();
-        (Net::new(format!("http://127.0.0.1:{port}"), tx, eframe::egui::Context::default()), rx)
+        (Net::new(format!("http://127.0.0.1:{port}"), tx, std::sync::Arc::new(|| {}) as Repaint), rx)
     }
 
     fn wait(rx: &Receiver<Msg>) -> Msg {
