@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Ujiin Guru
+Comment=Aplikasi guru dan admin Ujiin (CBT)
+Exec=ujiin-guru
+Terminal=false
+Categories=Education;Office;

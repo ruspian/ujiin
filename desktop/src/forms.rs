@@ -56,14 +56,14 @@ fn pairs_of(v: &Value, key: &str, name: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "linux"))]
 pub fn pick_file(title: &str, exts: &[&str]) -> Option<PathBuf> {
     rfd::FileDialog::new()
         .set_title(title)
         .add_filter("Berkas", exts)
         .pick_file()
 }
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn pick_file(_title: &str, _exts: &[&str]) -> Option<PathBuf> {
     None
 }
@@ -761,7 +761,7 @@ pub fn soal_form(app: &mut App, ui: &mut egui::Ui) {
             app.forms.soal = Some(f.clone());
             start_upload(app, p);
             f = app.forms.soal.take().unwrap_or(f);
-        } else if !cfg!(windows) {
+        } else if !cfg!(any(windows, target_os = "linux")) {
             app.push_toast(
                 "Seret berkas gambar ke jendela aplikasi untuk menyisipkannya.",
                 true,
@@ -1385,7 +1385,7 @@ pub fn import_panel(app: &mut App, ui: &mut egui::Ui) {
             if ui.button("Pilih berkas Excel...").clicked() {
                 if let Some(p) = pick_file("Pilih berkas Excel siswa", &["xlsx", "xls"]) {
                     st.load(&p);
-                } else if !cfg!(windows) {
+                } else if !cfg!(any(windows, target_os = "linux")) {
                     app.push_toast("Seret berkas .xlsx ke jendela aplikasi.", true);
                 }
             }

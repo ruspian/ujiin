@@ -2,7 +2,7 @@
 name = "ujiin-guru"
 version = "0.1.0"
 edition = "2021"
-description = "Aplikasi desktop Windows untuk guru & admin Ujiin (CBT)"
+description = "Aplikasi desktop (Windows & Linux) untuk guru & admin Ujiin (CBT)"
 
 [dependencies]
 calamine = { version = "0.38.0", default-features = false }
@@ -24,3 +24,7 @@ strip = true
 [target."cfg(windows)".dependencies]
 rfd = { version = "0.18.0", default-features = false }
 winrt-notification = "0.5.1"
+
+[target."cfg(target_os = \"linux\")".dependencies]
+rfd = { version = "0.18.0", default-features = false, features = ["xdg-portal", "wayland"] }
+notify-rust = { version = "4.11", default-features = false, features = ["z"] }
