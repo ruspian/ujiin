@@ -23,7 +23,7 @@ tar xzf UjiinGuru-linux-x86_64.tar.gz && ./ujiin-guru/ujiin-guru
 ```
 Opsional: salin `ujiin-guru.desktop` ke `~/.local/share/applications/` dan biner ke `~/.local/bin/` agar muncul di menu aplikasi.
 Butuh X11 atau Wayland dengan OpenGL (Mesa), dan daemon notifikasi desktop untuk peringatan pengawas (GNOME/KDE sudah ada).
-Data cache tersimpan di `~/.local/share` (XDG).
+Cache offline di `~/.cache`, alamat server terakhir di `~/.config` (XDG).
 
 ## Cara pakai
 1. Unduh `UjiinGuru.exe` dari GitHub Releases (atau artifact workflow), jalankan.
