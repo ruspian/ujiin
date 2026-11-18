@@ -32,22 +32,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Dikunci ke 1.97.0: Rust stable terbaru (1.100) membuat biner tes crash di runner Windows
       - uses: dtolnay/rust-toolchain@1.97.0
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: desktop
 
-      - name: Tes (satu per satu, untuk melacak crash)
-        shell: bash
-        run: |
-          cargo test --no-run
-          fail=0
-          for t in $(cargo test -- --list 2>/dev/null | grep ': test' | sed 's/: test//'); do
-            echo "=== $t"
-            cargo test -q -- --exact "$t" --nocapture || { echo "GAGAL: $t"; fail=1; }
-          done
-          exit $fail
+      - name: Tes
+        run: cargo test
 
       - name: Build rilis
         env:
