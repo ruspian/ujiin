@@ -10,8 +10,50 @@ const PAGE_SIZE: usize = 100;
 
 // ───────────────────────── login ─────────────────────────
 
+/// Kredit pembuat, digambar di tengah `rect` (hati digambar sendiri karena font bawaan tidak punya emoji).
+fn credit_in(ui: &egui::Ui, rect: egui::Rect, color: Color32, size: f32) {
+    let p = ui.painter();
+    let font = egui::FontId::proportional(size);
+    let a = p.layout_no_wrap("Dibuat dengan".into(), font.clone(), color);
+    let b = p.layout_no_wrap("oleh Ruspian Majid".into(), font, color);
+    let s = size * 0.3;
+    let (gap, hw) = (size * 0.35, s * 3.5);
+    let total = a.size().x + gap + hw + gap + b.size().x;
+    let mut x = rect.center().x - total / 2.0;
+    let y = rect.center().y;
+    p.galley(egui::pos2(x, y - a.size().y / 2.0), a.clone(), color);
+    x += a.size().x + gap;
+    let orange = Color32::from_rgb(249, 115, 22);
+    let (cx, cy) = (x + hw / 2.0, y - s * 0.9);
+    p.circle_filled(egui::pos2(cx - s * 0.9, cy), s, orange);
+    p.circle_filled(egui::pos2(cx + s * 0.9, cy), s, orange);
+    p.add(egui::Shape::convex_polygon(
+        vec![
+            egui::pos2(cx - s * 1.78, cy + s * 0.35),
+            egui::pos2(cx + s * 1.78, cy + s * 0.35),
+            egui::pos2(cx, cy + s * 2.5),
+        ],
+        orange,
+        egui::Stroke::NONE,
+    ));
+    x += hw + gap;
+    p.galley(egui::pos2(x, y - b.size().y / 2.0), b, color);
+}
+
+fn credit(ui: &mut egui::Ui, color: Color32) {
+    let (rect, _) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 16.0), egui::Sense::hover());
+    credit_in(ui, rect, color, 11.5);
+}
+
 pub fn login(app: &mut App, ui: &mut egui::Ui) {
     egui::CentralPanel::default_margins().show(ui, |ui| {
+        let r = ui.max_rect();
+        let strip = egui::Rect::from_center_size(
+            egui::pos2(r.center().x, r.bottom() - 16.0),
+            egui::vec2(r.width(), 16.0),
+        );
+        credit_in(ui, strip, GRAY, 12.0);
         ui.vertical_centered(|ui| {
             ui.add_space((ui.available_height() / 2.0 - 250.0).max(16.0));
             // logo sederhana
@@ -168,7 +210,7 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
                 });
             ui.add_space(6.0);
             ui.spacing_mut().item_spacing.y = 2.0;
-            let bottom_h = 2.0 * 36.0 + 10.0;
+            let bottom_h = 2.0 * 36.0 + 34.0;
             egui::ScrollArea::vertical()
                 .auto_shrink(false)
                 .max_height((ui.available_height() - bottom_h).max(120.0))
@@ -201,6 +243,8 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
             if nav_item(ui, "Keluar", false) {
                 app.logout();
             }
+            ui.add_space(6.0);
+            credit(ui, theme::SIDEBAR_TEXT);
         });
 
     egui::CentralPanel::default()

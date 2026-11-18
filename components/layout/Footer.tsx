@@ -146,7 +146,7 @@ export default function Footer() {
         <div className="mt-16 border-t border-gray-200 pt-8 sm:mt-20 lg:mt-24">
           <p className="text-xs leading-5 text-gray-500 text-center">
             &copy; {new Date().getFullYear()} Ujiin. Dibuat dengan
-            <span className="text-red-500 animate-pulse mx-1">❤️</span>oleh{" "}
+            <span className="mx-1">🧡</span>oleh{" "}
             <a
               href="/kontak"
               className="font-semibold text-gray-700 hover:text-teal-600 transition-colors"
