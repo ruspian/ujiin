@@ -26,8 +26,19 @@ pub enum Tab {
 
 impl Tab {
     pub const ALL: [Tab; 13] = [
-        Tab::Dashboard, Tab::Monitoring, Tab::Penilaian, Tab::BankSoal, Tab::Jadwal, Tab::Siswa,
-        Tab::Kelas, Tab::Mapel, Tab::JenisUjian, Tab::Agama, Tab::TahunAjaran, Tab::Pengguna, Tab::Arsip,
+        Tab::Dashboard,
+        Tab::Monitoring,
+        Tab::Penilaian,
+        Tab::BankSoal,
+        Tab::Jadwal,
+        Tab::Siswa,
+        Tab::Kelas,
+        Tab::Mapel,
+        Tab::JenisUjian,
+        Tab::Agama,
+        Tab::TahunAjaran,
+        Tab::Pengguna,
+        Tab::Arsip,
     ];
 
     pub fn title(self) -> &'static str {
@@ -106,10 +117,7 @@ pub struct Confirm {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let (tx, rx) = channel();
-        let mut style = (*cc.egui_ctx.global_style()).clone();
-        style.spacing.item_spacing = egui::vec2(8.0, 7.0);
-        style.spacing.button_padding = egui::vec2(10.0, 5.0);
-        cc.egui_ctx.set_global_style(style);
+        crate::theme::apply(&cc.egui_ctx);
         let mut app = Self {
             ctx: cc.egui_ctx.clone(),
             net: None,
@@ -145,7 +153,10 @@ impl App {
             app.password = p;
             app.start_login();
             if let Ok(t) = std::env::var("UJIIN_TAB") {
-                if let Some(tab) = Tab::ALL.iter().find(|x| format!("{x:?}").eq_ignore_ascii_case(&t)) {
+                if let Some(tab) = Tab::ALL
+                    .iter()
+                    .find(|x| format!("{x:?}").eq_ignore_ascii_case(&t))
+                {
                     app.tab = *tab;
                 }
                 app.sel = std::env::var("UJIIN_SEL").ok();
@@ -155,11 +166,19 @@ impl App {
     }
 
     pub fn is_admin(&self) -> bool {
-        self.user.as_ref().map(|u| util::text(u, "role") == "ADMIN").unwrap_or(false)
+        self.user
+            .as_ref()
+            .map(|u| util::text(u, "role") == "ADMIN")
+            .unwrap_or(false)
     }
 
     pub fn tabs(&self) -> Vec<Tab> {
-        let mut t = vec![Tab::Dashboard, Tab::Monitoring, Tab::Penilaian, Tab::BankSoal];
+        let mut t = vec![
+            Tab::Dashboard,
+            Tab::Monitoring,
+            Tab::Penilaian,
+            Tab::BankSoal,
+        ];
         if self.is_admin() {
             t.extend([
                 Tab::Jadwal,
@@ -177,7 +196,11 @@ impl App {
     }
 
     pub fn push_toast(&mut self, text: impl Into<String>, ok: bool) {
-        self.toasts.push(Toast { text: text.into(), ok, at: Instant::now() });
+        self.toasts.push(Toast {
+            text: text.into(),
+            ok,
+            at: Instant::now(),
+        });
     }
 
     pub fn change_tab(&mut self, tab: Tab) {
@@ -260,7 +283,11 @@ impl App {
                         Ok(v) => {
                             let ok = v.get("success").and_then(|s| s.as_bool()).unwrap_or(true);
                             let msg = util::text(&v, "message");
-                            let msg = if msg.is_empty() { "Berhasil.".to_string() } else { msg };
+                            let msg = if msg.is_empty() {
+                                "Berhasil.".to_string()
+                            } else {
+                                msg
+                            };
                             self.push_toast(msg, ok);
                             if ok {
                                 for p in label.split('\n').filter(|p| !p.is_empty()) {
@@ -331,7 +358,9 @@ impl App {
     /// Notifikasi untuk pengawas: pelanggaran baru, siswa terputus, siswa selesai.
     fn check_monitoring_changes(&mut self, v: &Value) {
         let title = util::text(v, "title");
-        let Some(rows) = v.get("rows").and_then(|r| r.as_array()) else { return };
+        let Some(rows) = v.get("rows").and_then(|r| r.as_array()) else {
+            return;
+        };
         let first = self.mon_prev.is_empty();
         let mut alerts: Vec<String> = Vec::new();
         for r in rows {
@@ -371,7 +400,11 @@ impl App {
         self.logging_in = true;
         self.login_err.clear();
         let ctx = self.ctx.clone();
-        let net = Net::new(base, self.tx.clone(), std::sync::Arc::new(move || ctx.request_repaint()));
+        let net = Net::new(
+            base,
+            self.tx.clone(),
+            std::sync::Arc::new(move || ctx.request_repaint()),
+        );
         net.login(self.username.clone(), self.password.clone());
         self.net = Some(net);
     }
@@ -380,7 +413,8 @@ impl App {
 impl eframe::App for App {
     fn logic(&mut self, _ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_msgs();
-        self.toasts.retain(|t| t.at.elapsed() < Duration::from_secs(6));
+        self.toasts
+            .retain(|t| t.at.elapsed() < Duration::from_secs(6));
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

@@ -63,7 +63,11 @@ pub fn path_text(v: &Value, path: &str) -> String {
             .join(", "),
         Value::Number(n) => {
             if let Some(f) = n.as_f64() {
-                if f.fract() == 0.0 { format!("{}", f as i64) } else { format!("{f:.1}") }
+                if f.fract() == 0.0 {
+                    format!("{}", f as i64)
+                } else {
+                    format!("{f:.1}")
+                }
             } else {
                 n.to_string()
             }
@@ -82,9 +86,13 @@ pub fn bool_of(v: &Value, key: &str) -> bool {
 
 /// "2026-11-18T03:00:00.000Z" -> "18/11/2026 11:00" (WITA, UTC+8).
 pub fn fmt_iso_wita(iso: &str) -> String {
-    let Some((date, rest)) = iso.split_once('T') else { return iso.to_string() };
+    let Some((date, rest)) = iso.split_once('T') else {
+        return iso.to_string();
+    };
     let mut d = date.split('-');
-    let (Some(y), Some(m), Some(day)) = (d.next(), d.next(), d.next()) else { return iso.to_string() };
+    let (Some(y), Some(m), Some(day)) = (d.next(), d.next(), d.next()) else {
+        return iso.to_string();
+    };
     let (Ok(y), Ok(m), Ok(day)) = (y.parse::<i64>(), m.parse::<i64>(), day.parse::<i64>()) else {
         return iso.to_string();
     };
@@ -151,7 +159,10 @@ mod tests {
 
     #[test]
     fn html_dibersihkan() {
-        assert_eq!(strip_html("<p>Halo&nbsp;<b>dunia</b> &amp; Rust</p>"), "Halo dunia & Rust");
+        assert_eq!(
+            strip_html("<p>Halo&nbsp;<b>dunia</b> &amp; Rust</p>"),
+            "Halo dunia & Rust"
+        );
     }
 
     #[test]

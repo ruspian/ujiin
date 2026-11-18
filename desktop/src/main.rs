@@ -1,10 +1,14 @@
-#![cfg_attr(all(windows, not(debug_assertions), not(test)), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(windows, not(debug_assertions), not(test)),
+    windows_subsystem = "windows"
+)]
 
 mod api;
 mod app;
 mod cache;
 mod export;
 mod notify;
+mod theme;
 mod util;
 mod views;
 

@@ -7,9 +7,17 @@ use std::time::Duration;
 
 pub enum Msg {
     Login(Result<Value, String>),
-    Data { key: String, res: Result<Value, String> },
-    Rpc { label: String, res: Result<Value, String> },
-    File { res: Result<String, String> },
+    Data {
+        key: String,
+        res: Result<Value, String>,
+    },
+    Rpc {
+        label: String,
+        res: Result<Value, String>,
+    },
+    File {
+        res: Result<String, String>,
+    },
 }
 
 /// Dipanggil setelah hasil jaringan siap agar UI digambar ulang.
@@ -64,7 +72,12 @@ fn net_err(e: ureq::Error) -> String {
 
 impl Net {
     pub fn new(base: String, tx: Sender<Msg>, repaint: Repaint) -> Self {
-        Self { agent: new_agent(), base, tx, repaint }
+        Self {
+            agent: new_agent(),
+            base,
+            tx,
+            repaint,
+        }
     }
 
     fn send(tx: &Sender<Msg>, repaint: &Repaint, msg: Msg) {
@@ -73,10 +86,20 @@ impl Net {
     }
 
     pub fn login(&self, username: String, password: String) {
-        let (agent, base, tx, ctx) = (self.agent.clone(), self.base.clone(), self.tx.clone(), self.repaint.clone());
+        let (agent, base, tx, ctx) = (
+            self.agent.clone(),
+            self.base.clone(),
+            self.tx.clone(),
+            self.repaint.clone(),
+        );
         std::thread::spawn(move || {
             let res = (|| -> Result<Value, String> {
-                let csrf = read_json(agent.get(format!("{base}/api/auth/csrf")).call().map_err(net_err)?)?;
+                let csrf = read_json(
+                    agent
+                        .get(format!("{base}/api/auth/csrf"))
+                        .call()
+                        .map_err(net_err)?,
+                )?;
                 let token = csrf
                     .get("csrfToken")
                     .and_then(|v| v.as_str())
@@ -93,9 +116,16 @@ impl Net {
                         ("callbackUrl", base.as_str()),
                     ])
                     .map_err(net_err)?;
-                match read_json(agent.get(format!("{base}/api/v1/me")).call().map_err(net_err)?) {
+                match read_json(
+                    agent
+                        .get(format!("{base}/api/v1/me"))
+                        .call()
+                        .map_err(net_err)?,
+                ) {
                     Ok(me) => Ok(me),
-                    Err(_) => Err("Username atau password salah, atau akun bukan guru/admin.".into()),
+                    Err(_) => {
+                        Err("Username atau password salah, atau akun bukan guru/admin.".into())
+                    }
                 }
             })();
             Self::send(&tx, &ctx, Msg::Login(res));
@@ -126,7 +156,11 @@ impl Net {
             label.to_string(),
         );
         std::thread::spawn(move || {
-            let res = agent.post(url).send_json(&body).map_err(net_err).and_then(read_json);
+            let res = agent
+                .post(url)
+                .send_json(&body)
+                .map_err(net_err)
+                .and_then(read_json);
             Self::send(&tx, &ctx, Msg::Rpc { label, res });
         });
     }
@@ -143,13 +177,17 @@ impl Net {
             let res = (|| -> Result<String, String> {
                 let mut resp = agent.get(url).call().map_err(net_err)?;
                 if resp.status().as_u16() >= 400 {
-                    return Err(format!("Server menolak unduhan (HTTP {})", resp.status().as_u16()));
+                    return Err(format!(
+                        "Server menolak unduhan (HTTP {})",
+                        resp.status().as_u16()
+                    ));
                 }
                 let bytes = resp
                     .body_mut()
                     .read_to_vec()
                     .map_err(|e| format!("Gagal membaca unduhan ({e})"))?;
-                std::fs::write(&dest, bytes).map_err(|e| format!("Gagal menyimpan berkas ({e})"))?;
+                std::fs::write(&dest, bytes)
+                    .map_err(|e| format!("Gagal menyimpan berkas ({e})"))?;
                 Ok(dest.display().to_string())
             })();
             Self::send(&tx, &ctx, Msg::File { res });
@@ -176,20 +214,33 @@ mod tests {
 
     fn start_mock(port: u16) -> Option<Mock> {
         let script = concat!(env!("CARGO_MANIFEST_DIR"), "/tools/mock_server.py");
-        let child = ["python3", "python"]
-            .iter()
-            .find_map(|py| Command::new(py).args([script, &port.to_string()]).stdout(Stdio::null()).stderr(Stdio::null()).spawn().ok())?;
+        let child = ["python3", "python"].iter().find_map(|py| {
+            Command::new(py)
+                .args([script, &port.to_string()])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .ok()
+        })?;
         std::thread::sleep(Duration::from_millis(900));
         Some(Mock(child))
     }
 
     fn net(port: u16) -> (Net, Receiver<Msg>) {
         let (tx, rx) = channel();
-        (Net::new(format!("http://127.0.0.1:{port}"), tx, std::sync::Arc::new(|| {}) as Repaint), rx)
+        (
+            Net::new(
+                format!("http://127.0.0.1:{port}"),
+                tx,
+                std::sync::Arc::new(|| {}) as Repaint,
+            ),
+            rx,
+        )
     }
 
     fn wait(rx: &Receiver<Msg>) -> Msg {
-        rx.recv_timeout(Duration::from_secs(10)).expect("tidak ada respons")
+        rx.recv_timeout(Duration::from_secs(10))
+            .expect("tidak ada respons")
     }
 
     // Memakai server tiruan Python; di runner Windows spawn python membuat proses crash,
@@ -232,7 +283,10 @@ mod tests {
         let (n, rx) = net(18765);
         n.login("admin".into(), "rahasia123".into());
         assert!(matches!(wait(&rx), Msg::Login(Ok(_))));
-        n.rpc("monitoring/e1", serde_json::json!({"action":"tambahWaktuUjian","args":["e1",10,null]}));
+        n.rpc(
+            "monitoring/e1",
+            serde_json::json!({"action":"tambahWaktuUjian","args":["e1",10,null]}),
+        );
         match wait(&rx) {
             Msg::Rpc { res: Ok(v), label } => {
                 assert_eq!(v["success"], true);
@@ -262,7 +316,13 @@ mod tests {
 
     #[test]
     fn normalisasi_alamat() {
-        assert_eq!(normalize_base(" ujian.sekolah.id/ "), "https://ujian.sekolah.id");
-        assert_eq!(normalize_base("http://localhost:3000/"), "http://localhost:3000");
+        assert_eq!(
+            normalize_base(" ujian.sekolah.id/ "),
+            "https://ujian.sekolah.id"
+        );
+        assert_eq!(
+            normalize_base("http://localhost:3000/"),
+            "http://localhost:3000"
+        );
     }
 }

@@ -32,11 +32,14 @@ pub fn write_xlsx(path: &Path, sheet: &Sheet) -> Result<(), String> {
         .set_background_color(0xDDEEEE);
     let cell = Format::new().set_border(FormatBorder::Thin);
 
-    ws.write_with_format(0, 0, sheet.title, &title).map_err(|e| e.to_string())?;
-    ws.write_with_format(1, 0, sheet.subtitle, &sub).map_err(|e| e.to_string())?;
+    ws.write_with_format(0, 0, sheet.title, &title)
+        .map_err(|e| e.to_string())?;
+    ws.write_with_format(1, 0, sheet.subtitle, &sub)
+        .map_err(|e| e.to_string())?;
 
     for (c, h) in sheet.headers.iter().enumerate() {
-        ws.write_with_format(3, c as u16, h.as_str(), &head).map_err(|e| e.to_string())?;
+        ws.write_with_format(3, c as u16, h.as_str(), &head)
+            .map_err(|e| e.to_string())?;
         ws.set_column_width(c as u16, (h.chars().count() as f64 + 4.0).max(12.0))
             .map_err(|e| e.to_string())?;
     }
@@ -46,10 +49,12 @@ pub fn write_xlsx(path: &Path, sheet: &Sheet) -> Result<(), String> {
             // angka disimpan sebagai angka agar bisa dihitung di Excel
             match v.trim().replace(',', ".").parse::<f64>() {
                 Ok(n) if !v.trim().is_empty() && !v.starts_with('0') || v.trim() == "0" => {
-                    ws.write_number_with_format(r, c, n, &cell).map_err(|e| e.to_string())?;
+                    ws.write_number_with_format(r, c, n, &cell)
+                        .map_err(|e| e.to_string())?;
                 }
                 _ => {
-                    ws.write_string_with_format(r, c, v.as_str(), &cell).map_err(|e| e.to_string())?;
+                    ws.write_string_with_format(r, c, v.as_str(), &cell)
+                        .map_err(|e| e.to_string())?;
                 }
             }
         }
@@ -59,10 +64,22 @@ pub fn write_xlsx(path: &Path, sheet: &Sheet) -> Result<(), String> {
 
 pub fn write_csv(path: &Path, sheet: &Sheet) -> Result<(), String> {
     let mut out = String::from("\u{FEFF}");
-    out.push_str(&sheet.headers.iter().map(|h| csv_cell(h)).collect::<Vec<_>>().join(","));
+    out.push_str(
+        &sheet
+            .headers
+            .iter()
+            .map(|h| csv_cell(h))
+            .collect::<Vec<_>>()
+            .join(","),
+    );
     out.push_str("\r\n");
     for row in &sheet.rows {
-        out.push_str(&row.iter().map(|v| csv_cell(v)).collect::<Vec<_>>().join(","));
+        out.push_str(
+            &row.iter()
+                .map(|v| csv_cell(v))
+                .collect::<Vec<_>>()
+                .join(","),
+        );
         out.push_str("\r\n");
     }
     std::fs::write(path, out).map_err(|e| e.to_string())
@@ -78,7 +95,13 @@ pub fn downloads_dir() -> std::path::PathBuf {
 pub fn safe_name(s: &str) -> String {
     let t: String = s
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     t.trim_matches('_').to_string()
 }
