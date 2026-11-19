@@ -117,6 +117,36 @@ pub fn fmt_system_time(t: std::time::SystemTime) -> String {
     format!("{d2:02}/{mm:02}/{yy} {:02}:{:02}", rem / 60, rem % 60)
 }
 
+/// "2026-11-18T03:00:00.000Z" -> detik sejak epoch (UTC).
+pub fn iso_secs(iso: &str) -> Option<i64> {
+    let (date, rest) = iso.split_once('T')?;
+    let mut d = date.split('-');
+    let (y, m, day) = (
+        d.next()?.parse::<i64>().ok()?,
+        d.next()?.parse::<i64>().ok()?,
+        d.next()?.parse::<i64>().ok()?,
+    );
+    let mut t = rest.trim_end_matches('Z').split(':');
+    let h = t.next()?.parse::<i64>().ok()?;
+    let mi = t.next()?.parse::<i64>().ok()?;
+    let s = t
+        .next()
+        .and_then(|x| x.split('.').next()?.parse::<i64>().ok())
+        .unwrap_or(0);
+    Some(days_from_civil(y, m, day) * 86400 + h * 3600 + mi * 60 + s)
+}
+
+/// Jam:menit WITA dari ISO.
+pub fn hhmm_wita(iso: &str) -> String {
+    match iso_secs(iso) {
+        Some(s) => {
+            let m = (s + 8 * 3600).rem_euclid(86400) / 60;
+            format!("{:02}:{:02}", m / 60, m % 60)
+        }
+        None => String::new(),
+    }
+}
+
 fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     let y = if m <= 2 { y - 1 } else { y };
     let era = y.div_euclid(400);

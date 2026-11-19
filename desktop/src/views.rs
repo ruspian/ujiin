@@ -267,7 +267,7 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
                 return crate::forms::koreksi_form(app, ui);
             }
             match app.tab {
-                Tab::Dashboard => dashboard(app, ui),
+                Tab::Dashboard => crate::live::beranda(app, ui),
                 Tab::Monitoring => monitoring(app, ui),
                 Tab::Penilaian => penilaian(app, ui),
                 Tab::BankSoal => bank_soal(app, ui),
@@ -436,7 +436,7 @@ fn badge(ui: &mut egui::Ui, label: &str, color: Color32) {
     theme::pill(ui, label, color);
 }
 
-fn status_badge(ui: &mut egui::Ui, status: &str, offline: bool) {
+pub(crate) fn status_badge(ui: &mut egui::Ui, status: &str, offline: bool) {
     match status {
         "ONGOING" if offline => badge(ui, "Terputus", AMBER),
         "ONGOING" => badge(ui, "Mengerjakan", TEAL),
@@ -464,58 +464,11 @@ fn pick_save_name(base: &str, ext: &str) -> std::path::PathBuf {
 
 // ───────────────────────── beranda ─────────────────────────
 
-fn dashboard(app: &mut App, ui: &mut egui::Ui) {
-    let Some(d) = load(app, ui, "dashboard", 30) else {
-        return;
-    };
-    let admin = app.is_admin();
-    let mut cards: Vec<(&str, String)> = vec![
-        ("Siswa aktif", path_text(&d, "siswaAktif")),
-        ("Kelas", path_text(&d, "kelas")),
-        ("Mata pelajaran", path_text(&d, "mapel")),
-        ("Ujian terbit", path_text(&d, "ujianAktif")),
-        ("Ujian yang saya awasi", path_text(&d, "ujianDiawasi")),
-        ("Soal saya", path_text(&d, "soalSaya")),
-    ];
-    if admin {
-        cards.push(("Guru", path_text(&d, "guru")));
-    }
-    let cols = (((ui.available_width() + 14.0) / (190.0 + 14.0)).floor() as usize).max(1);
-    egui::Grid::new("dash_cards")
-        .spacing([14.0, 14.0])
-        .show(ui, |ui| {
-            for (i, (label, value)) in cards.into_iter().enumerate() {
-                theme::card(ui, |ui| {
-                    ui.vertical(|ui| {
-                        ui.set_min_width(160.0);
-                        ui.spacing_mut().item_spacing.y = 2.0;
-                        ui.label(RichText::new(label).size(13.0).color(GRAY));
-                        ui.label(RichText::new(value).size(34.0).strong().color(TEAL));
-                    });
-                });
-                if (i + 1) % cols == 0 {
-                    ui.end_row();
-                }
-            }
-        });
-    ui.add_space(18.0);
-    theme::card(ui, |ui| {
-        ui.label(RichText::new("Mulai dari mana?").strong());
-        ui.label(
-            "Pilih menu di samping untuk memantau ujian, menilai, mengelola soal, dan lainnya.",
-        );
-        ui.label(
-            RichText::new("Data daftar tersimpan di komputer ini sehingga tetap bisa dilihat saat internet putus.")
-                .color(GRAY),
-        );
-    });
-}
-
 // ───────────────────────── monitoring ─────────────────────────
 
 fn monitoring(app: &mut App, ui: &mut egui::Ui) {
     if let Some(id) = app.sel.clone() {
-        monitoring_detail(app, ui, &id);
+        crate::live::pantau(app, ui, &id);
         return;
     }
     let Some(list) = load(app, ui, "monitoring", 20) else {
@@ -549,163 +502,6 @@ fn monitoring(app: &mut App, ui: &mut egui::Ui) {
                     ui.end_row();
                 }
             });
-    });
-}
-
-fn monitoring_detail(app: &mut App, ui: &mut egui::Ui, id: &str) {
-    let key = format!("monitoring/{id}");
-    ui.horizontal(|ui| {
-        if ui.button("Kembali").clicked() {
-            app.sel = None;
-        }
-    });
-    let Some(d) = load(app, ui, &key, 8) else {
-        return;
-    };
-    let rows = arr(d.get("rows").unwrap_or(&Value::Null));
-    let ongoing = rows
-        .iter()
-        .filter(|r| text(r, "status") == "ONGOING")
-        .count();
-    let done = rows
-        .iter()
-        .filter(|r| text(r, "status") == "SUBMITTED")
-        .count();
-    let offline = rows.iter().filter(|r| bool_of(r, "offline")).count();
-    let flagged = rows
-        .iter()
-        .filter(|r| i64_of(r, "violationCount") > 0)
-        .count();
-
-    ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new(text(&d, "title")).size(18.0).strong());
-        ui.label(RichText::new(text(&d, "subject")).color(GRAY));
-        ui.label(format!(
-            "• {} peserta • {} mengerjakan • {} selesai • {} terputus • {} melanggar",
-            rows.len(),
-            ongoing,
-            done,
-            offline,
-            flagged
-        ));
-    });
-
-    // token
-    ui.horizontal(|ui| {
-        ui.label("Token:");
-        let token = text(&d, "token");
-        ui.label(
-            RichText::new(if token.is_empty() {
-                "(belum ada)".into()
-            } else {
-                token.clone()
-            })
-            .monospace()
-            .size(18.0)
-            .strong(),
-        );
-        if ui.button("Buat token baru").clicked() {
-            app.send_rpc(
-                &[&key, "monitoring"],
-                json!({"action":"generateExamToken","args":[id]}),
-            );
-        }
-        if !token.is_empty() && ui.button("Salin").clicked() {
-            ui.ctx().copy_text(token);
-        }
-    });
-
-    // pengumuman & tambah waktu
-    ui.horizontal(|ui| {
-        let f = app.form.entry("mon.text".into()).or_default();
-        ui.add(
-            egui::TextEdit::singleline(f)
-                .hint_text("Pengumuman ke layar siswa...")
-                .desired_width(340.0),
-        );
-        let msg = f.clone();
-        if ui.add(theme::primary("Kirim pengumuman")).clicked() && !msg.trim().is_empty() {
-            app.form.insert("mon.text".into(), String::new());
-            app.send_rpc(
-                &[],
-                json!({"action":"kirimPengumumanUjian","args":[id, msg]}),
-            );
-        }
-        ui.separator();
-        egui::ComboBox::from_id_salt("mnt")
-            .selected_text(format!("+{} menit", app.minutes))
-            .show_ui(ui, |ui| {
-                for m in [5, 10, 15, 30] {
-                    ui.selectable_value(&mut app.minutes, m, format!("+{m} menit"));
-                }
-            });
-        if ui.add(theme::primary("Tambah waktu semua")).clicked() {
-            ask(
-                app,
-                &format!(
-                    "Tambah {} menit untuk SEMUA siswa yang sedang mengerjakan?",
-                    app.minutes
-                ),
-                json!({"action":"tambahWaktuUjian","args":[id, app.minutes, Value::Null]}),
-                &[&key],
-            );
-        }
-    });
-    ui.separator();
-
-    theme::card_scroll(ui, |ui| {
-        egui::Grid::new("mon_detail").striped(true).spacing(theme::GRID_SPACING).num_columns(8).show(ui, |ui| {
-            for h in ["Nama", "NISN", "Kelas", "Status", "Pelanggaran", "Nilai", "Waktu +", "Aksi"] {
-                theme::th(ui, h);
-            }
-            ui.end_row();
-
-            // yang perlu perhatian di atas
-            let mut sorted: Vec<&Value> = rows.iter().collect();
-            sorted.sort_by_key(|r| {
-                let s = text(r, "status");
-                if s == "CHEATED" {
-                    1
-                } else if bool_of(r, "offline") {
-                    0
-                } else if s == "ONGOING" && i64_of(r, "violationCount") > 0 {
-                    2
-                } else if s == "ONGOING" {
-                    3
-                } else if s == "NOT_STARTED" {
-                    4
-                } else {
-                    5
-                }
-            });
-            for r in sorted {
-                let status = text(r, "status");
-                let viol = i64_of(r, "violationCount");
-                ui.label(RichText::new(text(r, "name")).strong());
-                ui.label(text(r, "nisn"));
-                ui.label(text(r, "className"));
-                status_badge(ui, &status, bool_of(r, "offline"));
-                ui.label(if viol > 0 { RichText::new(format!("{viol}")).color(RED).strong() } else { RichText::new("0") });
-                ui.label(path_text(r, "score"));
-                let extra = i64_of(r, "extraSeconds");
-                ui.label(if extra > 0 { format!("+{} mnt", extra / 60) } else { String::new() });
-                ui.horizontal(|ui| {
-                    let sid = text(r, "studentId");
-                    if status == "ONGOING" && theme::row_button(ui, "+ Waktu", false) {
-                        app.send_rpc(&[&key], json!({"action":"tambahWaktuUjian","args":[id, app.minutes, sid.clone()]}));
-                    }
-                    if status != "NOT_STARTED" && theme::row_button(ui, "Reset sesi", true) {
-                        ask(
-                            app,
-                            &format!("Reset sesi {}? Pengerjaannya akan dihapus dan siswa bisa mengulang.", text(r, "name")),
-                            json!({"action":"resetSesiSiswa","form":{"examId":id,"studentId":sid}}),
-                            &[&key],
-                        );
-                    }
-                });
-                ui.end_row();
-            }
-        });
     });
 }
 

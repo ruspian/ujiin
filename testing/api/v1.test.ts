@@ -228,3 +228,58 @@ describe("yearRange", () => {
     expect(yearRange("")).toBeNull();
   });
 });
+
+describe("beranda (helper murni)", () => {
+  test("trendText naik/turun/sama/tanpa pembanding", async () => {
+    const { trendText } = await import("@/lib/api-v1-beranda");
+    expect(trendText(80, 74)).toBe("naik 6 poin dibanding ujian sebelumnya");
+    expect(trendText(70.5, 75)).toBe("turun 4.5 poin dibanding ujian sebelumnya");
+    expect(trendText(70, 70)).toBe("sama dengan ujian sebelumnya");
+    expect(trendText(70, null)).toBeNull();
+  });
+  test("avg dibulatkan satu desimal, kosong → null", async () => {
+    const { avg } = await import("@/lib/api-v1-beranda");
+    expect(avg([80, 75, 90])).toBe(81.7);
+    expect(avg([])).toBeNull();
+  });
+  test("countEssayPending hanya menghitung esai terisi tanpa nilai", async () => {
+    const { countEssayPending } = await import("@/lib/api-v1-beranda");
+    const r = countEssayPending(
+      [
+        { answers: { e1: "jawaban", e2: "  ", pg: "A" }, essayScores: { e1: 5 } },
+        { answers: { e1: "x", e3: "y" }, essayScores: null },
+      ],
+      new Set(["e1", "e2", "e3"]),
+    );
+    expect(r).toEqual({ total: 3, pending: 2 });
+  });
+  test("liveCounts: terputus bila heartbeat > 45 dtk", async () => {
+    const { liveCounts } = await import("@/lib/api-v1-beranda");
+    const now = Date.now();
+    const c = liveCounts(
+      [
+        { status: "ONGOING", violationCount: 0, lastSeenAt: new Date(now - 5_000) },
+        { status: "ONGOING", violationCount: 2, lastSeenAt: new Date(now - 90_000) },
+        { status: "SUBMITTED", violationCount: 0, lastSeenAt: null },
+      ],
+      10,
+      now,
+    );
+    expect(c).toEqual({ peserta: 10, mengerjakan: 2, selesai: 1, melanggar: 1, terputus: 1 });
+  });
+  test("buildEvents mengurutkan terbaru dulu dan mengabaikan log rusak", async () => {
+    const { buildEvents } = await import("@/lib/api-v1-beranda");
+    const ev = buildEvents([
+      {
+        studentId: "s1",
+        name: "Ahmad",
+        startTime: new Date("2026-11-20T01:00:00Z"),
+        endTime: null,
+        status: "ONGOING",
+        violationLogs: [{ waktu: "2026-11-20T01:10:00Z", jenis: "keluar_aplikasi" }, { jenis: "rusak" }],
+      },
+    ]);
+    expect(ev.map((e) => e.kind)).toEqual(["pelanggaran", "mulai"]);
+    expect(ev[0].detail).toBe("keluar_aplikasi");
+  });
+});

@@ -8,22 +8,54 @@ STATE = {"violations": 0, "extra": 0, "calls": []}
 USERS = {"admin": ("rahasia123", "ADMIN", "Admin Sekolah"), "guru": ("rahasia123", "GURU", "Pak Guru")}
 SESS = {}
 
+def iso(t): return time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(t))
+
+NAMES = ["Ahmad", "Budi", "Citra", "Dewi", "Eka Putra", "Fajar", "Gita", "Hana", "Indra", "Joko", "Kiki", "Lestari",
+         "Maya", "Nanda", "Oki", "Putri", "Rangga", "Sari", "Tono", "Umi", "Vina", "Wawan", "Yuni", "Zaki"]
+
 def monitoring_detail():
-    STATE["violations"] += 1 if STATE.get("tick", 0) % 2 else 0
     STATE["tick"] = STATE.get("tick", 0) + 1
-    rows = [
-        {"studentId": "s1", "nisn": "001", "name": "Ahmad", "className": "X RPL 1", "status": "ONGOING",
-         "violationCount": STATE["violations"], "score": None, "extraSeconds": STATE["extra"], "offline": False, "silentSeconds": 3},
-        {"studentId": "s2", "nisn": "002", "name": "Budi", "className": "X RPL 1", "status": "ONGOING",
-         "violationCount": 0, "score": None, "extraSeconds": 0, "offline": True, "silentSeconds": 90},
-        {"studentId": "s3", "nisn": "003", "name": "Citra", "className": "X RPL 1", "status": "SUBMITTED",
-         "violationCount": 0, "score": 88.5, "extraSeconds": 0, "offline": False, "silentSeconds": None},
-        {"studentId": "s4", "nisn": "004", "name": "Dewi", "className": "X RPL 1", "status": "NOT_STARTED",
-         "violationCount": 0, "score": None, "extraSeconds": 0, "offline": False, "silentSeconds": None},
-    ]
+    now = time.time()
+    rows, events = [], []
+    for i, n in enumerate(NAMES):
+        st, viol, off, score = "ONGOING", 0, False, None
+        if i % 8 == 3: st = "NOT_STARTED"
+        elif i % 6 == 2: st, score = "SUBMITTED", 70 + i
+        elif i == 1: off = True
+        elif i == 4: viol = 2 + STATE["violations"]
+        elif i == 7: st, viol = "CHEATED", 3
+        if i == 9: viol = 1
+        rows.append({"studentId": f"s{i}", "nisn": f"{100+i}", "name": n, "className": "X RPL 1" if i < 12 else "X RPL 2",
+                     "status": st, "violationCount": viol, "score": score, "extraSeconds": STATE["extra"] if i == 0 else 0,
+                     "offline": off, "silentSeconds": 90 if off else (3 if st == "ONGOING" else None),
+                     "startedAt": None, "finishedAt": None})
+        if st != "NOT_STARTED":
+            events.append({"at": iso(now - 1100 + i * 20), "kind": "mulai", "studentId": f"s{i}", "name": n, "detail": "Mulai mengerjakan"})
+        if st == "SUBMITTED":
+            events.append({"at": iso(now - 300 - i * 9), "kind": "selesai", "studentId": f"s{i}", "name": n, "detail": f"Selesai, nilai {score}"})
+        for v in range(viol):
+            events.append({"at": iso(now - 600 + i * 11 + v * 40), "kind": "pelanggaran", "studentId": f"s{i}", "name": n,
+                           "detail": "Keluar dari layar penuh" if v % 2 == 0 else "Pindah tab", "tertunda": v == 1 and i == 9})
     return {"id": "e1", "title": "UH Informatika", "subject": "Informatika", "status": "PUBLISHED", "token": "AB12CD",
-            "startTime": "2026-11-18T01:00:00.000Z", "endTime": "2026-11-18T03:00:00.000Z", "duration": 60,
-            "announcement": None, "rows": rows}
+            "startTime": iso(now - 1200), "endTime": iso(now + 2400 + STATE["extra"] * 60), "duration": 60, "now": iso(now),
+            "announcement": None, "rows": rows, "events": events}
+
+def beranda(role):
+    now = time.time()
+    ex = dict(EXAM, live=True, peserta=24, mengerjakan=15, selesai=4, melanggar=3, terputus=1,
+              startTime=iso(now - 1200), endTime=iso(now + 2400), classes=["X RPL 1", "X RPL 2"])
+    return {"now": iso(now), "role": role, "name": USERS[role.lower()][2], "tahunAjaran": "2026/2027",
+            "progress": {"esaiTotal": 40, "esaiSelesai": 31, "ujianLive": 1, "ujianDiawasi": 3, "soalSaya": 140, "soalBaru": 6},
+            "diawasi": [ex, dict(ex, id="e2", title="PTS Matematika", subject="Matematika", live=False, mengerjakan=0, selesai=0,
+                                 melanggar=0, terputus=0, startTime=iso(now + 86400), endTime=iso(now + 90000))],
+            "kabar": [
+                {"id": "k1", "scope": "siswa", "tone": "info", "title": "UH Informatika sedang berlangsung", "text": "15 siswa mengerjakan, 4 sudah selesai.", "tab": "Monitoring", "sel": "e1"},
+                {"id": "k2", "scope": "siswa", "tone": "good", "title": "Rata-rata PH Matematika 78,5", "text": "Naik 4,2 poin dari ujian sebelumnya.", "tab": "Penilaian"},
+                {"id": "k3", "scope": "siswa", "tone": "warn", "title": "3 siswa melanggar aturan", "text": "Cek aliran kejadian di halaman pantau.", "tab": "Monitoring", "sel": "e1"},
+                {"id": "k4", "scope": "guru", "tone": "good", "title": "6 soal baru pekan ini", "text": "Bank soal makin lengkap.", "tab": "BankSoal"},
+                {"id": "k5", "scope": "guru", "tone": "warn", "title": "9 esai menunggu dinilai", "text": "Buka Penilaian untuk mengoreksi.", "tab": "Penilaian"},
+                {"id": "k6", "scope": "sistem", "tone": "info", "title": "2 ujian belum punya pengawas", "text": "Atur di Jadwal Ujian.", "tab": "Jadwal"},
+            ]}
 
 EXAM = {"id": "e1", "title": "UH Informatika", "subject": "Informatika", "examType": "UH", "classes": ["X RPL 1"],
         "supervisor": "Pak Guru", "startTime": "2026-11-18T01:00:00.000Z", "endTime": "2026-11-18T03:00:00.000Z",
@@ -33,6 +65,7 @@ def route(path, q, role):
     if path == "me": return {"id": "u1", "name": USERS[role.lower()][2], "username": role.lower(), "role": role}
     if path == "dashboard": return {"role": role, "siswaAktif": 320, "kelas": 12, "mapel": 14, "ujianAktif": 3,
                                     "soalSaya": 140, "ujianDiawasi": 2, "guru": 18 if role == "ADMIN" else None}
+    if path == "beranda": return beranda(role)
     if path == "monitoring": return [EXAM]
     if path == "monitoring/e1": return monitoring_detail()
     year = (q.get("yearId") or [""])[0]
