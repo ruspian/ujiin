@@ -309,6 +309,10 @@ export default function FormSoal({
               className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800 text-center shadow-sm"
             />
           )}
+          <p className="mt-1.5 text-xs text-gray-500 leading-snug">
+            Atur bobot semua soal agar <b>totalnya 100</b> (mis. 25 soal × 4).
+            Cek indikator &quot;Total bobot&quot; di daftar soal.
+          </p>
         </div>
       </div>
 
