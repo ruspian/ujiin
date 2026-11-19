@@ -6,7 +6,6 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use crate::theme::{self, AMBER, GRAY, GREEN, RED, TEAL};
-const PAGE_SIZE: usize = 100;
 
 // ───────────────────────── login ─────────────────────────
 
@@ -209,7 +208,7 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
                     );
                 });
             ui.add_space(6.0);
-            ui.spacing_mut().item_spacing.y = 2.0;
+            ui.spacing_mut().item_spacing.y = 1.0;
             let bottom_h = 2.0 * 36.0 + 34.0;
             egui::ScrollArea::vertical()
                 .auto_shrink(false)
@@ -320,7 +319,7 @@ fn tab_hint(t: Tab) -> &'static str {
 /// Satu baris menu samping; true bila diklik.
 fn nav_item(ui: &mut egui::Ui, label: &str, selected: bool) -> bool {
     let (rect, resp) =
-        ui.allocate_exact_size(egui::vec2(ui.available_width(), 34.0), egui::Sense::click());
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 31.0), egui::Sense::click());
     let hovered = resp.hovered();
     if selected || hovered {
         let fill = if selected { TEAL } else { theme::SIDEBAR_HOVER };
@@ -717,38 +716,64 @@ fn penilaian(app: &mut App, ui: &mut egui::Ui) {
         penilaian_detail(app, ui, &id);
         return;
     }
-    let Some(list) = load(app, ui, "penilaian", 60) else {
+    theme::toolbar(ui, |ui| {
+        year_filter(app, ui, "pen.year");
+    });
+    ui.add_space(8.0);
+    let yp = year_param(app, "pen.year");
+    let path = if yp.is_empty() {
+        "penilaian".to_string()
+    } else {
+        format!("penilaian?{yp}")
+    };
+    let Some(list) = load(app, ui, &path, 60) else {
         return;
     };
-    let items = arr(&list);
+    let items: Vec<&Value> = arr(&list).iter().collect();
     if items.is_empty() {
-        ui.label("Belum ada ujian pada tahun ajaran aktif.");
+        crate::table::empty_state(
+            ui,
+            "Belum ada ujian",
+            "Tidak ada ujian terbit pada tahun ajaran ini. Pilih tahun ajaran lain di atas.",
+        );
         return;
     }
-    theme::card_scroll(ui, |ui| {
-        egui::Grid::new("pen_list")
-            .striped(true)
-            .spacing(theme::GRID_SPACING)
-            .num_columns(7)
-            .show(ui, |ui| {
-                for h in ["Ujian", "Mapel", "Jenis", "Kelas", "Mulai", "Peserta", ""] {
-                    theme::th(ui, h);
-                }
-                ui.end_row();
-                for e in items {
-                    ui.label(RichText::new(text(e, "title")).strong());
-                    ui.label(path_text(e, "subject"));
-                    ui.label(path_text(e, "examType"));
-                    ui.label(path_text(e, "classes"));
-                    ui.label(fmt_iso_wita(&text(e, "startTime")));
-                    ui.label(path_text(e, "attempts"));
-                    if theme::row_button(ui, "Lihat nilai", false) {
-                        app.sel = Some(text(e, "id"));
-                    }
-                    ui.end_row();
-                }
-            });
-    });
+    use crate::table::{Cell, W};
+    let cols = [
+        ("Ujian", W::Fill(150.0)),
+        ("Mapel", W::Fill(90.0)),
+        ("Jenis", W::Px(80.0)),
+        ("Kelas", W::Fill(70.0)),
+        ("Tahun ajaran", W::Px(140.0)),
+        ("Mulai", W::Px(150.0)),
+        ("Peserta", W::Px(80.0)),
+    ];
+    let it = &items;
+    crate::table::data_table(
+        ui,
+        "tbl-pen",
+        &cols,
+        items.len(),
+        42.0,
+        120.0,
+        |i, c| {
+            let e = it[i];
+            match c {
+                0 => Cell::Strong(text(e, "title")),
+                1 => Cell::Text(path_text(e, "subject")),
+                2 => Cell::Pill(path_text(e, "examType"), theme::BLUE),
+                3 => Cell::Text(path_text(e, "classes")),
+                4 => Cell::Muted(path_text(e, "year")),
+                5 => Cell::Muted(fmt_iso_wita(&text(e, "startTime"))),
+                _ => Cell::Text(path_text(e, "attempts")),
+            }
+        },
+        |ui, i| {
+            if theme::row_button(ui, "Lihat nilai", false) {
+                app.sel = Some(text(it[i], "id"));
+            }
+        },
+    );
 }
 
 fn penilaian_detail(app: &mut App, ui: &mut egui::Ui, id: &str) {
@@ -894,82 +919,172 @@ fn penilaian_detail(app: &mut App, ui: &mut egui::Ui, id: &str) {
 
 // ───────────────────────── bank soal ─────────────────────────
 
+/// Kunci daftar mapel di bank soal (ikut filter tahun ajaran).
+fn soal_root(app: &App) -> String {
+    let yp = year_param(app, "soal.year");
+    if yp.is_empty() {
+        "soal".into()
+    } else {
+        format!("soal?{yp}")
+    }
+}
+
 fn bank_soal(app: &mut App, ui: &mut egui::Ui) {
     if let Some(sid) = app.sel.clone() {
         soal_list(app, ui, &sid);
         return;
     }
-    let Some(list) = load(app, ui, "soal", 60) else {
+    let is_admin = app.is_admin();
+    theme::toolbar(ui, |ui| {
+        year_filter(app, ui, "soal.year");
+        ui.label(
+            RichText::new("Jumlah soal dihitung dari tanggal dibuat dalam tahun ajaran terpilih.")
+                .size(13.0)
+                .color(GRAY),
+        );
+    });
+    ui.add_space(8.0);
+    let root = soal_root(app);
+    let Some(list) = load(app, ui, &root, 60) else {
         return;
     };
-    let items = arr(&list);
+    let items: Vec<&Value> = arr(&list).iter().collect();
     if items.is_empty() {
-        ui.label("Belum ada mata pelajaran yang Anda ampu.");
+        crate::table::empty_state(
+            ui,
+            "Belum ada mata pelajaran",
+            "Anda belum mengampu mata pelajaran apa pun.",
+        );
         return;
     }
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Pilih mata pelajaran, lalu tambah atau ubah soal.").color(GRAY));
-    });
-    theme::card_scroll(ui, |ui| {
-        egui::Grid::new("soal_subjects")
-            .striped(true)
-            .spacing(theme::GRID_SPACING)
-            .num_columns(5)
-            .show(ui, |ui| {
-                for h in ["Mata pelajaran", "Kelas", "Jumlah soal", "", ""] {
-                    theme::th(ui, h);
-                }
-                ui.end_row();
-                for s in items {
-                    ui.label(RichText::new(text(s, "name")).strong());
-                    let classes: Vec<String> = arr(s.get("classes").unwrap_or(&Value::Null))
+    use crate::table::{Cell, W};
+    let cols = [
+        ("Mata pelajaran", W::Fill(200.0)),
+        ("Kelas", W::Fill(160.0)),
+        ("Jumlah soal", W::Px(120.0)),
+    ];
+    let it = &items;
+    crate::table::data_table(
+        ui,
+        "tbl-soal-mapel",
+        &cols,
+        items.len(),
+        44.0,
+        if is_admin { 100.0 } else { 220.0 },
+        |i, c| {
+            let s = it[i];
+            match c {
+                0 => Cell::Strong(text(s, "name")),
+                1 => Cell::Text(
+                    arr(s.get("classes").unwrap_or(&Value::Null))
                         .iter()
                         .map(|c| text(c, "name"))
-                        .collect();
-                    ui.label(classes.join(", "));
-                    ui.label(path_text(s, "questionCount"));
-                    if theme::row_button(ui, "Buka", false) {
-                        app.sel = Some(text(s, "id"));
-                        app.page = 0;
-                        app.filter.clear();
-                    }
-                    if theme::row_button(ui, "Tambah soal", false) {
-                        app.forms.soal = Some(crate::forms::SoalForm::new(
-                            &text(s, "id"),
-                            &text(s, "name"),
-                            None,
-                        ));
-                    }
-                    ui.end_row();
-                }
-            });
-    });
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                ),
+                _ => Cell::Pill(path_text(s, "questionCount"), theme::TEAL),
+            }
+        },
+        |ui, i| {
+            let s = it[i];
+            if !is_admin && ui.add(theme::primary("Tambah soal")).clicked() {
+                app.forms.soal = Some(crate::forms::SoalForm::new(
+                    &text(s, "id"),
+                    &text(s, "name"),
+                    None,
+                ));
+            }
+            if theme::row_button(ui, "Buka", false) {
+                app.sel = Some(text(s, "id"));
+                app.page = 0;
+                app.filter.clear();
+                app.form.remove("soal.q");
+            }
+        },
+    );
+}
+
+/// Parameter filter tambahan untuk daftar soal.
+fn soal_filter_params(app: &App) -> String {
+    let mut s = String::new();
+    let g = |k: &str| app.form.get(k).cloned().unwrap_or_default();
+    let yp = year_param(app, "soal.year");
+    if !yp.is_empty() {
+        s.push('&');
+        s.push_str(&yp);
+    }
+    for (k, name) in [
+        ("soal.type", "type"),
+        ("soal.et", "examTypeId"),
+        ("soal.cls", "classId"),
+    ] {
+        let v = g(k);
+        if !v.is_empty() {
+            s.push_str(&format!("&{name}={}", urlenc(&v)));
+        }
+    }
+    s
 }
 
 fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
+    let is_admin = app.is_admin();
+    let name = load_name(app, subject_id);
     ui.horizontal(|ui| {
         if ui.button("Kembali").clicked() {
             app.sel = None;
         }
-        ui.add(
-            egui::TextEdit::singleline(&mut app.filter)
-                .hint_text("Cari teks soal...")
-                .desired_width(260.0),
+        ui.label(RichText::new(&name).size(20.0).strong());
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if !is_admin && ui.add(theme::primary("Tambah soal")).clicked() {
+                app.forms.soal = Some(crate::forms::SoalForm::new(subject_id, &name, None));
+            }
+        });
+    });
+    ui.add_space(6.0);
+    let opts = options(app);
+    theme::toolbar(ui, |ui| {
+        let r = ui.add_sized(
+            [220.0, 32.0],
+            egui::TextEdit::singleline(&mut app.filter).hint_text("Cari teks soal..."),
         );
-        if ui.add(theme::primary("Tambah soal")).clicked() {
-            let name = load_name(app, subject_id);
-            app.forms.soal = Some(crate::forms::SoalForm::new(subject_id, &name, None));
-        }
-        if ui.add(theme::primary("Cari")).clicked() {
+        let enter = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+        if ui.button("Cari").clicked() || enter {
+            app.form.insert("soal.q".into(), app.filter.clone());
             app.page = 0;
-            let k = format!("soal/{subject_id}?q={}&page=1", urlenc(&app.filter));
-            app.store.remove(&k);
+        }
+        let mut changed = year_filter(app, ui, "soal.year");
+        let mut et = vec![(String::new(), "Semua jenis ujian".to_string())];
+        et.extend(opt_pairs(&opts, "examTypes", "name"));
+        let cur = app.form.entry("soal.et".into()).or_default();
+        changed |= crate::table::combo(ui, "sf-et", "Jenis ujian", cur, &et, 150.0);
+        let ty: Vec<(String, String)> = [
+            ("", "Semua jenis soal"),
+            ("MULTIPLE_CHOICE", "Pilihan ganda"),
+            ("MULTIPLE_CHOICE_COMPLEX", "PG kompleks"),
+            ("TRUE_FALSE", "Benar/Salah"),
+            ("MATCHING", "Menjodohkan"),
+            ("ESSAY", "Esai"),
+        ]
+        .iter()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect();
+        let cur = app.form.entry("soal.type".into()).or_default();
+        changed |= crate::table::combo(ui, "sf-ty", "Jenis soal", cur, &ty, 150.0);
+        let mut cl = vec![(String::new(), "Semua kelas".to_string())];
+        cl.extend(opt_pairs(&opts, "classes", "name"));
+        let cur = app.form.entry("soal.cls".into()).or_default();
+        changed |= crate::table::combo(ui, "sf-cl", "Kelas", cur, &cl, 120.0);
+        if changed {
+            app.page = 0;
         }
     });
+    ui.add_space(8.0);
+    let q = app.form.get("soal.q").cloned().unwrap_or_default();
     let key = format!(
-        "soal/{subject_id}?q={}&page={}",
-        urlenc(&app.filter),
-        app.page + 1
+        "soal/{subject_id}?q={}&page={}{}",
+        urlenc(&q),
+        app.page + 1,
+        soal_filter_params(app)
     );
     let Some(d) = load(app, ui, &key, 60) else {
         return;
@@ -978,73 +1093,104 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
     let page_size = i64_of(&d, "pageSize").max(1);
     let pages = ((total + page_size - 1) / page_size).max(1) as usize;
     ui.horizontal(|ui| {
-        ui.label(format!("{total} soal • halaman {}/{pages}", app.page + 1));
-        if app.page > 0 && ui.button("<").clicked() {
+        ui.label(
+            RichText::new(format!("{total} soal  •  halaman {}/{pages}", app.page + 1))
+                .size(13.0)
+                .color(GRAY),
+        );
+        if app.page > 0 && ui.small_button("Sebelumnya").clicked() {
             app.page -= 1;
         }
-        if app.page + 1 < pages && ui.button(">").clicked() {
+        if app.page + 1 < pages && ui.small_button("Berikutnya").clicked() {
             app.page += 1;
         }
     });
-    theme::card_scroll(ui, |ui| {
-        egui::Grid::new("soal_items")
-            .striped(true)
-            .spacing(theme::GRID_SPACING)
-            .num_columns(7)
-            .show(ui, |ui| {
-                for h in ["Soal", "Jenis", "Skor", "Kunci", "Kelas", "", ""] {
-                    theme::th(ui, h);
-                }
-                ui.end_row();
-                for q in arr(d.get("items").unwrap_or(&Value::Null)) {
-                    let plain = strip_html(&text(q, "text"));
-                    let short: String = plain.chars().take(110).collect();
-                    ui.label(if plain.chars().count() > 110 {
-                        format!("{short}...")
-                    } else {
-                        short
-                    })
-                    .on_hover_text(plain);
-                    ui.label(match text(q, "type").as_str() {
+    ui.add_space(4.0);
+    let items: Vec<&Value> = arr(d.get("items").unwrap_or(&Value::Null)).iter().collect();
+    if items.is_empty() {
+        crate::table::empty_state(
+            ui,
+            "Tidak ada soal",
+            "Tidak ada soal yang cocok dengan filter. Coba ganti tahun ajaran atau hapus filter.",
+        );
+        return;
+    }
+    use crate::table::{Cell, W};
+    let cols = [
+        ("Soal", W::Fill(200.0)),
+        ("Jenis", W::Px(120.0)),
+        ("Skor", W::Px(60.0)),
+        ("Kunci", W::Px(110.0)),
+        ("Kelas", W::Px(110.0)),
+        ("Dibuat", W::Px(110.0)),
+    ];
+    let it = &items;
+    let refresh_key = key.clone();
+    let root = soal_root(app);
+    crate::table::data_table(
+        ui,
+        "tbl-soal",
+        &cols,
+        items.len(),
+        42.0,
+        if is_admin { 100.0 } else { 170.0 },
+        |i, c| {
+            let q = it[i];
+            match c {
+                0 => Cell::Strong(strip_html(&text(q, "text")).chars().take(140).collect()),
+                1 => Cell::Muted(
+                    match text(q, "type").as_str() {
                         "MULTIPLE_CHOICE" => "Pilihan ganda",
                         "MULTIPLE_CHOICE_COMPLEX" => "PG kompleks",
                         "MATCHING" => "Menjodohkan",
                         "ESSAY" => "Esai",
                         "TRUE_FALSE" => "Benar/Salah",
                         _ => "-",
-                    });
-                    ui.label(path_text(q, "score"));
-                    let key_txt: String = strip_html(&text(q, "correctAnswer"))
+                    }
+                    .into(),
+                ),
+                2 => Cell::Text(path_text(q, "score")),
+                3 => Cell::Mono(
+                    strip_html(&text(q, "correctAnswer"))
                         .chars()
-                        .take(24)
-                        .collect();
-                    ui.label(key_txt);
-                    ui.label(path_text(q, "classes"));
-                    if theme::row_button(ui, "Ubah", false) {
-                        let name = load_name(app, subject_id);
-                        app.forms.soal = Some(crate::forms::SoalForm::new(
-                            subject_id,
-                            &name,
-                            Some(text(q, "id")),
-                        ));
-                    }
-                    if theme::row_button(ui, "Hapus", true) {
-                        ask(
-                            app,
-                            "Hapus soal ini? Tindakan ini tidak bisa dibatalkan.",
-                            json!({"action":"deleteQuestion","args":[text(q, "id")]}),
-                            &[&key, "soal"],
-                        );
-                    }
-                    ui.end_row();
-                }
-            });
-    });
+                        .take(16)
+                        .collect(),
+                ),
+                4 => Cell::Text(path_text(q, "classes")),
+                _ => Cell::Muted(
+                    fmt_iso_wita(&text(q, "createdAt"))
+                        .chars()
+                        .take(10)
+                        .collect(),
+                ),
+            }
+        },
+        |ui, i| {
+            let q = it[i];
+            let qid = text(q, "id");
+            if theme::row_button(ui, "Hapus", true) {
+                ask(
+                    app,
+                    "Hapus soal ini? Tindakan ini tidak bisa dibatalkan.",
+                    json!({"action":"deleteQuestion","args":[qid]}),
+                    &[&refresh_key, &root],
+                );
+            }
+            if !is_admin && theme::row_button(ui, "Ubah", false) {
+                app.forms.soal = Some(crate::forms::SoalForm::new(
+                    subject_id,
+                    &load_name(app, subject_id),
+                    Some(qid),
+                ));
+            }
+        },
+    );
 }
 
 fn load_name(app: &App, subject_id: &str) -> String {
+    let root = soal_root(app);
     app.store
-        .get("soal")
+        .get(&root)
         .map(|e| {
             arr(&e.value)
                 .iter()
@@ -1077,6 +1223,8 @@ pub struct Field {
     name: &'static str,
     password: bool,
     choices: &'static [&'static str],
+    /// Sumber pilihan dinamis dari `/options` ("classes" / "religions"); kosong = tidak dipakai.
+    src: &'static str,
 }
 
 pub struct Act {
@@ -1091,9 +1239,13 @@ pub struct Spec {
     path: &'static str,
     cols: &'static [(&'static str, &'static str)],
     searchable: bool,
+    /// (aksi tambah, isian) — dipakai juga untuk form ubah.
     create: Option<(&'static str, &'static [Field])>,
+    /// Aksi ubah; kosong = tidak ada tombol Ubah (jadwal & mapel punya form sendiri).
+    update: &'static str,
+    /// Teks tombol tambah, mis. "Tambah kelas".
+    add: &'static str,
     acts: &'static [Act],
-    web: Option<(&'static str, &'static str)>,
 }
 
 const fn field(label: &'static str, name: &'static str) -> Field {
@@ -1102,8 +1254,50 @@ const fn field(label: &'static str, name: &'static str) -> Field {
         name,
         password: false,
         choices: &[],
+        src: "",
     }
 }
+
+const fn choice(
+    label: &'static str,
+    name: &'static str,
+    choices: &'static [&'static str],
+) -> Field {
+    Field {
+        label,
+        name,
+        password: false,
+        choices,
+        src: "",
+    }
+}
+
+const fn source(label: &'static str, name: &'static str, src: &'static str) -> Field {
+    Field {
+        label,
+        name,
+        password: false,
+        choices: &[],
+        src,
+    }
+}
+
+const fn secret(label: &'static str, name: &'static str) -> Field {
+    Field {
+        label,
+        name,
+        password: true,
+        choices: &[],
+        src: "",
+    }
+}
+
+const HAPUS_ARG: Act = Act {
+    label: "Hapus",
+    action: "",
+    kind: Kind::Arg,
+    danger: true,
+};
 
 static KELAS: Spec = Spec {
     tab: "kelas",
@@ -1113,7 +1307,7 @@ static KELAS: Spec = Spec {
         ("Tingkat", "level"),
         ("Jumlah siswa", "students"),
     ],
-    searchable: false,
+    searchable: true,
     create: Some((
         "createClass",
         &[
@@ -1121,13 +1315,12 @@ static KELAS: Spec = Spec {
             field("Tingkat (mis. 10)", "level"),
         ],
     )),
+    update: "updateClass",
+    add: "Tambah kelas",
     acts: &[Act {
-        label: "Hapus",
         action: "deleteClass",
-        kind: Kind::Arg,
-        danger: true,
+        ..HAPUS_ARG
     }],
-    web: None,
 };
 static AGAMA: Spec = Spec {
     tab: "agama",
@@ -1135,13 +1328,13 @@ static AGAMA: Spec = Spec {
     cols: &[("Nama", "name")],
     searchable: false,
     create: Some(("createReligion", &[field("Nama agama", "name")])),
+    update: "updateReligion",
+    add: "Tambah agama",
     acts: &[Act {
-        label: "Hapus",
         action: "deleteReligion",
         kind: Kind::Form,
-        danger: true,
+        ..HAPUS_ARG
     }],
-    web: None,
 };
 static JENIS_UJIAN: Spec = Spec {
     tab: "jenis",
@@ -1152,16 +1345,16 @@ static JENIS_UJIAN: Spec = Spec {
         "createExamType",
         &[
             field("Nama jenis ujian", "name"),
-            field("Kode (unik)", "code"),
+            field("Kode (unik, mis. UH)", "code"),
         ],
     )),
+    update: "updateExamType",
+    add: "Tambah jenis ujian",
     acts: &[Act {
-        label: "Hapus",
         action: "deleteExamType",
         kind: Kind::Form,
-        danger: true,
+        ..HAPUS_ARG
     }],
-    web: None,
 };
 static TAHUN: Spec = Spec {
     tab: "tahun",
@@ -1169,21 +1362,18 @@ static TAHUN: Spec = Spec {
     cols: &[
         ("Tahun ajaran", "year"),
         ("Semester", "semester"),
-        ("Aktif", "active"),
+        ("Status", "active"),
     ],
     searchable: false,
     create: Some((
         "createAcademicYear",
         &[
             field("Tahun (mis. 2026/2027)", "year"),
-            Field {
-                label: "Semester",
-                name: "semester",
-                password: false,
-                choices: &["GANJIL", "GENAP"],
-            },
+            choice("Semester", "semester", &["GANJIL", "GENAP"]),
         ],
     )),
+    update: "updateAcademicYear",
+    add: "Tambah tahun ajaran",
     acts: &[
         Act {
             label: "Jadikan aktif",
@@ -1192,13 +1382,11 @@ static TAHUN: Spec = Spec {
             danger: false,
         },
         Act {
-            label: "Hapus",
             action: "deleteAcademicYear",
             kind: Kind::Form,
-            danger: true,
+            ..HAPUS_ARG
         },
     ],
-    web: None,
 };
 static PENGGUNA: Spec = Spec {
     tab: "pengguna",
@@ -1213,28 +1401,17 @@ static PENGGUNA: Spec = Spec {
         "createUser",
         &[
             field("Nama lengkap", "name"),
-            field("Username", "username"),
-            Field {
-                label: "Password (min. 8)",
-                name: "password",
-                password: true,
-                choices: &[],
-            },
-            Field {
-                label: "Peran",
-                name: "role",
-                password: false,
-                choices: &["GURU", "ADMIN"],
-            },
+            field("Username (min. 5 karakter)", "username"),
+            secret("Password (min. 8)", "password"),
+            choice("Peran", "role", &["GURU", "ADMIN"]),
         ],
     )),
+    update: "updateUser",
+    add: "Tambah pengguna",
     acts: &[Act {
-        label: "Hapus",
         action: "deleteUser",
-        kind: Kind::Arg,
-        danger: true,
+        ..HAPUS_ARG
     }],
-    web: None,
 };
 static MAPEL: Spec = Spec {
     tab: "mapel",
@@ -1246,13 +1423,12 @@ static MAPEL: Spec = Spec {
     ],
     searchable: true,
     create: None,
+    update: "",
+    add: "Tambah mapel",
     acts: &[Act {
-        label: "Hapus",
         action: "deleteSubject",
-        kind: Kind::Arg,
-        danger: true,
+        ..HAPUS_ARG
     }],
-    web: None,
 };
 static SISWA: Spec = Spec {
     tab: "siswa",
@@ -1261,18 +1437,25 @@ static SISWA: Spec = Spec {
         ("NISN", "nisn"),
         ("Nama", "name"),
         ("Kelas", "class.name"),
-        ("Status", "status"),
         ("Agama", "religion.name"),
+        ("Status", "status"),
     ],
     searchable: true,
-    create: None,
+    create: Some((
+        "createStudent",
+        &[
+            field("NISN", "nisn"),
+            field("Nama lengkap", "name"),
+            source("Kelas", "classId", "classes"),
+            source("Agama", "religionId", "religions"),
+        ],
+    )),
+    update: "updateStudent",
+    add: "Tambah siswa",
     acts: &[Act {
-        label: "Hapus",
         action: "deleteStudent",
-        kind: Kind::Arg,
-        danger: true,
+        ..HAPUS_ARG
     }],
-    web: None,
 };
 static JADWAL: Spec = Spec {
     tab: "jadwal",
@@ -1282,13 +1465,14 @@ static JADWAL: Spec = Spec {
         ("Mapel", "subject"),
         ("Jenis", "examType"),
         ("Kelas", "classes"),
-        ("Pengawas", "supervisor"),
         ("Mulai", "startTime"),
         ("Status", "status"),
         ("Token", "token"),
     ],
     searchable: true,
     create: None,
+    update: "",
+    add: "Buat jadwal",
     acts: &[
         Act {
             label: "Buat token",
@@ -1297,13 +1481,11 @@ static JADWAL: Spec = Spec {
             danger: false,
         },
         Act {
-            label: "Hapus",
             action: "deleteExam",
             kind: Kind::Form,
-            danger: true,
+            ..HAPUS_ARG
         },
     ],
-    web: None,
 };
 
 fn cell_text(row: &Value, path: &str) -> String {
@@ -1325,181 +1507,364 @@ fn cell_text(row: &Value, path: &str) -> String {
     }
 }
 
+fn col_w(path: &str) -> crate::table::W {
+    use crate::table::W;
+    match path {
+        "level" | "students" | "active" | "semester" | "role" | "status" => W::Px(96.0),
+        "token" | "code" => W::Px(84.0),
+        "nisn" => W::Px(110.0),
+        "startTime" => W::Px(130.0),
+        "name" | "title" => W::Fill(110.0),
+        _ => W::Fill(70.0),
+    }
+}
+
+fn cell_for(r: &Value, path: &str, first: bool) -> crate::table::Cell {
+    use crate::table::{status_pill, Cell};
+    let raw = path_text(r, path);
+    if path == "active" {
+        return if raw == "true" {
+            Cell::Pill("Aktif".into(), GREEN)
+        } else {
+            Cell::Muted(String::new())
+        };
+    }
+    if path.ends_with("Time") {
+        return Cell::Muted(fmt_iso_wita(&raw));
+    }
+    if let Some((label, color)) = status_pill(&raw) {
+        return Cell::Pill(label.into(), color);
+    }
+    if path == "token" {
+        return if raw.is_empty() {
+            Cell::Muted("-".into())
+        } else {
+            Cell::Mono(raw)
+        };
+    }
+    if first {
+        Cell::Strong(cell_text(r, path))
+    } else {
+        Cell::Text(cell_text(r, path))
+    }
+}
+
+/// Pilihan umum dari server (kelas, agama, tahun ajaran, jenis ujian). `None` selama belum termuat.
+pub(crate) fn options(app: &mut App) -> Option<Arc<Value>> {
+    app.ensure("options", 300);
+    app.store
+        .get("options")
+        .filter(|e| e.has_value)
+        .map(|e| e.value.clone())
+}
+
+/// Daftar (id, label) dari kunci `key` pada `options`, mis. "classes".
+fn opt_pairs(opts: &Option<Arc<Value>>, key: &str, name: &str) -> Vec<(String, String)> {
+    opts.as_ref()
+        .map(|o| {
+            arr(o.get(key).unwrap_or(&Value::Null))
+                .iter()
+                .map(|x| (text(x, "id"), text(x, name)))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Dropdown tahun ajaran. Nilai tersimpan di `app.form[key]`: "" = tahun ajaran aktif, "all" = semua, selain itu id.
+pub(crate) fn year_filter(app: &mut App, ui: &mut egui::Ui, key: &str) -> bool {
+    let opts = options(app);
+    let mut items = vec![
+        (String::new(), "Tahun ajaran aktif".to_string()),
+        ("all".to_string(), "Semua tahun ajaran".to_string()),
+    ];
+    if let Some(o) = &opts {
+        for y in arr(o.get("academicYears").unwrap_or(&Value::Null)) {
+            let mut l = format!(
+                "{} {}",
+                text(y, "year"),
+                semester_label(&text(y, "semester"))
+            );
+            if bool_of(y, "active") {
+                l.push_str(" (aktif)");
+            }
+            items.push((text(y, "id"), l));
+        }
+    }
+    let cur = app.form.entry(key.to_string()).or_default();
+    crate::table::combo(ui, &format!("yf-{key}"), "Tahun ajaran", cur, &items, 190.0)
+}
+
+/// Parameter `yearId=` untuk URL dari nilai filter ("" = bawaan server = tahun ajaran aktif).
+fn year_param(app: &App, key: &str) -> String {
+    match app.form.get(key).map(|s| s.as_str()).unwrap_or("") {
+        "" => String::new(),
+        v => format!("yearId={}", urlenc(v)),
+    }
+}
+
+/// Buka dialog tambah/ubah untuk data master sederhana.
+fn open_master(app: &mut App, spec: &'static Spec, row: Option<&Value>) {
+    use crate::master_edit::{EField, EditDlg, Kind as K};
+    let Some((create, fields)) = spec.create else {
+        return;
+    };
+    let opts = options(app);
+    let editing = row.is_some();
+    let mut fs = Vec::new();
+    for f in fields {
+        let kind = if f.password {
+            K::Password
+        } else if !f.src.is_empty() {
+            K::Choice(opt_pairs(&opts, f.src, "name"))
+        } else if !f.choices.is_empty() {
+            K::Choice(
+                f.choices
+                    .iter()
+                    .map(|c| {
+                        let l = crate::table::status_pill(c).map(|p| p.0).unwrap_or(c);
+                        (c.to_string(), l.to_string())
+                    })
+                    .collect(),
+            )
+        } else {
+            K::Text
+        };
+        let mut value = row.map(|r| text(r, f.name)).unwrap_or_default();
+        if value.is_empty() {
+            if let K::Choice(items) = &kind {
+                if !editing || f.src.is_empty() {
+                    value = items.first().map(|i| i.0.clone()).unwrap_or_default();
+                }
+            }
+        }
+        fs.push(EField {
+            label: if editing && f.password {
+                "Password baru (kosongkan jika tidak diubah)".into()
+            } else {
+                f.label.into()
+            },
+            name: f.name,
+            kind,
+            value,
+        });
+    }
+    app.forms.master = Some(EditDlg {
+        title: if editing {
+            format!("Ubah {}", spec.add.trim_start_matches("Tambah "))
+        } else {
+            spec.add.to_string()
+        },
+        action: if editing { spec.update } else { create },
+        refresh: spec.path,
+        id: row.map(|r| text(r, "id")),
+        fields: fs,
+        saving: false,
+        error: String::new(),
+    });
+}
+
+/// Hanya untuk uji tampilan (env UJIIN_FORM): membuka dialog master dengan data contoh.
+pub(crate) fn debug_master(app: &mut App, tab: &str, edit: bool) {
+    let spec: &'static Spec = match tab {
+        "siswa" => &SISWA,
+        _ => &PENGGUNA,
+    };
+    let row = json!({"id":"g1","name":"Pak Guru","username":"pakguru","role":"GURU"});
+    open_master(app, spec, if edit { Some(&row) } else { None });
+}
+
 fn admin_table(app: &mut App, ui: &mut egui::Ui, spec: &'static Spec) {
     let refresh = [spec.path];
-    ui.horizontal(|ui| {
-        if spec.searchable {
-            ui.add(
-                egui::TextEdit::singleline(&mut app.filter)
-                    .hint_text("Cari...")
-                    .desired_width(240.0),
-            );
-        }
-        if let Some((label, path)) = spec.web {
-            if ui.button(label).clicked() {
-                if let Some(n) = &app.net {
-                    n.open_web(path);
-                }
-            }
-        }
-        match spec.tab {
-            "jadwal" => {
-                if ui.add(theme::primary("Buat jadwal")).clicked() {
-                    app.forms.jadwal = Some(crate::forms::JadwalForm::new(None));
-                }
-            }
-            "mapel" => {
-                if ui.add(theme::primary("Tambah mapel")).clicked() {
-                    app.forms.mapel = Some(crate::forms::MapelForm::new(None));
-                }
-            }
-            "siswa" => {
-                if ui.add(theme::primary("Impor dari Excel")).clicked() {
-                    app.forms.import = Some(Default::default());
-                }
-            }
-            _ => {}
-        }
-        if ui.button("Muat ulang").clicked() {
-            app.fetch(spec.path);
-        }
-    });
-    if spec.tab == "siswa" && app.forms.import.is_some() {
-        crate::forms::import_panel(app, ui);
-    }
+    let opts = options(app);
 
-    if let Some((action, fields)) = spec.create {
-        ui.collapsing("Tambah baru", |ui| {
-            for f in fields {
-                ui.horizontal(|ui| {
-                    ui.label(f.label);
-                    let key = format!("{}.{}", spec.tab, f.name);
-                    if f.choices.is_empty() {
-                        let v = app.form.entry(key).or_default();
-                        ui.add(
-                            egui::TextEdit::singleline(v)
-                                .password(f.password)
-                                .desired_width(240.0),
-                        );
-                    } else {
-                        let v = app
-                            .form
-                            .entry(key)
-                            .or_insert_with(|| f.choices[0].to_string());
-                        egui::ComboBox::from_id_salt(format!("c-{}", f.name))
-                            .selected_text(v.clone())
-                            .show_ui(ui, |ui| {
-                                for c in f.choices {
-                                    ui.selectable_value(v, c.to_string(), *c);
-                                }
-                            });
-                    }
-                });
+    // ── tombol aksi (kanan atas) ──
+    let bar = egui::vec2(ui.available_width(), 34.0);
+    ui.allocate_ui_with_layout(
+        bar,
+        egui::Layout::right_to_left(egui::Align::Center),
+        |ui| {
+            if ui.add(theme::primary(spec.add)).clicked() {
+                match spec.tab {
+                    "jadwal" => app.forms.jadwal = Some(crate::forms::JadwalForm::new(None)),
+                    "mapel" => app.forms.mapel = Some(crate::forms::MapelForm::new(None)),
+                    _ => open_master(app, spec, None),
+                }
             }
-            if ui.add(theme::primary("Simpan")).clicked() {
-                let mut form = serde_json::Map::new();
-                for f in fields {
-                    let v = app
+            if spec.tab == "siswa" && ui.button("Impor Excel").clicked() {
+                app.forms.import = Some(Default::default());
+            }
+            if ui.button("Muat ulang").clicked() {
+                app.fetch(spec.path);
+            }
+        },
+    );
+    // ── pencarian & filter ──
+    let has_filters = spec.searchable || matches!(spec.tab, "jadwal" | "siswa");
+    if has_filters {
+        theme::toolbar(ui, |ui| {
+            if spec.searchable {
+                ui.add_sized(
+                    [240.0, 32.0],
+                    egui::TextEdit::singleline(&mut app.filter).hint_text("Cari..."),
+                );
+            }
+            match spec.tab {
+                "jadwal" => {
+                    year_filter(app, ui, "jadwal.year");
+                    let st = vec![
+                        (String::new(), "Semua status".to_string()),
+                        ("DRAFT".into(), "Draf".into()),
+                        ("PUBLISHED".into(), "Terbit".into()),
+                        ("COMPLETED".into(), "Selesai".into()),
+                    ];
+                    let cur = app.form.entry("jadwal.status".into()).or_default();
+                    crate::table::combo(ui, "jf-status", "Status", cur, &st, 130.0);
+                }
+                "siswa" => {
+                    let mut cls = vec![(String::new(), "Semua kelas".to_string())];
+                    cls.extend(opt_pairs(&opts, "classes", "name"));
+                    let cur = app.form.entry("siswa.cls".into()).or_default();
+                    crate::table::combo(ui, "sf-cls", "Kelas", cur, &cls, 140.0);
+                    let st = vec![
+                        (String::new(), "Semua status".to_string()),
+                        ("ACTIVE".into(), "Aktif".into()),
+                        ("GRADUATED".into(), "Lulus".into()),
+                        ("DROPOUT".into(), "Keluar".into()),
+                        ("MUTATED".into(), "Pindah".into()),
+                    ];
+                    let cur = app
                         .form
-                        .get(&format!("{}.{}", spec.tab, f.name))
-                        .cloned()
-                        .unwrap_or_else(|| {
-                            f.choices.first().map(|c| c.to_string()).unwrap_or_default()
-                        });
-                    form.insert(f.name.to_string(), Value::String(v));
+                        .entry("siswa.status".into())
+                        .or_insert_with(|| "ACTIVE".into());
+                    crate::table::combo(ui, "sf-st", "Status", cur, &st, 130.0);
                 }
-                app.send_rpc(&refresh, json!({"action": action, "form": form}));
-                for f in fields.iter().filter(|f| f.choices.is_empty()) {
-                    app.form.remove(&format!("{}.{}", spec.tab, f.name));
-                }
+                _ => {}
             }
         });
     }
-    ui.separator();
+    if spec.tab == "siswa" && app.forms.import.is_some() {
+        crate::forms::import_panel(app, ui);
+    }
+    ui.add_space(8.0);
 
     let Some(d) = load(app, ui, spec.path, 60) else {
         return;
     };
     let needle = app.filter.to_lowercase();
+    let year_sel = app.form.get("jadwal.year").cloned().unwrap_or_default();
+    let st_sel = app
+        .form
+        .get(&format!("{}.status", spec.tab))
+        .cloned()
+        .unwrap_or_else(|| {
+            if spec.tab == "siswa" {
+                "ACTIVE".into()
+            } else {
+                String::new()
+            }
+        });
+    let cls_sel = app.form.get("siswa.cls").cloned().unwrap_or_default();
     let all = arr(&d);
-    let filtered: Vec<&Value> = all
+    let rows: Vec<&Value> = all
         .iter()
         .filter(|r| {
-            needle.is_empty()
+            let by_text = needle.is_empty()
                 || spec
                     .cols
                     .iter()
-                    .any(|(_, p)| cell_text(r, p).to_lowercase().contains(&needle))
+                    .any(|(_, p)| cell_text(r, p).to_lowercase().contains(&needle));
+            let by_year = spec.tab != "jadwal"
+                || match year_sel.as_str() {
+                    "" => bool_of(r, "yearActive"),
+                    "all" => true,
+                    id => text(r, "yearId") == id,
+                };
+            let by_status = st_sel.is_empty()
+                || !matches!(spec.tab, "jadwal" | "siswa")
+                || text(r, "status") == st_sel;
+            let by_class =
+                cls_sel.is_empty() || spec.tab != "siswa" || text(r, "classId") == cls_sel;
+            by_text && by_year && by_status && by_class
         })
         .collect();
-    let pages = ((filtered.len() + PAGE_SIZE - 1) / PAGE_SIZE).max(1);
-    if app.page >= pages {
-        app.page = 0;
-    }
-    ui.horizontal(|ui| {
-        ui.label(format!("{} data", filtered.len()));
-        if pages > 1 {
-            if app.page > 0 && ui.button("<").clicked() {
-                app.page -= 1;
-            }
-            ui.label(format!("halaman {}/{pages}", app.page + 1));
-            if app.page + 1 < pages && ui.button(">").clicked() {
-                app.page += 1;
-            }
-        }
-    });
 
-    theme::card_scroll(ui, |ui| {
-        egui::Grid::new(format!("grid-{}", spec.tab))
-            .striped(true)
-            .spacing(theme::GRID_SPACING)
-            .num_columns(spec.cols.len() + 1)
-            .show(ui, |ui| {
-                for (h, _) in spec.cols {
-                    theme::th(ui, h);
-                }
-                ui.label("");
-                ui.end_row();
-                for r in filtered.iter().skip(app.page * PAGE_SIZE).take(PAGE_SIZE) {
-                    for (_, p) in spec.cols {
-                        ui.label(cell_text(r, p));
+    ui.label(
+        RichText::new(format!("{} dari {} data", rows.len(), all.len()))
+            .size(13.0)
+            .color(GRAY),
+    );
+    ui.add_space(4.0);
+    if rows.is_empty() {
+        crate::table::empty_state(
+            ui,
+            "Tidak ada data yang cocok",
+            if all.is_empty() {
+                "Belum ada data. Tambahkan lewat tombol di kanan atas."
+            } else {
+                "Ubah filter atau kata pencarian untuk melihat data lain."
+            },
+        );
+        return;
+    }
+
+    let cols: Vec<(&str, crate::table::W)> =
+        spec.cols.iter().map(|(h, p)| (*h, col_w(p))).collect();
+    let has_edit = !spec.update.is_empty() || matches!(spec.tab, "jadwal" | "mapel");
+    let actions_w = if has_edit { 160.0 } else { 100.0 };
+    let rows_ref = &rows;
+    crate::table::data_table(
+        ui,
+        &format!("tbl-{}", spec.tab),
+        &cols,
+        rows.len(),
+        42.0,
+        actions_w,
+        |i, c| cell_for(rows_ref[i], spec.cols[c].1, c == 0),
+        |ui, i| {
+            let r = rows_ref[i];
+            let id = text(r, "id");
+            // right_to_left: yang pertama digambar ada di paling kanan
+            ui.menu_button("Lainnya", |ui| {
+                for a in spec.acts {
+                    let label = if a.danger {
+                        RichText::new(a.label).color(RED)
+                    } else {
+                        RichText::new(a.label)
+                    };
+                    if ui.button(label).clicked() {
+                        let body = match a.kind {
+                            Kind::Arg => json!({"action": a.action, "args": [id]}),
+                            Kind::Form => json!({"action": a.action, "form": {"id": id}}),
+                        };
+                        if a.danger {
+                            let name = cell_text(r, spec.cols[0].1);
+                            ask(
+                                app,
+                                &format!(
+                                    "{} \"{}\"? Tindakan ini tidak bisa dibatalkan.",
+                                    a.label, name
+                                ),
+                                body,
+                                &refresh,
+                            );
+                        } else {
+                            app.send_rpc(&refresh, body);
+                        }
+                        ui.close();
                     }
-                    ui.horizontal(|ui| {
-                        let id = text(r, "id");
-                        if spec.tab == "jadwal" && theme::row_button(ui, "Ubah", false) {
-                            app.forms.jadwal =
-                                Some(crate::forms::JadwalForm::new(Some(id.clone())));
-                        }
-                        if spec.tab == "mapel" && theme::row_button(ui, "Ubah", false) {
-                            app.forms.mapel = Some(crate::forms::MapelForm::new(Some(r)));
-                        }
-                        for a in spec.acts {
-                            if theme::row_button(ui, a.label, a.danger) {
-                                let body = match a.kind {
-                                    Kind::Arg => json!({"action": a.action, "args": [id]}),
-                                    Kind::Form => json!({"action": a.action, "form": {"id": id}}),
-                                };
-                                if a.danger {
-                                    let name = cell_text(r, spec.cols[0].1);
-                                    ask(
-                                        app,
-                                        &format!(
-                                            "{} \"{}\"? Tindakan ini tidak bisa dibatalkan.",
-                                            a.label, name
-                                        ),
-                                        body,
-                                        &refresh,
-                                    );
-                                } else {
-                                    app.send_rpc(&refresh, body);
-                                }
-                            }
-                        }
-                    });
-                    ui.end_row();
                 }
             });
-    });
+            if has_edit && theme::row_button(ui, "Ubah", false) {
+                match spec.tab {
+                    "jadwal" => {
+                        app.forms.jadwal = Some(crate::forms::JadwalForm::new(Some(id.clone())))
+                    }
+                    "mapel" => app.forms.mapel = Some(crate::forms::MapelForm::new(Some(r))),
+                    _ => open_master(app, spec, Some(r)),
+                }
+            }
+        },
+    );
 }
 
 // ───────────────────────── arsip ─────────────────────────

@@ -35,31 +35,47 @@ def route(path, q, role):
                                     "soalSaya": 140, "ujianDiawasi": 2, "guru": 18 if role == "ADMIN" else None}
     if path == "monitoring": return [EXAM]
     if path == "monitoring/e1": return monitoring_detail()
-    if path == "soal": return [{"id": "m1", "name": "Informatika", "questionCount": 2, "classes": [{"id": "c1", "name": "X RPL 1"}]}]
+    year = (q.get("yearId") or [""])[0]
+    if path == "soal":
+        n = 2 if year in ("all", "y0") else (140 if year == "" else 0)
+        if year == "all": n = 214
+        return [{"id": "m1", "name": "Informatika", "questionCount": n, "classes": [{"id": "c1", "name": "X RPL 1"}, {"id": "c2", "name": "X RPL 2"}]},
+                {"id": "m2", "name": "Matematika", "questionCount": 38 if year != "y0" else 12, "classes": [{"id": "c1", "name": "X RPL 1"}]}]
     if path == "soal/m1":
-        return {"total": 2, "page": 1, "pageSize": 50, "items": [
-            {"id": "q1", "text": "<p>Apa kepanjangan <b>CPU</b>?</p>", "type": "MULTIPLE_CHOICE", "score": 10, "options": [],
-             "correctAnswer": "o1", "examType": "UH", "author": "Pak Guru", "classes": ["X RPL 1"]},
-            {"id": "q2", "text": "<p>Jelaskan fungsi RAM.</p>", "type": "ESSAY", "score": 20, "options": [],
-             "correctAnswer": "<p>Penyimpanan sementara</p>", "examType": "UH", "author": "Pak Guru", "classes": ["X RPL 1"]}]}
-    if path == "penilaian": return [EXAM]
+        types = ["MULTIPLE_CHOICE", "ESSAY", "TRUE_FALSE", "MULTIPLE_CHOICE_COMPLEX", "MATCHING"]
+        want = (q.get("type") or [""])[0]
+        old = year == "y0"
+        items = []
+        for i in range(1, 9):
+            t = types[i % 5]
+            if want and t != want: continue
+            items.append({"id": "q%d" % i, "text": "<p>%s soal nomor %d: jelaskan konsep dasar komputer dan fungsi CPU</p>" % ("Lama" if old else "Baru", i),
+                          "type": t, "score": 10 * (1 + i % 3), "options": [], "correctAnswer": "A" if t != "ESSAY" else "<p>Penyimpanan</p>",
+                          "examType": "UH", "author": "Pak Guru", "classes": ["X RPL 1"], "createdAt": "2025-09-02T01:00:00.000Z" if old else "2026-08-14T01:00:00.000Z"})
+        return {"total": len(items), "page": 1, "pageSize": 50, "year": None if year == "all" else "2026/2027", "items": items}
+    if path == "penilaian":
+        if year == "y0": return [dict(EXAM, id="e0", title="PAS Ganjil Informatika", year="2025/2026 GANJIL", startTime="2025-12-10T01:00:00.000Z")]
+        return [dict(EXAM, year="2026/2027 GANJIL")] + ([dict(EXAM, id="e0", title="PAS Ganjil Informatika", year="2025/2026 GANJIL", startTime="2025-12-10T01:00:00.000Z")] if year == "all" else [])
     if path == "penilaian/e1":
         return {"id": "e1", "title": "UH Informatika", "subject": "Informatika", "classes": ["X RPL 1"], "rows": [
             {"attemptId": "a1", "nisn": "001", "name": "Ahmad", "className": "X RPL 1", "status": "SUBMITTED", "score": 90, "violationCount": 0},
             {"attemptId": "a3", "nisn": "003", "name": "Citra", "className": "X RPL 1", "status": "SUBMITTED", "score": 88.5, "violationCount": 1}]}
-    if path == "admin/kelas": return [{"id": "c1", "name": "X RPL 1", "level": 10, "students": 32}]
-    if path == "admin/siswa": return [{"id": "s%d" % i, "nisn": "%03d" % i, "name": "Siswa %d" % i, "status": "ACTIVE",
-                                       "class": {"id": "c1", "name": "X RPL 1"}, "religion": {"name": "Islam"}} for i in range(1, 251)]
+    if path == "admin/kelas": return [{"id": "c1", "name": "X RPL 1", "level": 10, "students": 32}, {"id": "c2", "name": "X RPL 2", "level": 10, "students": 30}, {"id": "c3", "name": "XI RPL 1", "level": 11, "students": 28}]
+    if path == "admin/siswa": return [{"id": "s%d" % i, "nisn": "%03d" % i, "name": "Siswa %d" % i, "status": "ACTIVE" if i % 9 else "GRADUATED",
+                                       "classId": "c1" if i % 2 else "c2", "religionId": "r1",
+                                       "class": {"id": "c1" if i % 2 else "c2", "name": "X RPL 1" if i % 2 else "X RPL 2"}, "religion": {"name": "Islam"}} for i in range(1, 251)]
     if path == "admin/mapel": return [{"id": "m1", "name": "Informatika", "religion": None,
                                        "religionId": "", "assignments": [{"class": "X RPL 1", "teacher": "Pak Guru"}],
                                        "plot": [{"classId": "c1", "teacherId": "g1"}]}]
     if path == "admin/agama": return [{"id": "r1", "name": "Islam"}]
     if path == "admin/jenis-ujian": return [{"id": "t1", "name": "Ulangan Harian", "code": "UH"}]
-    if path == "admin/tahun-ajaran": return [{"id": "y1", "year": "2026/2027", "semester": "GANJIL", "active": True}]
-    if path == "admin/pengguna": return [{"id": "u1", "name": "Admin Sekolah", "username": "admin", "role": "ADMIN"}]
-    if path == "admin/jadwal": return [dict(EXAM, year="2026/2027 GANJIL")]
+    if path == "admin/tahun-ajaran": return [{"id": "y1", "year": "2026/2027", "semester": "GANJIL", "active": True}, {"id": "y0", "year": "2025/2026", "semester": "GENAP", "active": False}]
+    if path == "admin/pengguna": return [{"id": "u1", "name": "Admin Sekolah", "username": "admin", "role": "ADMIN"}, {"id": "g1", "name": "Pak Guru", "username": "pakguru", "role": "GURU"}, {"id": "g2", "name": "Bu Sari", "username": "busari", "role": "GURU"}]
+    if path == "admin/jadwal": return [dict(EXAM, year="2026/2027 GANJIL", yearId="y1", yearActive=True, subject="Informatika", examType="UH", classes=["X RPL 1"], supervisor="Pak Guru"),
+                                       dict(EXAM, id="e2", title="PTS Matematika", status="DRAFT", year="2026/2027 GANJIL", yearId="y1", yearActive=True, subject="Matematika", examType="PTS", classes=["X RPL 1", "X RPL 2"], supervisor="Bu Sari", token=None),
+                                       dict(EXAM, id="e0", title="PAS Ganjil Informatika", status="COMPLETED", year="2025/2026 GANJIL", yearId="y0", yearActive=False, subject="Informatika", examType="PAS", classes=["X RPL 1"], supervisor="Pak Guru", startTime="2025-12-10T01:00:00.000Z")]
     if path == "options": return {"subjects": [{"id": "m1", "name": "Informatika"}], "examTypes": [{"id": "t1", "name": "Ulangan Harian"}],
-        "academicYears": [{"id": "y1", "year": "2026/2027", "semester": "GANJIL"}], "classes": [{"id": "c1", "name": "X RPL 1"}, {"id": "c2", "name": "X RPL 2"}],
+        "academicYears": [{"id": "y1", "year": "2026/2027", "semester": "GANJIL", "active": True}, {"id": "y0", "year": "2025/2026", "semester": "GENAP", "active": False}], "classes": [{"id": "c1", "name": "X RPL 1"}, {"id": "c2", "name": "X RPL 2"}],
         "religions": [{"id": "r1", "name": "Islam"}], "teachers": [{"id": "g1", "name": "Pak Guru"}, {"id": "g2", "name": "Bu Sari"}]}
     if path == "soal-form/m1": return {"subject": {"id": "m1", "name": "Informatika"}, "classes": [{"id": "c1", "name": "X RPL 1"}, {"id": "c2", "name": "X RPL 2"}],
         "examTypes": [{"id": "t1", "name": "Ulangan Harian"}]}

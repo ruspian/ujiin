@@ -107,6 +107,8 @@ pub struct App {
     mon_prev: HashMap<String, (String, i64, bool)>,
     pub forms: crate::forms::Forms,
     rpc_done: Vec<(String, bool)>,
+    /// Hanya untuk uji tampilan: dialog yang dibuka setelah login & data pilihan termuat.
+    pending_form: Option<String>,
 }
 
 #[derive(Clone)]
@@ -145,6 +147,7 @@ impl App {
             mon_prev: HashMap::new(),
             forms: Default::default(),
             rpc_done: Vec::new(),
+            pending_form: None,
         };
         // Untuk pengujian otomatis: UJIIN_SERVER / UJIIN_USER / UJIIN_PASS
         if let (Ok(s), Ok(u), Ok(p)) = (
@@ -174,6 +177,7 @@ impl App {
                     }
                     "jadwal" => app.forms.jadwal = Some(JadwalForm::new(None)),
                     "mapel" => app.forms.mapel = Some(MapelForm::new(None)),
+                    "master-siswa" | "master-user-edit" => app.pending_form = Some(f.clone()),
                     "import" => app.forms.import = Some(Default::default()),
                     "koreksi" => {
                         app.forms.koreksi = Some(KoreksiForm {
@@ -273,6 +277,25 @@ impl App {
         net.rpc(&refresh.join("\n"), body);
     }
 
+    /// Muat ulang `path` beserta semua varian berparameter yang sudah pernah dibuka
+    /// (mis. `soal/x?q=&page=1&yearId=..`), supaya daftar berfilter ikut segar.
+    pub fn refresh_prefix(&mut self, path: &str) {
+        let keys: Vec<String> = self
+            .store
+            .keys()
+            .filter(|k| {
+                k.as_str() != path
+                    && k.strip_prefix(path)
+                        .is_some_and(|rest| rest.starts_with('?'))
+            })
+            .cloned()
+            .collect();
+        for k in keys {
+            self.fetch(&k);
+        }
+        self.fetch(path);
+    }
+
     /// Ambil hasil RPC bertanda `marker` (true = sukses) bila sudah selesai.
     pub fn take_rpc(&mut self, marker: &str) -> Option<bool> {
         let i = self.rpc_done.iter().position(|(m, _)| m == marker)?;
@@ -329,7 +352,7 @@ impl App {
                                     .split('\n')
                                     .filter(|p| !p.is_empty() && !p.starts_with('@'))
                                 {
-                                    self.fetch(p);
+                                    self.refresh_prefix(p);
                                 }
                                 // token baru dari generateExamToken ikut tampil lewat refresh
                             }
@@ -477,8 +500,25 @@ impl eframe::App for App {
         } else {
             views::shell(self, ui);
         }
+        if self.user.is_some() {
+            if let Some(f) = self.pending_form.clone() {
+                if views::options(self).is_some() {
+                    self.pending_form = None;
+                    views::debug_master(
+                        self,
+                        if f == "master-siswa" {
+                            "siswa"
+                        } else {
+                            "pengguna"
+                        },
+                        f == "master-user-edit",
+                    );
+                }
+            }
+        }
         views::toasts(self, ui.ctx());
         views::confirm_dialog(self, ui.ctx());
+        crate::master_edit::show(self, ui.ctx());
         // pantau berkala (heartbeat data & hilangkan toast)
         ui.ctx().request_repaint_after(Duration::from_millis(1000));
     }

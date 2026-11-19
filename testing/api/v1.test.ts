@@ -214,3 +214,17 @@ describe("GET /api/v1/*", () => {
     expect((await get("rahasia")).status).toBe(404);
   });
 });
+
+describe("yearRange", () => {
+  test("tahun ajaran 2025/2026 = 1 Jul 2025 s/d 1 Jul 2026 WITA", async () => {
+    const { yearRange } = await import("@/lib/api-v1");
+    const r = yearRange("2025/2026");
+    expect(r?.gte.toISOString()).toBe("2025-06-30T16:00:00.000Z");
+    expect(r?.lt.toISOString()).toBe("2026-06-30T16:00:00.000Z");
+  });
+  test("format salah → null", async () => {
+    const { yearRange } = await import("@/lib/api-v1");
+    expect(yearRange("2025")).toBeNull();
+    expect(yearRange("")).toBeNull();
+  });
+});

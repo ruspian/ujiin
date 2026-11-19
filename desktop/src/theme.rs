@@ -7,6 +7,7 @@ pub const TEAL_SOFT: Color32 = Color32::from_rgb(204, 251, 241);
 pub const RED: Color32 = Color32::from_rgb(220, 38, 38);
 pub const AMBER: Color32 = Color32::from_rgb(217, 119, 6);
 pub const GREEN: Color32 = Color32::from_rgb(22, 163, 74);
+pub const BLUE: Color32 = Color32::from_rgb(37, 99, 235);
 pub const GRAY: Color32 = Color32::from_rgb(107, 114, 128);
 pub const INK: Color32 = Color32::from_rgb(17, 24, 39);
 pub const BG: Color32 = Color32::from_rgb(243, 246, 248);
@@ -179,4 +180,22 @@ pub fn row_button(ui: &mut egui::Ui, text: &str, bahaya: bool) -> bool {
         },
     ));
     ui.add(b).clicked()
+}
+
+/// Bilah alat: kartu tipis berisi pencarian, filter, dan tombol sejajar.
+pub fn toolbar<R>(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui) -> R) -> R {
+    egui::Frame::new()
+        .fill(CARD)
+        .stroke(Stroke::new(1.0, BORDER))
+        .corner_radius(CornerRadius::same(12))
+        .inner_margin(egui::Margin::symmetric(12, 8))
+        .show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing = egui::vec2(10.0, 8.0);
+                add(ui)
+            })
+            .inner
+        })
+        .inner
 }

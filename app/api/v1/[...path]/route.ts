@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { finalizeExpiredAttempts } from "@/lib/finalize-attempts";
-import { fail, json, requireStaff, type StaffUser } from "@/lib/api-v1";
+import { fail, json, requireStaff, yearRange, type StaffUser } from "@/lib/api-v1";
 import * as forms from "@/lib/api-v1-forms";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,16 @@ type Ctx = { user: StaffUser; segs: string[]; q: URLSearchParams };
 /** Siapa saja yang boleh memantau/mengelola ujian ini (pembuat/pengawas, atau admin). */
 const examScope = (u: StaffUser): Prisma.ExamWhereInput =>
   u.role === "ADMIN" ? {} : { OR: [{ supervisorId: u.id }, { authorId: u.id }] };
+
+/** `yearId` kosong = tahun ajaran aktif, "all" = semua. Mengembalikan data tahunnya (atau null = tanpa filter). */
+async function pickYear(q: URLSearchParams) {
+  const yid = q.get("yearId");
+  if (yid === "all") return null;
+  return prisma.academicYear.findFirst({
+    where: yid ? { id: yid } : { active: true },
+    select: { id: true, year: true, semester: true },
+  });
+}
 
 async function me({ user }: Ctx) {
   return json(user);
@@ -146,7 +156,9 @@ async function monitoringDetail({ user, segs }: Ctx) {
   });
 }
 
-async function soalSubjects({ user }: Ctx) {
+async function soalSubjects({ user, q }: Ctx) {
+  const ay = await pickYear(q);
+  const range = ay ? yearRange(ay.year) : null;
   const subjects = await prisma.subject.findMany({
     where:
       user.role === "ADMIN"
@@ -155,7 +167,11 @@ async function soalSubjects({ user }: Ctx) {
     select: {
       id: true,
       name: true,
-      _count: { select: { questions: true } },
+      _count: {
+        select: {
+          questions: range ? { where: { createdAt: range } } : true,
+        },
+      },
       assignments: {
         where: user.role === "ADMIN" ? {} : { teacherId: user.id },
         select: { class: { select: { id: true, name: true } } },
@@ -184,9 +200,18 @@ async function soalList({ user, segs, q }: Ctx) {
   }
   const page = Math.max(1, Number(q.get("page")) || 1);
   const search = (q.get("q") ?? "").trim();
+  const ay = await pickYear(q);
+  const range = ay ? yearRange(ay.year) : null;
+  const qType = q.get("type");
+  const examTypeId = q.get("examTypeId");
+  const classId = q.get("classId");
   const where: Prisma.QuestionWhereInput = {
     subjectId,
     ...(search ? { text: { contains: search, mode: "insensitive" } } : {}),
+    ...(range ? { createdAt: range } : {}),
+    ...(qType ? { type: qType as Prisma.QuestionWhereInput["type"] } : {}),
+    ...(examTypeId ? { examTypeId } : {}),
+    ...(classId ? { classes: { some: { classId } } } : {}),
   };
   const [total, items] = await Promise.all([
     prisma.question.count({ where }),
@@ -201,6 +226,7 @@ async function soalList({ user, segs, q }: Ctx) {
         correctAnswer: true,
         examType: { select: { name: true } },
         author: { select: { name: true } },
+        createdAt: true,
         classes: { select: { class: { select: { name: true } } } },
       },
       orderBy: { createdAt: "desc" },
@@ -212,6 +238,7 @@ async function soalList({ user, segs, q }: Ctx) {
     total,
     page,
     pageSize: PAGE_SIZE,
+    year: ay?.year ?? null,
     items: items.map((i) => ({
       id: i.id,
       text: i.text,
@@ -221,17 +248,19 @@ async function soalList({ user, segs, q }: Ctx) {
       correctAnswer: i.correctAnswer,
       examType: i.examType?.name ?? null,
       author: i.author.name,
+      createdAt: i.createdAt,
       classes: i.classes.map((c) => c.class.name),
     })),
   });
 }
 
 /** Ujian pada tahun ajaran aktif untuk dinilai/direkap. */
-async function penilaianExams({ user }: Ctx) {
+async function penilaianExams({ user, q }: Ctx) {
+  const ay = await pickYear(q);
   const exams = await prisma.exam.findMany({
     where: {
       status: { in: ["PUBLISHED", "COMPLETED"] },
-      academicYear: { active: true },
+      ...(ay ? { academicYearId: ay.id } : {}),
       ...(user.role === "ADMIN"
         ? {}
         : {
@@ -252,6 +281,7 @@ async function penilaianExams({ user }: Ctx) {
       subject: { select: { name: true } },
       examType: { select: { name: true } },
       classes: { select: { name: true } },
+      academicYear: { select: { year: true, semester: true } },
       _count: { select: { attempts: true } },
     },
     orderBy: { startTime: "desc" },
@@ -267,6 +297,7 @@ async function penilaianExams({ user }: Ctx) {
       examType: e.examType.name,
       classes: e.classes.map((c) => c.name),
       attempts: e._count.attempts,
+      year: `${e.academicYear.year} ${e.academicYear.semester}`,
     })),
   );
 }
@@ -347,6 +378,8 @@ async function adminList({ segs }: Ctx) {
           status: true,
           session: true,
           room: true,
+          classId: true,
+          religionId: true,
           class: { select: { id: true, name: true } },
           religion: { select: { name: true } },
         },
@@ -425,7 +458,7 @@ async function adminList({ segs }: Ctx) {
               examType: { select: { name: true } },
               classes: { select: { name: true } },
               supervisor: { select: { name: true } },
-              academicYear: { select: { year: true, semester: true } },
+              academicYear: { select: { year: true, semester: true, active: true } },
             },
           })
         ).map((e) => ({
@@ -436,6 +469,8 @@ async function adminList({ segs }: Ctx) {
           classes: e.classes.map((c) => c.name),
           supervisor: e.supervisor?.name ?? null,
           year: `${e.academicYear.year} ${e.academicYear.semester}`,
+          yearId: e.academicYearId,
+          yearActive: e.academicYear.active,
           startTime: e.startTime,
           endTime: e.endTime,
           duration: e.duration,
