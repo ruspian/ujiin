@@ -8,6 +8,7 @@ mod app;
 mod cache;
 mod export;
 mod forms;
+mod live;
 mod master_edit;
 mod notify;
 mod richtext;

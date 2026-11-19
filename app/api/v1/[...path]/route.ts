@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { finalizeExpiredAttempts } from "@/lib/finalize-attempts";
 import { fail, json, requireStaff, yearRange, type StaffUser } from "@/lib/api-v1";
 import * as forms from "@/lib/api-v1-forms";
+import { beranda, buildEvents } from "@/lib/api-v1-beranda";
 
 export const dynamic = "force-dynamic";
 
@@ -139,8 +140,20 @@ async function monitoringDetail({ user, segs }: Ctx) {
           ongoing && last !== null
             ? Math.max(0, Math.floor((now - last) / 1000))
             : null,
+        startedAt: a?.startTime ?? null,
+        finishedAt: a && a.status !== "ONGOING" ? (a.endTime ?? null) : null,
       };
     });
+  const events = buildEvents(
+    exam.classes
+      .flatMap((c) => c.students)
+      .flatMap((s) => {
+        const a = exam.attempts.find((x) => x.studentId === s.id);
+        return a
+          ? [{ studentId: s.id, name: s.name, startTime: a.startTime, endTime: a.endTime, status: a.status, violationLogs: a.violationLogs }]
+          : [];
+      }),
+  );
 
   return json({
     id: exam.id,
@@ -152,7 +165,9 @@ async function monitoringDetail({ user, segs }: Ctx) {
     endTime: exam.endTime,
     duration: exam.duration,
     announcement: exam.announcement,
+    now: new Date(now).toISOString(),
     rows,
+    events,
   });
 }
 
@@ -505,6 +520,7 @@ export async function GET(
   try {
     if (head === "me") return await me(ctx);
     if (head === "dashboard") return await dashboard(ctx);
+    if (head === "beranda") return json(await beranda(ctx.user));
     if (head === "monitoring") {
       return segs[1] ? await monitoringDetail(ctx) : await monitoringList(ctx);
     }
