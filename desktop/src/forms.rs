@@ -19,6 +19,7 @@ pub struct Forms {
     pub import: Option<ImportState>,
     pub koreksi: Option<KoreksiForm>,
     pub kenaikan: KenaikanState,
+    pub master: Option<crate::master_edit::EditDlg>,
 }
 
 // ───────────────────────── umum ─────────────────────────

@@ -31,3 +31,16 @@ export async function requireStaff(
     role: user.role,
   };
 }
+
+/**
+ * Rentang tanggal sebuah tahun ajaran ("2025/2026" → 1 Jul 2025 s/d 30 Jun 2026, WITA).
+ * Soal tidak punya kolom tahun ajaran, jadi dipakai tanggal dibuat.
+ */
+export function yearRange(year: string): { gte: Date; lt: Date } | null {
+  const m = /^(\d{4})\s*\/\s*(\d{4})$/.exec(year.trim());
+  if (!m) return null;
+  return {
+    gte: new Date(`${m[1]}-07-01T00:00:00+08:00`),
+    lt: new Date(`${m[2]}-07-01T00:00:00+08:00`),
+  };
+}
