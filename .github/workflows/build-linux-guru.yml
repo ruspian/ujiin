@@ -49,7 +49,7 @@ jobs:
         run: |
           mkdir -p dist/ujiin-guru
           cp target/release/ujiin-guru dist/ujiin-guru/ujiin-guru
-          cp linux/ujiin-guru.desktop dist/ujiin-guru/
+          cp linux/ujiin-guru.desktop ../LICENSE dist/ujiin-guru/
           tar -C dist -czf dist/UjiinGuru-linux-x86_64.tar.gz ujiin-guru
 
       - uses: actions/upload-artifact@v4
