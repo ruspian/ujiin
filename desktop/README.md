@@ -39,3 +39,6 @@ Lokal: `cd desktop && cargo build --release` (Windows) atau `cargo test` (semua 
 Login memakai sesi yang sama dengan web (cookie). Data dibaca dari `/api/v1/*` dan aksi dikirim ke `/api/v1/rpc`
 (daftar aksi dibatasi; setiap aksi tetap memeriksa role & kepemilikan di server).
 `tools/mock_server.py` adalah server tiruan untuk uji otomatis tanpa database.
+
+## Lisensi
+MIT — lihat [LICENSE](../LICENSE).

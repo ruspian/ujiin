@@ -340,6 +340,10 @@ Jika ada kendala dalam penggunaan atau instalasi platform Ujiin, silakan hubungi
 
 - **GitHub:** github.com/ruspian
 
+## 📄 Lisensi
+
+Proyek ini dirilis di bawah [Lisensi MIT](LICENSE). Anda bebas memakai, mengubah, dan mendistribusikannya, selama menyertakan pemberitahuan hak cipta dan lisensi.
+
 ---
 
 Dibuat dengan 🧡 oleh Ruspian Majid
