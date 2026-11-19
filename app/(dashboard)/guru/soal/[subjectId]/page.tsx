@@ -11,6 +11,7 @@ import Pagination from "@/components/layout/Pagination";
 import QuestionListTable from "@/components/layout/QuestionListTable";
 import ExamSimulationModal from "@/components/layout/ExamSimulationModal";
 import ExportWordButton from "@/components/layout/ExportWordButton";
+import TotalBobotIndicator from "@/components/layout/TotalBobotIndicator";
 
 export default async function DaftarSoalPage({
   params,
@@ -78,7 +79,14 @@ export default async function DaftarSoalPage({
 
   const classNamesString = classesTarget.map((c) => c.name).join(", ");
 
-  const [questions, totalQuestions] = await Promise.all([
+  // Total bobot dihitung dari SEMUA soal paket ini (tanpa filter pencarian/tipe).
+  const paketWhere: Prisma.QuestionWhereInput = {
+    subjectId,
+    examTypeId: typeId,
+    classes: { some: { classId: { in: classIdsArray } } },
+  };
+
+  const [questions, totalQuestions, paket] = await Promise.all([
     prisma.question.findMany({
       where: whereClause,
       skip: skip,
@@ -87,6 +95,11 @@ export default async function DaftarSoalPage({
     }),
     prisma.question.count({
       where: whereClause,
+    }),
+    prisma.question.aggregate({
+      where: paketWhere,
+      _sum: { score: true },
+      _count: { _all: true },
     }),
   ]);
 
@@ -144,6 +157,11 @@ export default async function DaftarSoalPage({
           </Link>
         </div>
       </div>
+
+      <TotalBobotIndicator
+        totalBobot={paket._sum.score ?? 0}
+        jumlahSoal={paket._count._all}
+      />
 
       <QuestionSearchFilter />
 
