@@ -85,7 +85,7 @@ def route(path, q, role):
             items.append({"id": "q%d" % i, "text": "<p>%s soal nomor %d: jelaskan konsep dasar komputer dan fungsi CPU</p>" % ("Lama" if old else "Baru", i),
                           "type": t, "score": 10 * (1 + i % 3), "options": [], "correctAnswer": "A" if t != "ESSAY" else "<p>Penyimpanan</p>",
                           "examType": "UH", "author": "Pak Guru", "classes": ["X RPL 1"], "createdAt": "2025-09-02T01:00:00.000Z" if old else "2026-08-14T01:00:00.000Z"})
-        return {"total": len(items), "page": 1, "pageSize": 50, "year": None if year == "all" else "2026/2027", "items": items}
+        return {"total": len(items), "totalBobot": 92, "paketSoal": len(items), "page": 1, "pageSize": 50, "year": None if year == "all" else "2026/2027", "items": items}
     if path == "penilaian":
         if year == "y0": return [dict(EXAM, id="e0", title="PAS Ganjil Informatika", year="2025/2026 GANJIL", startTime="2025-12-10T01:00:00.000Z")]
         return [dict(EXAM, year="2026/2027 GANJIL")] + ([dict(EXAM, id="e0", title="PAS Ganjil Informatika", year="2025/2026 GANJIL", startTime="2025-12-10T01:00:00.000Z")] if year == "all" else [])

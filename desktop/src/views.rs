@@ -725,6 +725,58 @@ fn soal_root(app: &App) -> String {
     }
 }
 
+/// Indikator total bobot paket soal (jenis ujian + kelas) agar guru mengatur total = 100.
+fn total_bobot(app: &App, ui: &mut egui::Ui, d: &Value) {
+    let dipilih = |k: &str| app.form.get(k).map(|v| !v.is_empty()).unwrap_or(false);
+    if !(dipilih("soal.et") && dipilih("soal.cls")) {
+        ui.label(
+            RichText::new(
+                "Pilih satu jenis ujian dan satu kelas untuk melihat total bobot (target 100).",
+            )
+            .size(12.5)
+            .color(GRAY),
+        );
+        return;
+    }
+    let total = d
+        .get("totalBobot")
+        .and_then(|x| x.as_f64())
+        .unwrap_or(0.0)
+        .round() as i64;
+    let jumlah = i64_of(d, "paketSoal");
+    let selisih = 100 - total;
+    let (warna, pesan) = if selisih == 0 {
+        (GREEN, "Pas 100, siap dipakai".to_string())
+    } else if selisih < 0 {
+        (RED, format!("Kelebihan {} poin", -selisih))
+    } else {
+        (AMBER, format!("Kurang {selisih} poin"))
+    };
+    theme::card(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.horizontal(|ui| {
+            ui.label(
+                RichText::new(format!("Total bobot: {total} / 100  ({jumlah} soal)"))
+                    .strong()
+                    .color(warna),
+            );
+            theme::pill(ui, &pesan, warna);
+        });
+        ui.add(
+            egui::ProgressBar::new((total as f32 / 100.0).clamp(0.0, 1.0))
+                .desired_height(8.0)
+                .fill(warna),
+        );
+        ui.label(
+            RichText::new(
+                "Atur bobot tiap soal agar totalnya 100 (mis. 25 soal x 4). Nilai siswa tetap otomatis 0-100.",
+            )
+            .size(12.0)
+            .color(GRAY),
+        );
+    });
+}
+
 fn bank_soal(app: &mut App, ui: &mut egui::Ui) {
     if let Some(sid) = app.sel.clone() {
         soal_list(app, ui, &sid);
@@ -901,6 +953,8 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
             app.page += 1;
         }
     });
+    ui.add_space(4.0);
+    total_bobot(app, ui, &d);
     ui.add_space(4.0);
     let items: Vec<&Value> = arr(d.get("items").unwrap_or(&Value::Null)).iter().collect();
     if items.is_empty() {

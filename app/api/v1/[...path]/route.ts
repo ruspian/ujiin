@@ -228,8 +228,20 @@ async function soalList({ user, segs, q }: Ctx) {
     ...(examTypeId ? { examTypeId } : {}),
     ...(classId ? { classes: { some: { classId } } } : {}),
   };
-  const [total, items] = await Promise.all([
+  // Total bobot paket: abaikan pencarian & filter jenis soal.
+  const paketWhere: Prisma.QuestionWhereInput = {
+    subjectId,
+    ...(range ? { createdAt: range } : {}),
+    ...(examTypeId ? { examTypeId } : {}),
+    ...(classId ? { classes: { some: { classId } } } : {}),
+  };
+  const [total, paket, items] = await Promise.all([
     prisma.question.count({ where }),
+    prisma.question.aggregate({
+      where: paketWhere,
+      _sum: { score: true },
+      _count: { _all: true },
+    }),
     prisma.question.findMany({
       where,
       select: {
@@ -251,6 +263,8 @@ async function soalList({ user, segs, q }: Ctx) {
   ]);
   return json({
     total,
+    totalBobot: paket._sum.score ?? 0,
+    paketSoal: paket._count._all,
     page,
     pageSize: PAGE_SIZE,
     year: ay?.year ?? null,
