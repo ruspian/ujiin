@@ -874,6 +874,10 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
             app.sel = None;
         }
         ui.label(RichText::new(&name).size(20.0).strong());
+        if crate::table::search_inline(ui, &mut app.filter, 240.0, true) {
+            app.form.insert("soal.q".into(), app.filter.clone());
+            app.page = 0;
+        }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if !is_admin && ui.add(theme::primary("Tambah soal")).clicked() {
                 app.forms.soal = Some(crate::forms::SoalForm::new(subject_id, &name, None));
@@ -886,10 +890,6 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
     ui.add_space(6.0);
     let opts = options(app);
     theme::toolbar(ui, |ui| {
-        if crate::table::search_box(ui, &mut app.filter, "Cari teks soal", true) {
-            app.form.insert("soal.q".into(), app.filter.clone());
-            app.page = 0;
-        }
         let mut changed = year_filter(app, ui, "soal.year");
         let mut et = vec![(String::new(), "Semua jenis ujian".to_string())];
         et.extend(opt_pairs(&opts, "examTypes", "name"));
@@ -1560,69 +1560,70 @@ fn admin_table(app: &mut App, ui: &mut egui::Ui, spec: &'static Spec) {
     let refresh = [spec.path];
     let opts = options(app);
 
-    // ── tombol aksi (kanan atas) ──
-    let bar = egui::vec2(ui.available_width(), 34.0);
+    // ── bilah atas: pencarian di kiri, tombol aksi di kanan ──
+    let bar = egui::vec2(ui.available_width(), 36.0);
     ui.allocate_ui_with_layout(
         bar,
-        egui::Layout::right_to_left(egui::Align::Center),
+        egui::Layout::left_to_right(egui::Align::Center),
         |ui| {
-            if ui.add(theme::primary(spec.add)).clicked() {
-                match spec.tab {
-                    "jadwal" => app.forms.jadwal = Some(crate::forms::JadwalForm::new(None)),
-                    "mapel" => app.forms.mapel = Some(crate::forms::MapelForm::new(None)),
-                    _ => open_master(app, spec, None),
+            if spec.searchable {
+                crate::table::search_inline(ui, &mut app.filter, 260.0, false);
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.add(theme::primary(spec.add)).clicked() {
+                    match spec.tab {
+                        "jadwal" => app.forms.jadwal = Some(crate::forms::JadwalForm::new(None)),
+                        "mapel" => app.forms.mapel = Some(crate::forms::MapelForm::new(None)),
+                        _ => open_master(app, spec, None),
+                    }
                 }
-            }
-            if spec.tab == "siswa" && ui.button("Impor Excel").clicked() {
-                app.forms.import = Some(Default::default());
-            }
-            if spec.tab == "pengguna" && ui.button("Impor Excel").clicked() {
-                app.forms.impuser = Some(Default::default());
-            }
-            if ui.button("Muat ulang").clicked() {
-                app.fetch(spec.path);
-            }
+                if spec.tab == "siswa" && ui.button("Impor Excel").clicked() {
+                    app.forms.import = Some(Default::default());
+                }
+                if spec.tab == "pengguna" && ui.button("Impor Excel").clicked() {
+                    app.forms.impuser = Some(Default::default());
+                }
+                if ui.button("Muat ulang").clicked() {
+                    app.fetch(spec.path);
+                }
+            });
         },
     );
-    // ── pencarian & filter ──
-    let has_filters = spec.searchable || matches!(spec.tab, "jadwal" | "siswa");
+    // ── filter ──
+    let has_filters = matches!(spec.tab, "jadwal" | "siswa");
     if has_filters {
-        theme::toolbar(ui, |ui| {
-            if spec.searchable {
-                crate::table::search_box(ui, &mut app.filter, "Cari", false);
+        ui.add_space(6.0);
+        theme::toolbar(ui, |ui| match spec.tab {
+            "jadwal" => {
+                year_filter(app, ui, "jadwal.year");
+                let st = vec![
+                    (String::new(), "Semua status".to_string()),
+                    ("DRAFT".into(), "Draf".into()),
+                    ("PUBLISHED".into(), "Terbit".into()),
+                    ("COMPLETED".into(), "Selesai".into()),
+                ];
+                let cur = app.form.entry("jadwal.status".into()).or_default();
+                crate::table::combo(ui, "jf-status", "Status", cur, &st, 130.0);
             }
-            match spec.tab {
-                "jadwal" => {
-                    year_filter(app, ui, "jadwal.year");
-                    let st = vec![
-                        (String::new(), "Semua status".to_string()),
-                        ("DRAFT".into(), "Draf".into()),
-                        ("PUBLISHED".into(), "Terbit".into()),
-                        ("COMPLETED".into(), "Selesai".into()),
-                    ];
-                    let cur = app.form.entry("jadwal.status".into()).or_default();
-                    crate::table::combo(ui, "jf-status", "Status", cur, &st, 130.0);
-                }
-                "siswa" => {
-                    let mut cls = vec![(String::new(), "Semua kelas".to_string())];
-                    cls.extend(opt_pairs(&opts, "classes", "name"));
-                    let cur = app.form.entry("siswa.cls".into()).or_default();
-                    crate::table::combo(ui, "sf-cls", "Kelas", cur, &cls, 140.0);
-                    let st = vec![
-                        (String::new(), "Semua status".to_string()),
-                        ("ACTIVE".into(), "Aktif".into()),
-                        ("GRADUATED".into(), "Lulus".into()),
-                        ("DROPOUT".into(), "Keluar".into()),
-                        ("MUTATED".into(), "Pindah".into()),
-                    ];
-                    let cur = app
-                        .form
-                        .entry("siswa.status".into())
-                        .or_insert_with(|| "ACTIVE".into());
-                    crate::table::combo(ui, "sf-st", "Status", cur, &st, 130.0);
-                }
-                _ => {}
+            "siswa" => {
+                let mut cls = vec![(String::new(), "Semua kelas".to_string())];
+                cls.extend(opt_pairs(&opts, "classes", "name"));
+                let cur = app.form.entry("siswa.cls".into()).or_default();
+                crate::table::combo(ui, "sf-cls", "Kelas", cur, &cls, 140.0);
+                let st = vec![
+                    (String::new(), "Semua status".to_string()),
+                    ("ACTIVE".into(), "Aktif".into()),
+                    ("GRADUATED".into(), "Lulus".into()),
+                    ("DROPOUT".into(), "Keluar".into()),
+                    ("MUTATED".into(), "Pindah".into()),
+                ];
+                let cur = app
+                    .form
+                    .entry("siswa.status".into())
+                    .or_insert_with(|| "ACTIVE".into());
+                crate::table::combo(ui, "sf-st", "Status", cur, &st, 130.0);
             }
+            _ => {}
         });
     }
     if spec.tab == "pengguna" && app.forms.impuser.is_some() {

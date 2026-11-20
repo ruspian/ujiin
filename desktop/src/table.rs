@@ -206,35 +206,26 @@ pub fn combo(
     *cur != before
 }
 
-/// Kotak pencarian berlabel (label di atas). Mengembalikan true bila Enter ditekan atau tombol Cari diklik.
-pub fn search_box(ui: &mut egui::Ui, text: &mut String, label: &str, with_button: bool) -> bool {
+/// Kotak pencarian satu baris untuk bilah atas halaman (di kiri tombol aksi).
+/// Mengembalikan true bila Enter ditekan atau tombol Cari diklik.
+pub fn search_inline(ui: &mut egui::Ui, text: &mut String, width: f32, with_button: bool) -> bool {
     let mut go = false;
-    ui.allocate_ui(
-        Vec2::new(if with_button { 240.0 } else { 240.0 }, 50.0),
-        |ui| {
-            ui.vertical(|ui| {
-                ui.spacing_mut().item_spacing.y = 3.0;
-                ui.label(RichText::new(label).size(12.0).color(GRAY));
-                ui.horizontal(|ui| {
-                    let w = if with_button { 160.0 } else { 240.0 };
-                    let r = ui.add_sized(
-                        [w, 30.0],
-                        egui::TextEdit::singleline(text).hint_text("Ketik lalu Enter"),
-                    );
-                    if r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        go = true;
-                    }
-                    if with_button
-                        && ui
-                            .add_sized([60.0, 30.0], egui::Button::new("Cari"))
-                            .clicked()
-                    {
-                        go = true;
-                    }
-                });
-            });
-        },
+    let r = ui.add_sized(
+        [width, 32.0],
+        egui::TextEdit::singleline(text)
+            .hint_text("Cari...")
+            .margin(egui::vec2(10.0, 6.0)),
     );
+    if r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+        go = true;
+    }
+    if with_button
+        && ui
+            .add_sized([58.0, 32.0], egui::Button::new("Cari"))
+            .clicked()
+    {
+        go = true;
+    }
     go
 }
 
