@@ -63,6 +63,7 @@ const ACTIONS: Record<string, Entry> = {
   deleteManyQuestions: args(question.deleteManyQuestions),
   deleteExam: form(exam.deleteExam),
   createQuestion: args(question.createQuestion),
+  importQuestions: args(question.importQuestions),
   updateQuestion: args(question.updateQuestion),
   getQuestionsForExam: args(exam.getQuestionsForExam),
   getCloudinarySignature: args(cloudinary.getCloudinarySignature),
@@ -95,6 +96,7 @@ const ACTIONS: Record<string, Entry> = {
   createExam: args(exam.createExam),
   updateExam: args(exam.updateExam),
   importStudents: args(student.importStudents),
+  importUsersBulk: args(user.importUsersBulk),
   prosesKenaikanKelas: args(kenaikan.prosesKenaikanKelas),
   updateSchoolProfile: form(school.updateSchoolProfile),
 };

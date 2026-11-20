@@ -60,6 +60,7 @@ vi.mock("@/actions/monitoring", () => ({
 const createQuestion = vi.fn();
 vi.mock("@/actions/question", () => ({
   createQuestion: (...a: unknown[]) => createQuestion(...a),
+  importQuestions: vi.fn(),
   updateQuestion: vi.fn(),
   deleteManyQuestions: vi.fn(),
   deleteQuestion: vi.fn(),
@@ -92,6 +93,7 @@ vi.mock("@/actions/user", () => ({
   deleteUser: vi.fn(),
   resetPassword: vi.fn(),
   updateUser: vi.fn(),
+  importUsersBulk: vi.fn(),
 }));
 
 import { POST } from "@/app/api/v1/rpc/route";

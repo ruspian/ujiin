@@ -310,7 +310,7 @@ export default function FormSoal({
             />
           )}
           <p className="mt-1.5 text-xs text-gray-500 leading-snug">
-            Atur bobot semua soal agar <b>totalnya 100</b> (mis. 25 soal × 4).
+            Total bobot <b>semua soal maksimal 100</b> (mis. 25 soal × 4).
             Cek indikator &quot;Total bobot&quot; di daftar soal.
           </p>
         </div>

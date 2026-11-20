@@ -7,14 +7,14 @@ Windows: satu berkas `.exe` (±5 MB), tanpa instalasi, tanpa WebView. Linux: sat
 **Guru & admin:** beranda, monitoring ujian (status siswa, pelanggaran, tambah waktu, pengumuman, token, reset sesi, notifikasi desktop),
 penilaian & rekap (simpan Excel/CSV), bank soal, **editor soal** (semua jenis: pilihan ganda, PG kompleks, benar/salah,
 menjodohkan, esai; teks tebal/miring/garis bawah/sub/sup; unggah gambar ke Cloudinary lewat tombol atau seret-lepas berkas),
-**koreksi esai** (guru).
-**Admin:** **form jadwal ujian**, **mapel + pengampu per kelas**, **impor siswa dari Excel** (dengan unduh templat),
+**impor soal dari Excel** (templat 5 lembar, guru), **indikator total bobot** (maksimal 100), **koreksi esai** (guru).
+**Admin:** **form jadwal ujian**, **mapel + pengampu per kelas**, **impor siswa dan pengguna dari Excel** (dengan unduh templat),
 **kenaikan kelas / kelulusan**, siswa, kelas, jenis ujian, agama, tahun ajaran, pengguna, arsip CSV.
 Daftar tersimpan di komputer sehingga tetap terlihat saat internet putus (mode offline, hanya baca).
 
 Catatan: editor teks kaya memakai tombol tag dengan pratinjau (bukan WYSIWYG); gambar tampil sebagai `[gambar]` di editor.
 Dialog pilih berkas: Windows asli, Linux lewat xdg-desktop-portal (GNOME/KDE sudah punya); jika tidak ada, gunakan seret-lepas. Unggah gambar butuh Cloudinary aktif di server.
-Hak akses mengikuti web: hanya guru yang membuat/ubah soal dan koreksi esai; hanya admin yang membuat jadwal, mapel, impor, kenaikan kelas.
+Hak akses mengikuti web: hanya guru yang membuat/ubah soal dan koreksi esai; hanya admin yang membuat jadwal, mapel, impor siswa/pengguna, kenaikan kelas; impor soal khusus guru.
 
 ## Linux
 Unduh `UjiinGuru-linux-x86_64.tar.gz` (artifact workflow *Build Aplikasi Linux Guru* atau Releases), lalu:
@@ -42,3 +42,6 @@ Login memakai sesi yang sama dengan web (cookie). Data dibaca dari `/api/v1/*` d
 
 ## Lisensi
 MIT — lihat [LICENSE](../LICENSE).
+
+
+Font logo: JetBrains Mono ExtraBold (SIL OFL 1.1, lihat `assets/OFL-JetBrainsMono.txt`).

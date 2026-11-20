@@ -48,8 +48,8 @@ export default function TotalBobotIndicator({
       </div>
       <p className="flex items-start gap-2 text-xs opacity-90">
         <Info size={14} className="mt-0.5 shrink-0" />
-        Atur bobot tiap soal agar totalnya 100. Contoh: 25 soal pilihan ganda
-        bobot 4 = 100. Soal esai juga dihitung. Nilai siswa tetap otomatis
+        Total bobot semua soal maksimal 100 (semua jenis soal dihitung). Contoh:
+        25 soal pilihan ganda bobot 4 = 100. Nilai siswa tetap otomatis
         berskala 0–100.
       </p>
     </div>
