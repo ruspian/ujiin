@@ -55,24 +55,14 @@ pub fn login(app: &mut App, ui: &mut egui::Ui) {
         credit_in(ui, strip, GRAY, 12.0);
         ui.vertical_centered(|ui| {
             ui.add_space((ui.available_height() / 2.0 - 250.0).max(16.0));
-            // logo sederhana
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(64.0, 64.0), egui::Sense::hover());
-            ui.painter().rect_filled(rect, 18.0, TEAL);
-            ui.painter().text(
-                rect.center(),
-                egui::Align2::CENTER_CENTER,
-                "U",
-                egui::FontId::proportional(38.0),
-                Color32::WHITE,
-            );
+            crate::brand::logo(ui, 64.0);
             ui.add_space(10.0);
-            ui.label(
-                RichText::new("Ujiin Guru")
-                    .size(30.0)
-                    .strong()
-                    .color(theme::INK),
-            );
-            ui.label(RichText::new("Aplikasi desktop untuk guru & admin").color(GRAY));
+            ui.horizontal(|ui| {
+                // pusatkan wordmark
+                let w = 30.0 * 0.6 * 5.0;
+                ui.add_space((ui.available_width() - w) / 2.0);
+                crate::brand::wordmark(ui, 30.0, theme::INK);
+            });
             ui.add_space(18.0);
             ui.scope(|ui| {
                 ui.set_max_width(380.0);
@@ -162,30 +152,9 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
         .show(ui, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
-                let (rect, _) =
-                    ui.allocate_exact_size(egui::vec2(34.0, 34.0), egui::Sense::hover());
-                ui.painter().rect_filled(rect, 10.0, TEAL);
-                ui.painter().text(
-                    rect.center(),
-                    egui::Align2::CENTER_CENTER,
-                    "U",
-                    egui::FontId::proportional(21.0),
-                    Color32::WHITE,
-                );
-                ui.vertical(|ui| {
-                    ui.spacing_mut().item_spacing.y = 0.0;
-                    ui.label(
-                        RichText::new("Ujiin")
-                            .size(18.0)
-                            .strong()
-                            .color(Color32::WHITE),
-                    );
-                    ui.label(
-                        RichText::new("Aplikasi Guru")
-                            .size(12.0)
-                            .color(theme::SIDEBAR_TEXT),
-                    );
-                });
+                crate::brand::logo(ui, 34.0);
+                ui.add_space(4.0);
+                crate::brand::wordmark(ui, 22.0, Color32::WHITE);
             });
             ui.add_space(14.0);
             // profil singkat
@@ -265,6 +234,9 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
             }
             if app.forms.koreksi.is_some() {
                 return crate::forms::koreksi_form(app, ui);
+            }
+            if app.forms.impsoal.is_some() {
+                return crate::imports::soal_panel(app, ui);
             }
             match app.tab {
                 Tab::Dashboard => crate::live::beranda(app, ui),
@@ -479,30 +451,50 @@ fn monitoring(app: &mut App, ui: &mut egui::Ui) {
         ui.label("Belum ada ujian yang perlu diawasi.");
         return;
     }
-    theme::card_scroll(ui, |ui| {
-        egui::Grid::new("mon_list")
-            .striped(true)
-            .spacing(theme::GRID_SPACING)
-            .num_columns(7)
-            .show(ui, |ui| {
-                for h in ["Ujian", "Mapel", "Kelas", "Mulai", "Status", "Peserta", ""] {
-                    theme::th(ui, h);
-                }
-                ui.end_row();
-                for e in items {
-                    ui.label(RichText::new(text(e, "title")).strong());
-                    ui.label(path_text(e, "subject"));
-                    ui.label(path_text(e, "classes"));
-                    ui.label(fmt_iso_wita(&text(e, "startTime")));
-                    status_badge(ui, &text(e, "status"), false);
-                    ui.label(path_text(e, "attempts"));
-                    if theme::row_button(ui, "Pantau", false) {
-                        app.sel = Some(text(e, "id"));
+    use crate::table::{Cell, W};
+    let cols = [
+        ("Ujian", W::Fill(140.0)),
+        ("Mapel", W::Fill(90.0)),
+        ("Kelas", W::Fill(80.0)),
+        ("Mulai", W::Px(130.0)),
+        ("Status", W::Px(90.0)),
+        ("Peserta", W::Px(64.0)),
+    ];
+    let it: Vec<&Value> = items.iter().collect();
+    let mut open: Option<String> = None;
+    crate::table::data_table(
+        ui,
+        "tbl-monitoring",
+        &cols,
+        it.len(),
+        42.0,
+        100.0,
+        |i, c| {
+            let e = it[i];
+            match c {
+                0 => Cell::Strong(text(e, "title")),
+                1 => Cell::Text(path_text(e, "subject")),
+                2 => Cell::Text(path_text(e, "classes")),
+                3 => Cell::Muted(fmt_iso_wita(&text(e, "startTime"))),
+                4 => {
+                    let raw = text(e, "status");
+                    match crate::table::status_pill(&raw) {
+                        Some((l, col)) => Cell::Pill(l.into(), col),
+                        None => Cell::Muted(raw),
                     }
-                    ui.end_row();
                 }
-            });
-    });
+                _ => Cell::Text(path_text(e, "attempts")),
+            }
+        },
+        |ui, i| {
+            if ui.add(theme::primary("Pantau")).clicked() {
+                open = Some(text(it[i], "id"));
+            }
+        },
+    );
+    if open.is_some() {
+        app.sel = open;
+    }
 }
 
 // ───────────────────────── penilaian ─────────────────────────
@@ -536,13 +528,13 @@ fn penilaian(app: &mut App, ui: &mut egui::Ui) {
     }
     use crate::table::{Cell, W};
     let cols = [
-        ("Ujian", W::Fill(150.0)),
-        ("Mapel", W::Fill(90.0)),
-        ("Jenis", W::Px(80.0)),
-        ("Kelas", W::Fill(70.0)),
-        ("Tahun ajaran", W::Px(140.0)),
-        ("Mulai", W::Px(150.0)),
-        ("Peserta", W::Px(80.0)),
+        ("Ujian", W::Fill(120.0)),
+        ("Mapel", W::Fill(80.0)),
+        ("Jenis", W::Px(70.0)),
+        ("Kelas", W::Fill(60.0)),
+        ("Tahun ajaran", W::Px(125.0)),
+        ("Mulai", W::Px(130.0)),
+        ("Peserta", W::Px(60.0)),
     ];
     let it = &items;
     crate::table::data_table(
@@ -769,7 +761,7 @@ fn total_bobot(app: &App, ui: &mut egui::Ui, d: &Value) {
         );
         ui.label(
             RichText::new(
-                "Atur bobot tiap soal agar totalnya 100 (mis. 25 soal x 4). Nilai siswa tetap otomatis 0-100.",
+                "Total bobot semua soal maksimal 100 (mis. 25 soal x 4). Nilai siswa tetap otomatis 0-100.",
             )
             .size(12.0)
             .color(GRAY),
@@ -886,17 +878,15 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
             if !is_admin && ui.add(theme::primary("Tambah soal")).clicked() {
                 app.forms.soal = Some(crate::forms::SoalForm::new(subject_id, &name, None));
             }
+            if !is_admin && ui.button("Impor Excel").clicked() {
+                app.forms.impsoal = Some(crate::imports::SoalImport::new(subject_id, &name));
+            }
         });
     });
     ui.add_space(6.0);
     let opts = options(app);
     theme::toolbar(ui, |ui| {
-        let r = ui.add_sized(
-            [220.0, 32.0],
-            egui::TextEdit::singleline(&mut app.filter).hint_text("Cari teks soal..."),
-        );
-        let enter = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-        if ui.button("Cari").clicked() || enter {
+        if crate::table::search_box(ui, &mut app.filter, "Cari teks soal", true) {
             app.form.insert("soal.q".into(), app.filter.clone());
             app.page = 0;
         }
@@ -904,7 +894,7 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
         let mut et = vec![(String::new(), "Semua jenis ujian".to_string())];
         et.extend(opt_pairs(&opts, "examTypes", "name"));
         let cur = app.form.entry("soal.et".into()).or_default();
-        changed |= crate::table::combo(ui, "sf-et", "Jenis ujian", cur, &et, 150.0);
+        changed |= crate::table::combo(ui, "sf-et", "Jenis ujian", cur, &et, 160.0);
         let ty: Vec<(String, String)> = [
             ("", "Semua jenis soal"),
             ("MULTIPLE_CHOICE", "Pilihan ganda"),
@@ -917,11 +907,11 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
         .map(|(a, b)| (a.to_string(), b.to_string()))
         .collect();
         let cur = app.form.entry("soal.type".into()).or_default();
-        changed |= crate::table::combo(ui, "sf-ty", "Jenis soal", cur, &ty, 150.0);
+        changed |= crate::table::combo(ui, "sf-ty", "Jenis soal", cur, &ty, 152.0);
         let mut cl = vec![(String::new(), "Semua kelas".to_string())];
         cl.extend(opt_pairs(&opts, "classes", "name"));
         let cur = app.form.entry("soal.cls".into()).or_default();
-        changed |= crate::table::combo(ui, "sf-cl", "Kelas", cur, &cl, 120.0);
+        changed |= crate::table::combo(ui, "sf-cl", "Kelas", cur, &cl, 122.0);
         if changed {
             app.page = 0;
         }
@@ -967,12 +957,12 @@ fn soal_list(app: &mut App, ui: &mut egui::Ui, subject_id: &str) {
     }
     use crate::table::{Cell, W};
     let cols = [
-        ("Soal", W::Fill(200.0)),
-        ("Jenis", W::Px(120.0)),
-        ("Skor", W::Px(60.0)),
-        ("Kunci", W::Px(110.0)),
-        ("Kelas", W::Px(110.0)),
-        ("Dibuat", W::Px(110.0)),
+        ("Soal", W::Fill(160.0)),
+        ("Jenis", W::Px(105.0)),
+        ("Skor", W::Px(50.0)),
+        ("Kunci", W::Px(100.0)),
+        ("Kelas", W::Px(95.0)),
+        ("Dibuat", W::Px(90.0)),
     ];
     let it = &items;
     let refresh_key = key.clone();
@@ -1363,10 +1353,50 @@ fn col_w(path: &str) -> crate::table::W {
         "level" | "students" | "active" | "semester" | "role" | "status" => W::Px(96.0),
         "token" | "code" => W::Px(84.0),
         "nisn" => W::Px(110.0),
+        "religion" => W::Px(110.0),
+        "assignments" => W::Fill(280.0),
         "startTime" => W::Px(130.0),
         "name" | "title" => W::Fill(110.0),
         _ => W::Fill(70.0),
     }
+}
+
+/// Pengampu mapel dikelompokkan per guru: "Pak Guru: X RPL 1, X RPL 2".
+fn assignments_cell(r: &Value) -> crate::table::Cell {
+    use crate::table::Cell;
+    let mut order: Vec<String> = Vec::new();
+    let mut map: std::collections::HashMap<String, Vec<String>> = Default::default();
+    for a in arr(r.get("assignments").unwrap_or(&Value::Null)) {
+        let t = text(a, "teacher");
+        let c = text(a, "class");
+        if !map.contains_key(&t) {
+            order.push(t.clone());
+        }
+        map.entry(t).or_default().push(c);
+    }
+    if order.is_empty() {
+        return Cell::Muted("Belum ada pengampu".into());
+    }
+    // bungkus per ~36 karakter supaya tabel tidak melebar ke samping
+    let mut lines: Vec<String> = Vec::new();
+    for t in order {
+        let mut cur = format!("{t}: ");
+        let mut first_in_line = true;
+        for c in &map[&t] {
+            if !first_in_line && cur.chars().count() + c.chars().count() + 2 > 36 {
+                lines.push(cur.trim_end().trim_end_matches(',').to_string());
+                cur = "    ".to_string();
+                first_in_line = true;
+            }
+            if !first_in_line {
+                cur.push_str(", ");
+            }
+            cur.push_str(c);
+            first_in_line = false;
+        }
+        lines.push(cur);
+    }
+    Cell::Lines(lines)
 }
 
 fn cell_for(r: &Value, path: &str, first: bool) -> crate::table::Cell {
@@ -1384,6 +1414,9 @@ fn cell_for(r: &Value, path: &str, first: bool) -> crate::table::Cell {
     }
     if let Some((label, color)) = status_pill(&raw) {
         return Cell::Pill(label.into(), color);
+    }
+    if path == "assignments" {
+        return assignments_cell(r);
     }
     if path == "token" {
         return if raw.is_empty() {
@@ -1543,6 +1576,9 @@ fn admin_table(app: &mut App, ui: &mut egui::Ui, spec: &'static Spec) {
             if spec.tab == "siswa" && ui.button("Impor Excel").clicked() {
                 app.forms.import = Some(Default::default());
             }
+            if spec.tab == "pengguna" && ui.button("Impor Excel").clicked() {
+                app.forms.impuser = Some(Default::default());
+            }
             if ui.button("Muat ulang").clicked() {
                 app.fetch(spec.path);
             }
@@ -1553,10 +1589,7 @@ fn admin_table(app: &mut App, ui: &mut egui::Ui, spec: &'static Spec) {
     if has_filters {
         theme::toolbar(ui, |ui| {
             if spec.searchable {
-                ui.add_sized(
-                    [240.0, 32.0],
-                    egui::TextEdit::singleline(&mut app.filter).hint_text("Cari..."),
-                );
+                crate::table::search_box(ui, &mut app.filter, "Cari", false);
             }
             match spec.tab {
                 "jadwal" => {
@@ -1591,6 +1624,9 @@ fn admin_table(app: &mut App, ui: &mut egui::Ui, spec: &'static Spec) {
                 _ => {}
             }
         });
+    }
+    if spec.tab == "pengguna" && app.forms.impuser.is_some() {
+        crate::imports::pengguna_panel(app, ui);
     }
     if spec.tab == "siswa" && app.forms.import.is_some() {
         crate::forms::import_panel(app, ui);

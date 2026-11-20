@@ -1,6 +1,6 @@
 //! Tabel data yang rapi: kolom proporsional, judul berlatar, pil status, dan menu aksi per baris.
 use crate::theme::{self, AMBER, BLUE, GRAY, GREEN, INK, TEAL};
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, Color32, RichText, Vec2};
 use egui_extras::{Column, TableBuilder};
 
 /// Lebar kolom: tetap (px) atau mengisi sisa ruang (minimal px).
@@ -16,6 +16,8 @@ pub enum Cell {
     Muted(String),
     Mono(String),
     Pill(String, Color32),
+    /// Beberapa baris dalam satu sel (mis. pengampu per guru); tinggi baris menyesuaikan.
+    Lines(Vec<String>),
 }
 
 /// Label ramah & warna untuk nilai status/peran dari server. `None` = bukan nilai status.
@@ -36,16 +38,51 @@ pub fn status_pill(raw: &str) -> Option<(&'static str, Color32)> {
     })
 }
 
+/// Teks panjang yang terpotong tetap bisa dibaca lewat tooltip.
+fn tip(r: egui::Response, full: &str) {
+    if full.chars().count() > 18 {
+        r.on_hover_text(full);
+    }
+}
+
+/// Tinggi baris: dasar, atau lebih tinggi bila ada sel bergaris banyak.
+fn row_height(base: f32, cells: impl Iterator<Item = Cell>) -> f32 {
+    cells
+        .map(|c| match c {
+            Cell::Lines(v) => (v.len().max(1) as f32 * 20.0 + 14.0).max(base),
+            _ => base,
+        })
+        .fold(base, f32::max)
+}
+
 fn draw_cell(ui: &mut egui::Ui, c: Cell) {
     match c {
         Cell::Text(t) => {
-            ui.add(egui::Label::new(t).truncate());
+            let full = t.clone();
+            tip(ui.add(egui::Label::new(t).truncate()), &full);
         }
         Cell::Strong(t) => {
-            ui.add(egui::Label::new(RichText::new(t).strong().color(INK)).truncate());
+            let full = t.clone();
+            tip(
+                ui.add(egui::Label::new(RichText::new(t).strong().color(INK)).truncate()),
+                &full,
+            );
         }
         Cell::Muted(t) => {
-            ui.add(egui::Label::new(RichText::new(t).color(GRAY)).truncate());
+            let full = t.clone();
+            tip(
+                ui.add(egui::Label::new(RichText::new(t).color(GRAY)).truncate()),
+                &full,
+            );
+        }
+        Cell::Lines(v) => {
+            ui.vertical(|ui| {
+                ui.spacing_mut().item_spacing.y = 2.0;
+                for t in v {
+                    let full = t.clone();
+                    tip(ui.add(egui::Label::new(t).truncate()), &full);
+                }
+            });
         }
         Cell::Mono(t) => {
             ui.add(egui::Label::new(RichText::new(t).monospace().strong().color(INK)).truncate());
@@ -105,7 +142,11 @@ pub fn data_table(
                 }
             })
             .body(|body| {
-                body.rows(row_h, rows, |mut row| {
+                let ncol = cols.len();
+                let heights: Vec<f32> = (0..rows)
+                    .map(|i| row_height(row_h, (0..ncol).map(|c| cell(i, c))))
+                    .collect();
+                body.heterogeneous_rows(heights.into_iter(), |mut row| {
                     let i = row.index();
                     for c in 0..cols.len() {
                         row.col(|ui| {
@@ -145,21 +186,56 @@ pub fn combo(
         .map(|(_, v)| v.clone())
         .unwrap_or_default();
     // label + pilihan dibungkus satu unit supaya tidak terpisah saat baris membungkus
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 6.0;
-        if !label.is_empty() {
-            ui.label(RichText::new(label).size(13.0).color(GRAY));
-        }
-        egui::ComboBox::from_id_salt(id)
-            .selected_text(shown)
-            .width(width)
-            .show_ui(ui, |ui| {
-                for (k, v) in items {
-                    ui.selectable_value(cur, k.clone(), v);
-                }
-            });
+    // label di atas, kotak pilihan di bawah (hemat lebar). Ukuran tetap supaya
+    // baris toolbar membungkus rapi alih-alih memeras kotak.
+    ui.allocate_ui(Vec2::new(width + 8.0, 50.0), |ui| {
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 3.0;
+            ui.label(RichText::new(label).size(12.0).color(GRAY));
+            egui::ComboBox::from_id_salt(id)
+                .selected_text(shown)
+                .truncate()
+                .width(width)
+                .show_ui(ui, |ui| {
+                    for (k, v) in items {
+                        ui.selectable_value(cur, k.clone(), v);
+                    }
+                });
+        });
     });
     *cur != before
+}
+
+/// Kotak pencarian berlabel (label di atas). Mengembalikan true bila Enter ditekan atau tombol Cari diklik.
+pub fn search_box(ui: &mut egui::Ui, text: &mut String, label: &str, with_button: bool) -> bool {
+    let mut go = false;
+    ui.allocate_ui(
+        Vec2::new(if with_button { 240.0 } else { 240.0 }, 50.0),
+        |ui| {
+            ui.vertical(|ui| {
+                ui.spacing_mut().item_spacing.y = 3.0;
+                ui.label(RichText::new(label).size(12.0).color(GRAY));
+                ui.horizontal(|ui| {
+                    let w = if with_button { 160.0 } else { 240.0 };
+                    let r = ui.add_sized(
+                        [w, 30.0],
+                        egui::TextEdit::singleline(text).hint_text("Ketik lalu Enter"),
+                    );
+                    if r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        go = true;
+                    }
+                    if with_button
+                        && ui
+                            .add_sized([60.0, 30.0], egui::Button::new("Cari"))
+                            .clicked()
+                    {
+                        go = true;
+                    }
+                });
+            });
+        },
+    );
+    go
 }
 
 /// Kartu keadaan kosong.

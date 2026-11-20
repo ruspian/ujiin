@@ -17,6 +17,8 @@ pub struct Forms {
     pub jadwal: Option<JadwalForm>,
     pub mapel: Option<MapelForm>,
     pub import: Option<ImportState>,
+    pub impuser: Option<crate::imports::PenggunaImport>,
+    pub impsoal: Option<crate::imports::SoalImport>,
     pub koreksi: Option<KoreksiForm>,
     pub kenaikan: KenaikanState,
     pub master: Option<crate::master_edit::EditDlg>,
@@ -50,7 +52,7 @@ fn label(ui: &mut egui::Ui, t: &str) {
     ui.label(RichText::new(t).size(13.0).strong().color(GRAY));
 }
 
-fn pairs_of(v: &Value, key: &str, name: &str) -> Vec<(String, String)> {
+pub fn pairs_of(v: &Value, key: &str, name: &str) -> Vec<(String, String)> {
     arr(v.get(key).unwrap_or(&Value::Null))
         .iter()
         .map(|x| (text(x, "id"), text(x, name)))
@@ -85,6 +87,10 @@ pub fn on_files_dropped(app: &mut App, files: Vec<PathBuf>) {
         if app.forms.soal.is_some() && is_image(&p) {
             start_upload(app, p);
         } else if let Some(imp) = app.forms.import.as_mut() {
+            imp.load(&p);
+        } else if let Some(imp) = app.forms.impuser.as_mut() {
+            imp.load(&p);
+        } else if let Some(imp) = app.forms.impsoal.as_mut() {
             imp.load(&p);
         } else {
             app.push_toast(
@@ -584,7 +590,7 @@ pub fn soal_form(app: &mut App, ui: &mut egui::Ui) {
                             label(ui, "Bobot nilai");
                             ui.add(egui::TextEdit::singleline(&mut f.score).desired_width(80.0));
                             ui.label(
-                                RichText::new("Atur agar total semua soal = 100")
+                                RichText::new("Total semua soal maksimal 100")
                                     .size(11.5)
                                     .color(crate::theme::GRAY),
                             );
@@ -1285,7 +1291,7 @@ pub struct ImportState {
     pub busy: bool,
 }
 
-fn cell_string(c: &calamine::Data) -> String {
+pub fn cell_string(c: &calamine::Data) -> String {
     use calamine::Data;
     match c {
         Data::Empty => String::new(),

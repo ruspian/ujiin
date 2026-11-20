@@ -121,6 +121,7 @@ pub struct Confirm {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let (tx, rx) = channel();
+        crate::brand::install_fonts(&cc.egui_ctx);
         crate::theme::apply(&cc.egui_ctx);
         let mut app = Self {
             ctx: cc.egui_ctx.clone(),
@@ -179,6 +180,10 @@ impl App {
                     "mapel" => app.forms.mapel = Some(MapelForm::new(None)),
                     "master-siswa" | "master-user-edit" => app.pending_form = Some(f.clone()),
                     "import" => app.forms.import = Some(Default::default()),
+                    "import-soal" => {
+                        app.forms.impsoal =
+                            Some(crate::imports::SoalImport::new("m1", "Informatika"))
+                    }
                     "koreksi" => {
                         app.forms.koreksi = Some(KoreksiForm {
                             attempt_id: "a1".into(),
