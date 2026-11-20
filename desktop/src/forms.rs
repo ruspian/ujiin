@@ -583,6 +583,11 @@ pub fn soal_form(app: &mut App, ui: &mut egui::Ui) {
                         ui.vertical(|ui| {
                             label(ui, "Bobot nilai");
                             ui.add(egui::TextEdit::singleline(&mut f.score).desired_width(80.0));
+                            ui.label(
+                                RichText::new("Atur agar total semua soal = 100")
+                                    .size(11.5)
+                                    .color(crate::theme::GRAY),
+                            );
                         });
                     }
                 });
