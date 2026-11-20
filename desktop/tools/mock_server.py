@@ -98,7 +98,7 @@ def route(path, q, role):
                                        "classId": "c1" if i % 2 else "c2", "religionId": "r1",
                                        "class": {"id": "c1" if i % 2 else "c2", "name": "X RPL 1" if i % 2 else "X RPL 2"}, "religion": {"name": "Islam"}} for i in range(1, 251)]
     if path == "admin/mapel": return [{"id": "m1", "name": "Informatika", "religion": None,
-                                       "religionId": "", "assignments": [{"class": "X RPL 1", "teacher": "Pak Guru"}],
+                                       "religionId": "", "assignments": [{"class": c, "teacher": "Pak Guru"} for c in ["X RPL 1","X RPL 2","X RPL 3","X TKJ 1","X TKJ 2","XI RPL 1","XI RPL 2","XI TKJ 1"]] + [{"class": c, "teacher": "Bu Sari"} for c in ["XII RPL 1","XII RPL 2"]],
                                        "plot": [{"classId": "c1", "teacherId": "g1"}]}]
     if path == "admin/agama": return [{"id": "r1", "name": "Islam"}]
     if path == "admin/jenis-ujian": return [{"id": "t1", "name": "Ulangan Harian", "code": "UH"}]

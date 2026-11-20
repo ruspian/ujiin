@@ -17,7 +17,7 @@ const panduanSteps = [
     icon: FileText,
     tips: [
       "Gunakan fitur editor teks untuk menambahkan gambar atau rumus pada soal.",
-      "Atur bobot setiap soal agar TOTAL bobot semua soal = 100 (mis. 25 soal pilihan ganda × bobot 4). Pantau indikator \"Total bobot\" di daftar soal: hijau berarti sudah pas 100.",
+      "Total bobot SEMUA soal maksimal 100 (mis. 25 soal pilihan ganda × bobot 4). Pantau indikator \"Total bobot\" di daftar soal: hijau berarti sudah pas 100.",
       "Untuk soal Menjodohkan, pastikan pasangan kunci jawaban sudah tepat.",
       "Gunakan Template soal dalam format excel untuk memudahkan pembuatan soal.",
     ],
