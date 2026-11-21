@@ -219,7 +219,7 @@ pub fn beranda(app: &mut App, ui: &mut egui::Ui) {
                         }
                         ui.label(
                             RichText::new(format!(
-                                "Soal di bank soal saya: {}",
+                                "Jumlah soal saya: {}",
                                 i64_of(&prog, "soalSaya")
                             ))
                             .color(GRAY),

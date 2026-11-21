@@ -46,7 +46,7 @@ impl Tab {
             Tab::Dashboard => "Beranda",
             Tab::Monitoring => "Monitoring Ujian",
             Tab::Penilaian => "Penilaian & Rekap",
-            Tab::BankSoal => "Bank Soal",
+            Tab::BankSoal => "Soal Saya",
             Tab::Jadwal => "Jadwal Ujian",
             Tab::Siswa => "Data Siswa",
             Tab::Kelas => "Data Kelas",
