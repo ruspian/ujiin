@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { canTeacherAccessAttempt } from "@/lib/teacher-access";
 import { prisma } from "@/lib/prisma";
 import { finalizeExpiredAttempts } from "@/lib/finalize-attempts";
 import { fail, json, requireStaff, yearRange, type StaffUser } from "@/lib/api-v1";
@@ -293,13 +294,9 @@ async function penilaianExams({ user, q }: Ctx) {
       ...(user.role === "ADMIN"
         ? {}
         : {
-            OR: [
-              { supervisorId: user.id },
-              { authorId: user.id },
-              {
-                subject: { assignments: { some: { teacherId: user.id } } },
-              },
-            ],
+            // Guru hanya menilai/merekap mapel yang ia ampu. Menjadi pengawas
+            // atau pembuat jadwal saja tidak cukup (sama dengan web).
+            subject: { assignments: { some: { teacherId: user.id } } },
           }),
     },
     select: {
@@ -347,14 +344,8 @@ async function penilaianDetail({ user, segs }: Ctx) {
   });
   if (!exam) return fail("Ujian tidak ditemukan.", 404);
   if (user.role === "GURU") {
-    const ok =
-      exam.authorId === user.id ||
-      exam.supervisorId === user.id ||
-      !!(await prisma.subjectAssignment.findFirst({
-        where: { subjectId: exam.subjectId, teacherId: user.id },
-        select: { id: true },
-      }));
-    if (!ok) return fail("Akses ditolak.", 403);
+    if (!(await canTeacherAccessAttempt(user.id, exam)))
+      return fail("Akses ditolak: Anda bukan pengampu mapel ini.", 403);
   }
   const attempts = await prisma.attempt.findMany({
     where: { examId: id },

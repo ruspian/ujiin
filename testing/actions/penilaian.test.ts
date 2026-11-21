@@ -44,12 +44,16 @@ describe("Pengujian Server Action - Auto-Grading Engine (Simpan Koreksi)", () =>
     vi.mocked(auth as unknown as () => Promise<unknown>).mockResolvedValue({
       user: { id: "guru-1", role: "GURU" },
     });
+    // Secara default guru-1 adalah pengampu mapel ujian
+    vi.mocked(prisma.subjectAssignment.findFirst).mockResolvedValue({
+      id: "asg-1",
+    } as never);
   });
 
   // Bagian ujian/siswa yang dibutuhkan pengecekan hak akses guru
   const examMeta = {
-    authorId: "guru-1",
-    supervisorId: null,
+    authorId: "guru-lain",
+    supervisorId: "guru-lain",
     subjectId: "sub-1",
   };
 
@@ -250,6 +254,27 @@ describe("Pengujian Server Action - Auto-Grading Engine (Simpan Koreksi)", () =>
     vi.mocked(prisma.subjectAssignment.findFirst).mockResolvedValue(null);
 
     const hasil = await simpanKoreksi("s", "exam-uts", "att-5", new FormData());
+    expect(hasil).toEqual({ success: false, message: "Akses ditolak!" });
+    expect(prisma.attempt.update).not.toHaveBeenCalled();
+  });
+
+  test("Pengawas/pembuat jadwal yang bukan pengampu mapel tetap ditolak", async () => {
+    vi.mocked(prisma.attempt.findUnique).mockResolvedValue({
+      id: "att-6",
+      examId: "exam-uts",
+      answers: {},
+      essayScores: null,
+      student: { classId: "kelas-1" },
+      exam: {
+        authorId: "guru-1",
+        supervisorId: "guru-1",
+        subjectId: "sub-lain",
+        questions: [],
+      },
+    } as unknown as MockAttemptResult);
+    vi.mocked(prisma.subjectAssignment.findFirst).mockResolvedValue(null);
+
+    const hasil = await simpanKoreksi("s", "exam-uts", "att-6", new FormData());
     expect(hasil).toEqual({ success: false, message: "Akses ditolak!" });
     expect(prisma.attempt.update).not.toHaveBeenCalled();
   });
