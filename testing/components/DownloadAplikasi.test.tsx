@@ -4,7 +4,7 @@ import DownloadAplikasi from "@/components/layout/DownloadAplikasi";
 import { RELEASES_URL } from "@/lib/download-links";
 
 describe("DownloadAplikasi", () => {
-  it("menampilkan tiga platform dengan tautan ke rilis", () => {
+  it("menampilkan tombol Android, Windows, Linux dengan tautan ke rilis", () => {
     render(<DownloadAplikasi />);
     expect(screen.getByText("Unduh Aplikasi Ujiin")).toBeTruthy();
     for (const t of ["Android", "Windows", "Linux"]) {
