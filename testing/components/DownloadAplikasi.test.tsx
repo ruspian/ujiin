@@ -1,20 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import DownloadAplikasi from "@/components/layout/DownloadAplikasi";
-import { RELEASES_URL } from "@/lib/download-links";
+import { DOWNLOAD_LINKS } from "@/lib/download-links";
 
 describe("DownloadAplikasi", () => {
-  it("menampilkan tombol Android, Windows, Linux dengan tautan ke rilis", () => {
+  it("tiap tombol menuju berkasnya sendiri", () => {
     render(<DownloadAplikasi />);
     expect(screen.getByText("Unduh Aplikasi Ujiin")).toBeTruthy();
-    for (const t of ["Android", "Windows", "Linux"]) {
-      expect(screen.getByText(t)).toBeTruthy();
-    }
-    const links = screen.getAllByRole("link");
-    expect(links).toHaveLength(3);
-    for (const a of links) {
-      expect(a.getAttribute("href")).toBe(RELEASES_URL);
-      expect(a.getAttribute("target")).toBe("_blank");
-    }
+    const href = (label: string) =>
+      screen.getByRole("link", { name: `Unduh untuk ${label}` }).getAttribute("href");
+    expect(href("Android")).toBe(DOWNLOAD_LINKS.android);
+    expect(href("Windows")).toBe(DOWNLOAD_LINKS.windows);
+    expect(href("Linux")).toBe(DOWNLOAD_LINKS.linux);
+    expect(new Set([href("Android"), href("Windows"), href("Linux")]).size).toBe(3);
   });
 });

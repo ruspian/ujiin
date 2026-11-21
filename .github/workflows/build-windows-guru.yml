@@ -65,11 +65,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.release_tag }}
         run: |
-          cp dist/UjiinGuru.exe "UjiinGuru-${TAG}.exe"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "UjiinGuru-${TAG}.exe" --clobber
+            gh release upload "$TAG" dist/UjiinGuru.exe --clobber
           else
-            gh release create "$TAG" "UjiinGuru-${TAG}.exe" \
+            gh release create "$TAG" dist/UjiinGuru.exe \
               --title "Ujiin Guru ${TAG}" \
               --notes "Aplikasi Windows Ujiin untuk guru & admin. Unduh file .exe lalu jalankan (tanpa instalasi). Panduan: desktop/README.md"
           fi

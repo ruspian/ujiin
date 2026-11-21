@@ -88,11 +88,11 @@ jobs:
           TAG: ${{ inputs.release_tag }}
         run: |
           APK=$(ls android/app/build/outputs/apk/release/*.apk | head -n 1)
-          cp "$APK" "ujiin-siswa-${TAG}.apk"
+          cp "$APK" ujiin-siswa.apk
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "ujiin-siswa-${TAG}.apk" --clobber
+            gh release upload "$TAG" ujiin-siswa.apk --clobber
           else
-            gh release create "$TAG" "ujiin-siswa-${TAG}.apk" \
+            gh release create "$TAG" ujiin-siswa.apk \
               --title "Ujiin Siswa ${TAG}" \
               --notes "Aplikasi Android Ujiin untuk siswa. Unduh file .apk lalu pasang (izinkan 'sumber tidak dikenal'). Panduan: docs/PANDUAN-UJIAN-HP.md"
           fi
