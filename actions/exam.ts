@@ -11,8 +11,18 @@ export async function getQuestionsForExam(
   examTypeId: string,
 ) {
   // Hasil berisi kunci jawaban: hanya staf yang boleh melihat.
-  if (!(await requireRole("ADMIN", "GURU"))) {
+  const user = await requireRole("ADMIN", "GURU");
+  if (!user) {
     return { success: false, data: [] };
+  }
+
+  // Guru hanya boleh membaca soal (dan kunci jawabannya) pada mapel yang ia ampu.
+  if (user.role === "GURU") {
+    const mengampu = await prisma.subjectAssignment.findFirst({
+      where: { subjectId, teacherId: user.id },
+      select: { id: true },
+    });
+    if (!mengampu) return { success: false, data: [] };
   }
 
   try {

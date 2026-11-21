@@ -15,6 +15,9 @@ vi.mock("@/lib/prisma", () => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    subjectAssignment: {
+      findFirst: vi.fn(),
+    },
     attempt: {
       count: vi.fn(),
       findUnique: vi.fn(),
@@ -160,6 +163,28 @@ describe("getQuestionsForExam - hanya staf (berisi kunci jawaban)", () => {
   test("guru boleh mengambil daftar soal", async () => {
     (vi.mocked(auth) as Mock).mockResolvedValue({
       user: { id: "g1", role: "GURU" },
+    });
+    vi.mocked(prisma.subjectAssignment.findFirst).mockResolvedValue({
+      id: "a1",
+    } as never);
+    vi.mocked(prisma.question.findMany).mockResolvedValue([]);
+    const hasil = await getQuestionsForExam("sub-1", "type-1");
+    expect(hasil.success).toBe(true);
+  });
+
+  test("guru yang bukan pengampu mapel tidak boleh membaca soal & kunci jawaban", async () => {
+    (vi.mocked(auth) as Mock).mockResolvedValue({
+      user: { id: "g1", role: "GURU" },
+    });
+    vi.mocked(prisma.subjectAssignment.findFirst).mockResolvedValue(null);
+    const hasil = await getQuestionsForExam("sub-lain", "type-1");
+    expect(hasil).toEqual({ success: false, data: [] });
+    expect(prisma.question.findMany).not.toHaveBeenCalled();
+  });
+
+  test("admin boleh membaca soal mapel apa pun", async () => {
+    (vi.mocked(auth) as Mock).mockResolvedValue({
+      user: { id: "a1", role: "ADMIN" },
     });
     vi.mocked(prisma.question.findMany).mockResolvedValue([]);
     const hasil = await getQuestionsForExam("sub-1", "type-1");
