@@ -1,7 +1,7 @@
 # Ujiin Guru (Windows)
 
 Aplikasi desktop ringan untuk **guru & admin** Ujiin, ditulis dengan Rust ([egui](https://github.com/emilk/egui)).
-Windows: satu berkas `.exe` (±5 MB), tanpa instalasi, tanpa WebView. Linux: satu biner (±9 MB) dalam `.tar.gz`.
+Windows: satu berkas `.exe` (±5 MB), tanpa instalasi, tanpa WebView. Linux: satu biner (±9 MB) dalam `.tar.gz`. Berkas `.exe` sudah memakai logo Ujiin (ikon buku teal) di File Explorer dan taskbar.
 
 ## Fitur
 **Guru & admin:** beranda, monitoring ujian (status siswa, pelanggaran, tambah waktu, pengumuman, token, reset sesi, notifikasi desktop),
@@ -21,7 +21,7 @@ Unduh `UjiinGuru-linux-x86_64.tar.gz` (artifact workflow *Build Aplikasi Linux G
 ```
 tar xzf UjiinGuru-linux-x86_64.tar.gz && ./ujiin-guru/ujiin-guru
 ```
-Opsional: salin `ujiin-guru.desktop` ke `~/.local/share/applications/` dan biner ke `~/.local/bin/` agar muncul di menu aplikasi.
+Opsional: salin `ujiin-guru.desktop` ke `~/.local/share/applications/`, biner ke `~/.local/bin/`, dan `ujiin-guru.png` ke `~/.local/share/icons/` agar muncul di menu aplikasi lengkap dengan logo.
 Butuh X11 atau Wayland dengan OpenGL (Mesa), dan daemon notifikasi desktop untuk peringatan pengawas (GNOME/KDE sudah ada).
 Cache offline di `~/.cache`, alamat server terakhir di `~/.config` (XDG).
 
