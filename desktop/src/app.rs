@@ -12,7 +12,7 @@ pub enum Tab {
     Dashboard,
     Monitoring,
     Penilaian,
-    Soal,
+    BankSoal,
     Jadwal,
     Siswa,
     Kelas,
@@ -29,7 +29,7 @@ impl Tab {
         Tab::Dashboard,
         Tab::Monitoring,
         Tab::Penilaian,
-        Tab::Soal,
+        Tab::BankSoal,
         Tab::Jadwal,
         Tab::Siswa,
         Tab::Kelas,
@@ -46,7 +46,7 @@ impl Tab {
             Tab::Dashboard => "Beranda",
             Tab::Monitoring => "Monitoring Ujian",
             Tab::Penilaian => "Penilaian & Rekap",
-            Tab::Soal => "Soal",
+            Tab::BankSoal => "Bank Soal",
             Tab::Jadwal => "Jadwal Ujian",
             Tab::Siswa => "Data Siswa",
             Tab::Kelas => "Data Kelas",
@@ -209,7 +209,7 @@ impl App {
             Tab::Dashboard,
             Tab::Monitoring,
             Tab::Penilaian,
-            Tab::Soal,
+            Tab::BankSoal,
         ];
         if self.is_admin() {
             t.extend([

@@ -1082,7 +1082,7 @@ pub fn jadwal_form(app: &mut App, ui: &mut egui::Ui) {
                     }
                 }
             });
-            ui.label(RichText::new("Soal diambil otomatis dari Soal sesuai mapel, jenis ujian, dan kelas.").size(12.0).color(GRAY));
+            ui.label(RichText::new("Soal diambil otomatis dari Bank Soal sesuai mapel, jenis ujian, dan kelas.").size(12.0).color(GRAY));
         });
         ui.add_space(10.0);
         if f.busy {

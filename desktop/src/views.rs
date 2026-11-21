@@ -242,7 +242,7 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
                 Tab::Dashboard => crate::live::beranda(app, ui),
                 Tab::Monitoring => monitoring(app, ui),
                 Tab::Penilaian => penilaian(app, ui),
-                Tab::Soal => soal(app, ui),
+                Tab::BankSoal => bank_soal(app, ui),
                 Tab::Jadwal => admin_table(app, ui, &JADWAL),
                 Tab::Siswa => admin_table(app, ui, &SISWA),
                 Tab::Kelas => admin_table(app, ui, &KELAS),
@@ -258,7 +258,7 @@ pub fn shell(app: &mut App, ui: &mut egui::Ui) {
 
 fn tab_group(t: Tab) -> &'static str {
     match t {
-        Tab::Dashboard | Tab::Monitoring | Tab::Penilaian | Tab::Soal => "UJIAN",
+        Tab::Dashboard | Tab::Monitoring | Tab::Penilaian | Tab::BankSoal => "UJIAN",
         Tab::Jadwal
         | Tab::Siswa
         | Tab::Kelas
@@ -275,7 +275,7 @@ fn tab_hint(t: Tab) -> &'static str {
         Tab::Dashboard => "Ringkasan sekolah dan ujian Anda.",
         Tab::Monitoring => "Pantau siswa yang sedang mengerjakan secara langsung.",
         Tab::Penilaian => "Lihat nilai per ujian dan simpan rekap ke Excel.",
-        Tab::Soal => "Soal yang Anda buat, per mata pelajaran.",
+        Tab::BankSoal => "Soal yang Anda buat, per mata pelajaran.",
         Tab::Jadwal => "Jadwal ujian seluruh sekolah.",
         Tab::Siswa => "Data siswa aktif dan alumni.",
         Tab::Kelas => "Daftar kelas dan tingkatnya.",
@@ -705,9 +705,9 @@ fn penilaian_detail(app: &mut App, ui: &mut egui::Ui, id: &str) {
     });
 }
 
-// ───────────────────────── soal ─────────────────────────
+// ───────────────────────── bank soal ─────────────────────────
 
-/// Kunci daftar mapel di soal (ikut filter tahun ajaran).
+/// Kunci daftar mapel di bank soal (ikut filter tahun ajaran).
 fn soal_root(app: &App) -> String {
     let yp = year_param(app, "soal.year");
     if yp.is_empty() {
@@ -769,7 +769,7 @@ fn total_bobot(app: &App, ui: &mut egui::Ui, d: &Value) {
     });
 }
 
-fn soal(app: &mut App, ui: &mut egui::Ui) {
+fn bank_soal(app: &mut App, ui: &mut egui::Ui) {
     if let Some(sid) = app.sel.clone() {
         soal_list(app, ui, &sid);
         return;
