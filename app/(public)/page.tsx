@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { ArrowRight, ShieldCheck, Zap, Database } from "lucide-react";
 import Link from "next/link";
+import DownloadAplikasi from "@/components/layout/DownloadAplikasi";
 
 export default async function LandingPage() {
   const session = await auth();
@@ -53,6 +54,8 @@ export default async function LandingPage() {
             </p>
           </div>
         </div>
+
+        <DownloadAplikasi />
       </div>
     </div>
   );
