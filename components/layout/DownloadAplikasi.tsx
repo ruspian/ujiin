@@ -1,4 +1,4 @@
-import { RELEASES_URL } from "@/lib/download-links";
+import { DOWNLOAD_LINKS } from "@/lib/download-links";
 
 function AndroidLogo() {
   return (
@@ -50,9 +50,9 @@ function LinuxLogo() {
 }
 
 const ITEMS = [
-  { label: "Android", logo: <AndroidLogo /> },
-  { label: "Windows", logo: <WindowsLogo /> },
-  { label: "Linux", logo: <LinuxLogo /> },
+  { label: "Android", href: DOWNLOAD_LINKS.android, logo: <AndroidLogo /> },
+  { label: "Windows", href: DOWNLOAD_LINKS.windows, logo: <WindowsLogo /> },
+  { label: "Linux", href: DOWNLOAD_LINKS.linux, logo: <LinuxLogo /> },
 ];
 
 export default function DownloadAplikasi() {
@@ -65,12 +65,10 @@ export default function DownloadAplikasi() {
         Unduh Aplikasi Ujiin
       </h2>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-        {ITEMS.map(({ label, logo }) => (
+        {ITEMS.map(({ label, href, logo }) => (
           <a
             key={label}
-            href={RELEASES_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={href}
             aria-label={`Unduh untuk ${label}`}
             className="inline-flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-teal-400 hover:shadow-md"
           >

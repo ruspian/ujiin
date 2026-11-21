@@ -1,8 +1,18 @@
 /**
- * Tautan unduh aplikasi. Semua mengarah ke rilis terbaru di GitHub Releases
- * (nama berkas memuat nomor versi, jadi halaman rilis yang stabil).
- * Bisa diganti lewat NEXT_PUBLIC_DOWNLOAD_URL bila sekolah memakai fork/mirror sendiri.
+ * Tautan unduh langsung ke berkas pada rilis terbaru GitHub. Nama berkas di rilis
+ * sengaja tetap (tanpa nomor versi; versinya ada di tag rilis) agar tautan ini
+ * tidak perlu diubah tiap rilis. Ketiga berkas harus ada di rilis yang sama
+ * (jalankan tiga workflow dengan tag yang sama).
+ * Bisa diganti lewat NEXT_PUBLIC_DOWNLOAD_URL (folder dasar unduhan) bila memakai fork/mirror.
  */
-export const RELEASES_URL =
+const BASE =
   process.env.NEXT_PUBLIC_DOWNLOAD_URL ||
-  "https://github.com/ruspian/ujiin/releases/latest";
+  "https://github.com/ruspian/ujiin/releases/latest/download";
+
+export const RELEASES_PAGE = "https://github.com/ruspian/ujiin/releases/latest";
+
+export const DOWNLOAD_LINKS = {
+  android: `${BASE}/ujiin-siswa.apk`,
+  windows: `${BASE}/UjiinGuru.exe`,
+  linux: `${BASE}/UjiinGuru-linux-x86_64.tar.gz`,
+} as const;
