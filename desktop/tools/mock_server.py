@@ -52,7 +52,7 @@ def beranda(role):
                 {"id": "k1", "scope": "siswa", "tone": "info", "title": "UH Informatika sedang berlangsung", "text": "15 siswa mengerjakan, 4 sudah selesai.", "tab": "Monitoring", "sel": "e1"},
                 {"id": "k2", "scope": "siswa", "tone": "good", "title": "Rata-rata PH Matematika 78,5", "text": "Naik 4,2 poin dari ujian sebelumnya.", "tab": "Penilaian"},
                 {"id": "k3", "scope": "siswa", "tone": "warn", "title": "3 siswa melanggar aturan", "text": "Cek aliran kejadian di halaman pantau.", "tab": "Monitoring", "sel": "e1"},
-                {"id": "k4", "scope": "guru", "tone": "good", "title": "6 soal baru pekan ini", "text": "Bank soal makin lengkap.", "tab": "BankSoal"},
+                {"id": "k4", "scope": "guru", "tone": "good", "title": "6 soal baru pekan ini", "text": "Soal makin lengkap.", "tab": "BankSoal"},
                 {"id": "k5", "scope": "guru", "tone": "warn", "title": "9 esai menunggu dinilai", "text": "Buka Penilaian untuk mengoreksi.", "tab": "Penilaian"},
                 {"id": "k6", "scope": "sistem", "tone": "info", "title": "2 ujian belum punya pengawas", "text": "Atur di Jadwal Ujian.", "tab": "Jadwal"},
             ]}

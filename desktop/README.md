@@ -5,7 +5,7 @@ Windows: satu berkas `.exe` (±5 MB), tanpa instalasi, tanpa WebView. Linux: sat
 
 ## Fitur
 **Guru & admin:** beranda, monitoring ujian (status siswa, pelanggaran, tambah waktu, pengumuman, token, reset sesi, notifikasi desktop),
-penilaian & rekap (simpan Excel/CSV), bank soal, **editor soal** (semua jenis: pilihan ganda, PG kompleks, benar/salah,
+penilaian & rekap (simpan Excel/CSV), Soal Saya, **editor soal** (semua jenis: pilihan ganda, PG kompleks, benar/salah,
 menjodohkan, esai; teks tebal/miring/garis bawah/sub/sup; unggah gambar ke Cloudinary lewat tombol atau seret-lepas berkas),
 **impor soal dari Excel** (templat 5 lembar, guru), **indikator total bobot** (maksimal 100), **koreksi esai** (guru).
 **Admin:** **form jadwal ujian**, **mapel + pengampu per kelas**, **impor siswa dan pengguna dari Excel** (dengan unduh templat),

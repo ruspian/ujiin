@@ -617,7 +617,7 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                 }
                 ui.add_space(6.0);
                 ui.label(
-                    RichText::new("Setelah impor, cek kartu Total bobot di Bank Soal (target 100).")
+                    RichText::new("Setelah impor, cek kartu Total bobot di Soal Saya (target 100).")
                         .size(12.5)
                         .color(GRAY),
                 );

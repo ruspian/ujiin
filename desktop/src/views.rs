@@ -705,9 +705,9 @@ fn penilaian_detail(app: &mut App, ui: &mut egui::Ui, id: &str) {
     });
 }
 
-// ───────────────────────── bank soal ─────────────────────────
+// ───────────────────────── soal saya ─────────────────────────
 
-/// Kunci daftar mapel di bank soal (ikut filter tahun ajaran).
+/// Kunci daftar mapel di Soal Saya (ikut filter tahun ajaran).
 fn soal_root(app: &App) -> String {
     let yp = year_param(app, "soal.year");
     if yp.is_empty() {
