@@ -248,6 +248,10 @@ pub struct SoalImport {
     pub questions: Vec<Value>,
     pub error: Option<String>,
     pub busy: bool,
+    /// Konversi dari Word: status dan catatan dari server.
+    pub word_busy: bool,
+    pub from_word: bool,
+    pub warnings: Vec<String>,
 }
 
 impl SoalImport {
@@ -259,11 +263,57 @@ impl SoalImport {
         }
     }
 
+    /// Mulai konversi berkas .docx lewat server (hasilnya tiba sebagai `Msg::Word`).
+    pub fn start_word(&mut self, app_net: Option<crate::api::Net>, p: &std::path::Path) {
+        match app_net {
+            Some(n) => {
+                self.word_busy = true;
+                self.error = None;
+                self.file = Some(p.to_path_buf());
+                n.word_convert(p.to_path_buf());
+            }
+            None => self.error = Some("Belum login.".into()),
+        }
+    }
+
+    /// Terapkan hasil konversi dari server: baris soal + peringatan.
+    pub fn apply_word(&mut self, res: Result<Value, String>) {
+        self.word_busy = false;
+        match res {
+            Ok(v) => {
+                let rows = v["rows"].as_array().cloned().unwrap_or_default();
+                self.warnings = v["warnings"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|x| x.as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                self.from_word = true;
+                self.error = if rows.is_empty() {
+                    Some("Tidak ada soal yang terbaca dari berkas Word.".into())
+                } else {
+                    None
+                };
+                self.questions = rows;
+            }
+            Err(e) => {
+                self.questions.clear();
+                self.warnings.clear();
+                self.from_word = false;
+                self.error = Some(e);
+            }
+        }
+    }
+
     pub fn load(&mut self, p: &std::path::Path) {
         match read_questions(p) {
             Ok(q) => {
                 self.questions = q;
                 self.error = None;
+                self.from_word = false;
+                self.warnings.clear();
                 self.file = Some(p.to_path_buf());
             }
             Err(e) => {
@@ -478,11 +528,103 @@ pub fn write_question_template(path: &std::path::Path) -> Result<(), String> {
     wb.save(path).map_err(|e| e.to_string())
 }
 
+/// Kalimat soal saja (stimulus dibuang), tanpa tag HTML, untuk pratinjau.
+pub fn plain_preview(html: &str, max: usize) -> String {
+    let soal = match html.rfind("<br><br>") {
+        Some(i) => &html[i + 8..],
+        None => html,
+    };
+    let mut out = String::new();
+    let mut in_tag = false;
+    for c in soal.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' if in_tag => {
+                in_tag = false;
+                out.push(' ');
+            }
+            _ if !in_tag => out.push(c),
+            _ => {}
+        }
+    }
+    let out = out
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&");
+    let out = out.split_whitespace().collect::<Vec<_>>().join(" ");
+    if out.chars().count() > max {
+        format!(
+            "{}…",
+            out.chars().take(max.saturating_sub(1)).collect::<String>()
+        )
+    } else {
+        out
+    }
+}
+
+/// Tulis baris soal (hasil konversi Word) menjadi Excel dengan lembar sesuai template.
+pub fn write_question_rows(path: &std::path::Path, rows: &[Value]) -> Result<(), String> {
+    const SHEETS: [(&str, &str, bool); 5] = [
+        ("MULTIPLE_CHOICE", "PG", true),
+        ("MULTIPLE_CHOICE_COMPLEX", "PG Kompleks", true),
+        ("MATCHING", "Menjodohkan", false),
+        ("ESSAY", "Esai", true),
+        ("TRUE_FALSE", "Benar Salah", true),
+    ];
+    let mut wb = rust_xlsxwriter::Workbook::new();
+    for (tipe, nama, full) in SHEETS {
+        let subset: Vec<&Value> = rows
+            .iter()
+            .filter(|r| r["Tipe_Soal"].as_str() == Some(tipe))
+            .collect();
+        if subset.is_empty() {
+            continue;
+        }
+        let mut head = vec![
+            "Teks_Soal",
+            "Opsi_A",
+            "Opsi_B",
+            "Opsi_C",
+            "Opsi_D",
+            "Opsi_E",
+        ];
+        if full {
+            head.extend(["Kunci_Jawaban", "Skor"]);
+        }
+        let ws = wb.add_worksheet();
+        ws.set_name(nama).map_err(|e| e.to_string())?;
+        for (c, h) in head.iter().enumerate() {
+            ws.write(0, c as u16, *h).map_err(|e| e.to_string())?;
+        }
+        for (r, row) in subset.iter().enumerate() {
+            for (c, h) in head.iter().enumerate() {
+                let (ri, ci) = (r as u32 + 1, c as u16);
+                match row.get(*h) {
+                    Some(Value::String(t)) if !t.is_empty() => {
+                        ws.write(ri, ci, t.as_str()).map_err(|e| e.to_string())?;
+                    }
+                    Some(Value::Number(n)) => {
+                        ws.write(ri, ci, n.as_f64().unwrap_or(0.0))
+                            .map_err(|e| e.to_string())?;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        ws.set_column_width(0, 60).map_err(|e| e.to_string())?;
+    }
+    wb.save(path).map_err(|e| e.to_string())
+}
+
 pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
     let Some(mut st) = app.forms.impsoal.take() else {
         return;
     };
     let mut keep = true;
+    if !app.word_done.is_empty() {
+        let res = app.word_done.remove(0);
+        st.apply_word(res);
+    }
     if let Some(ok) = app.take_rpc("@form:impsoal") {
         st.busy = false;
         if ok {
@@ -567,8 +709,39 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                 }
                 drop_hint(ui);
             });
+            ui.add_space(6.0);
+            ui.separator();
+            ui.label(RichText::new("Soal masih di Word?").strong());
+            ui.label(
+                RichText::new("Pilih berkas .docx: soal dan pilihan jawaban dijadikan Excel sesuai template. Kunci jawaban dan skor diisi sendiri di Excel, lalu diimpor lewat \"Pilih berkas Excel\".")
+                    .size(12.5)
+                    .color(GRAY),
+            );
+            ui.horizontal(|ui| {
+                if st.word_busy {
+                    ui.spinner();
+                    ui.label("Membaca berkas Word...");
+                } else if ui.button("Konversi dari Word (.docx)...").clicked() {
+                    if let Some(p) = pick_file("Pilih berkas Word soal", &["docx"]) {
+                        st.start_word(app.net.clone(), &p);
+                    } else if !cfg!(any(windows, target_os = "linux")) {
+                        app.push_toast("Seret berkas .docx ke jendela aplikasi.", true);
+                    }
+                }
+                ui.label(RichText::new("atau seret berkas .docx ke jendela ini").size(12.5).color(GRAY));
+            });
             if let Some(e) = &st.error {
                 ui.colored_label(RED, e);
+            }
+            if !st.warnings.is_empty() {
+                ui.add_space(4.0);
+                ui.colored_label(
+                    theme::AMBER,
+                    format!("{} hal perlu dicek:", st.warnings.len()),
+                );
+                for w in st.warnings.iter().take(10) {
+                    ui.label(RichText::new(format!("• {w}")).size(12.5).color(GRAY));
+                }
             }
             if !st.questions.is_empty() {
                 ui.add_space(6.0);
@@ -584,8 +757,9 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                     }
                 }
                 ui.label(format!(
-                    "{} soal siap diimpor dari {} ({})",
+                    "{} soal {} dari {} ({})",
                     st.questions.len(),
+                    if st.from_word { "terbaca" } else { "siap diimpor" },
                     file_name(&st.file),
                     ringkas.join(", ")
                 ));
@@ -593,7 +767,12 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                     .striped(true)
                     .spacing(theme::GRID_SPACING)
                     .show(ui, |ui| {
-                        for h in ["Jenis", "Soal", "Kunci", "Skor"] {
+                        let heads: &[&str] = if st.from_word {
+                            &["Jenis", "Soal"]
+                        } else {
+                            &["Jenis", "Soal", "Kunci", "Skor"]
+                        };
+                        for h in heads {
                             theme::th(ui, h);
                         }
                         ui.end_row();
@@ -604,9 +783,11 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                                 _ => String::new(),
                             };
                             ui.label(tipe_label(q["Tipe_Soal"].as_str().unwrap_or("")));
-                            ui.add(egui::Label::new(g("Teks_Soal").chars().take(60).collect::<String>()).truncate());
-                            ui.label(g("Kunci_Jawaban").chars().take(14).collect::<String>());
-                            ui.label(g("Skor"));
+                            ui.add(egui::Label::new(plain_preview(&g("Teks_Soal"), 60)).truncate());
+                            if !st.from_word {
+                                ui.label(g("Kunci_Jawaban").chars().take(14).collect::<String>());
+                                ui.label(g("Skor"));
+                            }
                             ui.end_row();
                         }
                     });
@@ -616,6 +797,27 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                     );
                 }
                 ui.add_space(6.0);
+                if st.from_word
+                    && ui
+                        .button("Simpan sebagai Excel")
+                        .clicked()
+                {
+                    let mut p = crate::export::downloads_dir();
+                    let base = file_name(&st.file).trim_end_matches(".docx").to_string();
+                    p.push(format!("{}-siap-upload.xlsx", if base.is_empty() { "Soal".into() } else { base }));
+                    match write_question_rows(&p, &st.questions) {
+                        Ok(_) => app.push_toast(format!("Excel tersimpan: {}", p.display()), true),
+                        Err(e) => app.push_toast(e, false),
+                    }
+                }
+                ui.add_space(6.0);
+                if st.from_word {
+                    ui.label(
+                        RichText::new("Isi kunci jawaban dan skor di file Excel itu, lalu impor lewat \"Pilih berkas Excel...\".")
+                            .size(12.5)
+                            .color(GRAY),
+                    );
+                } else {
                 ui.label(
                     RichText::new("Setelah impor, cek kartu Total bobot di Soal Saya (target 100).")
                         .size(12.5)
@@ -649,6 +851,7 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                             );
                         }
                     }
+                }
                 }
             }
         });
@@ -692,6 +895,48 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0][1], "sitiaminah");
         assert_eq!(rows[0][2], kunci);
+    }
+
+    #[test]
+    fn pratinjau_membuang_stimulus_dan_tag() {
+        assert_eq!(
+            plain_preview(
+                "<b>Stimulus 1</b><br>Teks &amp; isi<br><br>Apa ibu kota?",
+                60
+            ),
+            "Apa ibu kota?"
+        );
+        assert_eq!(plain_preview("a<br>b", 60), "a b");
+        assert!(plain_preview(&"x".repeat(100), 20).ends_with('…'));
+    }
+
+    #[test]
+    fn hasil_word_diterapkan_dan_ditulis_ke_excel() {
+        let mut st = SoalImport::new("s1", "Mapel");
+        st.word_busy = true;
+        st.apply_word(Ok(json!({
+            "rows": [
+                {"Tipe_Soal":"MULTIPLE_CHOICE","Teks_Soal":"S1","Opsi_A":"a","Opsi_B":"b","Kunci_Jawaban":"A","Skor":50},
+                {"Tipe_Soal":"MATCHING","Teks_Soal":"S2","Opsi_A":"x | y | 50"}
+            ],
+            "warnings": ["Soal 3: kunci jawaban tidak ditemukan."]
+        })));
+        assert!(!st.word_busy && st.from_word);
+        assert_eq!(st.questions.len(), 2);
+        assert_eq!(st.warnings.len(), 1);
+        assert!(st.error.is_none());
+
+        let p = tmp("dari-word.xlsx");
+        write_question_rows(&p, &st.questions).unwrap();
+        // dibaca balik lewat pembaca impor yang sama
+        let q = read_questions(&p).unwrap();
+        assert_eq!(q.len(), 2);
+        assert_eq!(q[0]["Tipe_Soal"], "MULTIPLE_CHOICE");
+        assert_eq!(q[0]["Kunci_Jawaban"], "A");
+        assert_eq!(q[1]["Tipe_Soal"], "MATCHING");
+
+        st.apply_word(Err("Berkas tidak bisa dibaca.".into()));
+        assert!(st.questions.is_empty() && st.error.is_some() && !st.from_word);
     }
 
     #[test]

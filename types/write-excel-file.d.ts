@@ -23,7 +23,10 @@ declare module "write-excel-file" {
   }
 
   export interface WriteExcelOptions {
-    columns?: ColumnProps[];
+    columns?: ColumnProps[] | ColumnProps[][];
+    /** Nama sheet; bila lebih dari satu, `data` berisi satu tabel per sheet. */
+    sheets?: string[];
+    sheet?: string;
     fileName?: string;
     fontFamily?: string;
     fontSize?: number;
@@ -33,7 +36,7 @@ declare module "write-excel-file" {
   }
 
   const writeXlsxFile: (
-    data: ExcelCell[][],
+    data: ExcelCell[][] | ExcelCell[][][],
     options?: WriteExcelOptions,
   ) => Promise<void>;
 

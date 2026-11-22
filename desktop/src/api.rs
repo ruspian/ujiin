@@ -18,6 +18,10 @@ pub enum Msg {
     File {
         res: Result<String, String>,
     },
+    /// Hasil konversi soal dari Word (rows, warnings, counts) atau pesan galat.
+    Word {
+        res: Result<Value, String>,
+    },
     /// Hasil unggah gambar soal: alamat gambar (Cloudinary).
     Upload {
         res: Result<String, String>,
@@ -166,6 +170,32 @@ impl Net {
                 .map_err(net_err)
                 .and_then(read_json);
             Self::send(&tx, &ctx, Msg::Rpc { label, res });
+        });
+    }
+
+    /// Kirim berkas .docx ke server untuk dikonversi menjadi baris soal siap impor.
+    pub fn word_convert(&self, path: std::path::PathBuf) {
+        let (agent, url, tx, ctx) = (
+            self.agent.clone(),
+            format!("{}/api/v1/soal-word", self.base),
+            self.tx.clone(),
+            self.repaint.clone(),
+        );
+        std::thread::spawn(move || {
+            let res = (|| -> Result<Value, String> {
+                let bytes =
+                    std::fs::read(&path).map_err(|e| format!("Gagal membaca berkas ({e})"))?;
+                if bytes.len() > 4 * 1024 * 1024 {
+                    return Err("Berkas Word terlalu besar (maksimal 4 MB).".into());
+                }
+                let resp = agent
+                    .post(url)
+                    .header("Content-Type", "application/octet-stream")
+                    .send(&bytes[..])
+                    .map_err(net_err)?;
+                read_json(resp)
+            })();
+            Self::send(&tx, &ctx, Msg::Word { res });
         });
     }
 

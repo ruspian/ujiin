@@ -7,7 +7,7 @@ Windows: satu berkas `.exe` (±5 MB), tanpa instalasi, tanpa WebView. Linux: sat
 **Guru & admin:** beranda, monitoring ujian (status siswa, pelanggaran, tambah waktu, pengumuman, token, reset sesi, notifikasi desktop),
 penilaian & rekap (simpan Excel/CSV), Soal Saya, **editor soal** (semua jenis: pilihan ganda, PG kompleks, benar/salah,
 menjodohkan, esai; teks tebal/miring/garis bawah/sub/sup; unggah gambar ke Cloudinary lewat tombol atau seret-lepas berkas),
-**impor soal dari Excel** (templat 5 lembar, guru), **indikator total bobot** (maksimal 100), **koreksi esai** (guru).
+**impor soal dari Excel** (templat 5 lembar, guru) dan **konversi soal dari file Word (.docx)** (stimulus, kunci, bobot dibagi 100; pratinjau lalu impor atau simpan jadi Excel), **indikator total bobot** (maksimal 100), **koreksi esai** (guru).
 **Admin:** **form jadwal ujian**, **mapel + pengampu per kelas**, **impor siswa dan pengguna dari Excel** (dengan unduh templat),
 **kenaikan kelas / kelulusan**, siswa, kelas, jenis ujian, agama, tahun ajaran, pengguna, arsip CSV.
 Daftar tersimpan di komputer sehingga tetap terlihat saat internet putus (mode offline, hanya baca).

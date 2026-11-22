@@ -6,10 +6,12 @@ import {
   Loader2,
   Download,
   FileSpreadsheet,
+  FileText,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { importQuestions } from "@/actions/question";
+import KonversiWordModal from "@/components/layout/KonversiWordModal";
 import {
   ExcelRow,
   Props,
@@ -29,6 +31,7 @@ export default function ImportExcelButton({
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showWord, setShowWord] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -247,9 +250,22 @@ export default function ImportExcelButton({
                   </>
                 )}
               </button>
+
+              <button
+                onClick={() => setShowWord(true)}
+                disabled={isUploading}
+                className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors disabled:opacity-50"
+              >
+                <FileText size={18} />
+                Soal masih di Word? Ubah jadi Excel
+              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {showWord && (
+        <KonversiWordModal onClose={() => setShowWord(false)} />
       )}
     </>
   );

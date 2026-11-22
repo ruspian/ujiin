@@ -91,7 +91,16 @@ pub fn on_files_dropped(app: &mut App, files: Vec<PathBuf>) {
         } else if let Some(imp) = app.forms.impuser.as_mut() {
             imp.load(&p);
         } else if let Some(imp) = app.forms.impsoal.as_mut() {
-            imp.load(&p);
+            let docx = p
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| e.eq_ignore_ascii_case("docx"));
+            if docx {
+                let net = app.net.clone();
+                imp.start_word(net, &p);
+            } else {
+                imp.load(&p);
+            }
         } else {
             app.push_toast(
                 "Berkas dilepas, tetapi tidak ada formulir yang menunggu berkas.",
