@@ -81,6 +81,7 @@ const ACTIONS: Record<string, Entry> = {
   createExamType: form(examType.createExamType),
   updateExamType: form(examType.updateExamType),
   deleteExamType: form(examType.deleteExamType),
+  setExamTypeActive: form(examType.setExamTypeActive),
   createAcademicYear: form(academic.createAcademicYear),
   updateAcademicYear: form(academic.updateAcademicYear),
   deleteAcademicYear: form(academic.deleteAcademicYear),

@@ -74,6 +74,29 @@ export async function updateExamType(formData: FormData) {
   }
 }
 
+export async function setExamTypeActive(formData: FormData) {
+  const session = await auth();
+  if (!session || session.user.role !== "ADMIN")
+    return { success: false, message: "Akses ditolak!" };
+
+  const id = formData.get("id")?.toString();
+  if (!id) return { success: false, message: "ID tidak valid!" };
+  const active = formData.get("active")?.toString() === "true";
+
+  try {
+    await prisma.examType.update({ where: { id }, data: { active } });
+    revalidatePath("/admin/master/jenis-ujian");
+    revalidatePath("/guru/soal");
+    return {
+      success: true,
+      message: active ? "Jenis Ujian diaktifkan." : "Jenis Ujian dinonaktifkan.",
+    };
+  } catch (error) {
+    console.error("SET_EXAM_TYPE_ACTIVE_ERROR:", error);
+    return { success: false, message: "Terjadi kesalahan server!" };
+  }
+}
+
 export async function deleteExamType(formData: FormData) {
   const session = await auth();
   if (!session || session.user.role !== "ADMIN")

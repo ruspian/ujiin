@@ -13,6 +13,7 @@ export async function optionsList(user: StaffUser) {
         select: { id: true, name: true },
       }),
       prisma.examType.findMany({
+        where: { active: true },
         orderBy: { name: "asc" },
         select: { id: true, name: true, code: true },
       }),
@@ -49,6 +50,7 @@ export async function soalForm(user: StaffUser, subjectId: string) {
       select: { class: { select: { id: true, name: true } } },
     }),
     prisma.examType.findMany({
+      where: { active: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, code: true },
     }),

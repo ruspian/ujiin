@@ -22,7 +22,7 @@ export default async function JadwalUjianPage({
       }
     : {};
 
-  const [exams, totalCount, subjects, examTypes, classes, academicYears] =
+  const [exams, totalCount, subjects, classes, academicYears] =
     await Promise.all([
       prisma.exam.findMany({
         where: whereCondition,
@@ -43,12 +43,19 @@ export default async function JadwalUjianPage({
       prisma.exam.count({ where: whereCondition }),
 
       prisma.subject.findMany({ orderBy: { name: "asc" } }),
-      prisma.examType.findMany({ orderBy: { name: "asc" } }),
       prisma.class.findMany({ orderBy: { name: "asc" } }),
       prisma.academicYear.findMany({ orderBy: { year: "desc" } }),
     ]);
 
   const totalPages = Math.ceil(totalCount / limit);
+
+  // Jenis ujian aktif + yang dipakai jadwal di halaman ini (agar jadwal lama tetap bisa diedit)
+  const examTypes = await prisma.examType.findMany({
+    where: {
+      OR: [{ active: true }, { id: { in: exams.map((e) => e.examTypeId) } }],
+    },
+    orderBy: { name: "asc" },
+  });
 
   const mappedExams = exams.map((exam) => ({
     ...exam,

@@ -220,6 +220,8 @@ model ExamType {
   id        String   @id @default(cuid())
   name      String   
   code      String   @unique 
+  // Hanya jenis ujian aktif yang muncul di pilihan (buat soal & jadwal)
+  active    Boolean  @default(true)
   
   exams     Exam[]  
   questions Question[] 

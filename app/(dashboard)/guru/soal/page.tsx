@@ -38,6 +38,7 @@ export default async function TeacherBankSoalPage() {
   });
 
   const examTypes = await prisma.examType.findMany({
+    where: { active: true },
     orderBy: { name: "asc" },
   });
 
