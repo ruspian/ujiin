@@ -37,7 +37,7 @@ export type WordSoalResult = {
 };
 
 type Block =
-  | { t: "p"; text: string; heading: boolean }
+  | { t: "p"; text: string; heading: boolean; marked?: boolean }
   | { t: "tbl"; rows: string[][] };
 
 type Sec = "PG" | "PGK" | "MATCH" | "TF" | "ESSAY";
@@ -79,6 +79,26 @@ function childrenNamed(node: XNode, name: string): XNode[] {
   return res;
 }
 
+// Apakah bagian akhir paragraf ditebalkan / digarisbawahi / di-highlight (penanda kunci di sebagian dokumen)?
+function isMarked(p: XNode): boolean {
+  const runs: XNode[] = Array.from(p.getElementsByTagName("w:r"));
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const r = runs[i];
+    const t = textOf(r).trim();
+    if (!t) continue;
+    const rpr: XNode = childrenNamed(r, "w:rPr")[0];
+    if (!rpr) return false;
+    const on = (tag: string) => {
+      const el: XNode = childrenNamed(rpr, tag)[0];
+      if (!el) return false;
+      const v = el.getAttribute("w:val");
+      return v !== "0" && v !== "false" && v !== "none";
+    };
+    return on("w:b") || on("w:u") || on("w:highlight");
+  }
+  return false;
+}
+
 export async function readDocxBlocks(buffer: Buffer | Uint8Array): Promise<Block[]> {
   const zip = await JSZip.loadAsync(buffer);
   const file = zip.file("word/document.xml");
@@ -96,7 +116,8 @@ export async function readDocxBlocks(buffer: Buffer | Uint8Array): Promise<Block
       const sv = style?.getAttribute("w:val") ?? "";
       const heading = /^Heading|^Judul/i.test(sv);
       // Enter lunak (Shift+Enter) di Word = baris baru dalam satu paragraf; anggap baris terpisah.
-      for (const line of text.split("\n")) blocks.push({ t: "p", text: line.trim(), heading });
+      const marked = isMarked(n);
+      for (const line of text.split("\n")) blocks.push({ t: "p", text: line.trim(), heading, marked });
     } else if (n.nodeName === "w:tbl") {
       const rows: string[][] = [];
       for (const tr of childrenNamed(n, "w:tr")) {
@@ -126,7 +147,9 @@ function secOf(text: string): Sec | null {
 }
 
 const RE_Q = /^(\d{1,3})\s*[.)]\s*([\s\S]+)$/;
-const RE_OPT = /^([A-Ha-h])\s*[.)]\s*([\s\S]+)$/;
+const RE_OPT = /^\(?([A-Ha-h])\s*[.)]\s*([\s\S]+)$/;
+const RE_INLINE_KEY = /^(?:kunci(?:\s*jawaban)?|kj|jawaban(?:\s*benar)?)\s*[:=]\s*(\S[\s\S]*)$/i;
+const RE_KEYLINE = /(\d{1,3})\s*[.):=-]\s*([A-Ha-h](?:\s*[,;&]\s*[A-Ha-h])*|benar|salah)(?=\s|$|[,;])/gi;
 const RE_STIM = /^stimulus\b/i;
 const RE_DOTS = /^[.…_\-\s]+$/;
 
@@ -154,8 +177,10 @@ type Q = {
   num: number;
   sec: Sec;
   text: string;
-  opts: { id: string; text: string }[];
+  opts: { id: string; text: string; marked?: boolean }[];
   stim: Stim | null;
+  implicit?: boolean;
+  key?: string; // kunci tertulis tepat di bawah soal
   left?: string[]; // MATCH: kolom A
   right?: { id: string; text: string }[]; // MATCH per-soal: kolom B
 };
@@ -189,6 +214,7 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
   let stim: Stim | null = null;
   let cur: Q | null = null;
   let group: MatchGroup | null = null;
+  let implicitSec = false;
   let collecting = false; // sedang membaca "Pilihan jawaban:" bersama (menjodohkan)
 
   const flush = () => {
@@ -201,6 +227,15 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
         const s = secOf(b.text);
         if (s) { keySec = s; continue; }
         if (/^rekapitulasi/i.test(b.text)) break;
+        const pairs = Array.from(b.text.matchAll(RE_KEYLINE));
+        if (pairs.length > 1 || (pairs.length === 1 && pairs[0][0].length === b.text.trim().length)) {
+          for (const pm of pairs) {
+            const n = Number(pm[1]);
+            keys[keySec ?? "PG"].set(n, pm[2]);
+            anyKey.set(n, pm[2]);
+          }
+          continue;
+        }
         const m = RE_Q.exec(b.text);
         if (m) {
           const n = Number(m[1]);
@@ -226,10 +261,17 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
       const text = b.text;
       if (!text) continue;
 
+      const ik = RE_INLINE_KEY.exec(text);
+      if (ik && cur && !RE_DOTS.test(ik[1])) {
+        const c = cur as Q;
+        if (c.sec !== "ESSAY" || !c.key) c.key = ik[1].trim();
+        continue;
+      }
+
       if (/^kunci\s*jawaban/i.test(text)) { mode = "KUNCI"; keySec = null; flush(); continue; }
 
       const s = secOf(text);
-      if (s) { sec = s; stim = null; flush(); group = null; collecting = false; continue; }
+      if (s) { sec = s; implicitSec = false; stim = null; flush(); group = null; collecting = false; continue; }
 
       if (RE_STIM.test(text)) {
         flush(); collecting = false;
@@ -243,18 +285,27 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
       if (RE_DOTS.test(text) || /^jawaban\s*:/i.test(text)) continue;
 
       const q = RE_Q.exec(text);
+      if (q && !sec) {
+        // dokumen tanpa judul bagian: anggap pilihan ganda (jadi esai bila tak punya pilihan)
+        sec = "PG";
+        implicitSec = true;
+        warnings.push("Judul bagian (mis. “A. PILIHAN GANDA”) tidak ditemukan; soal tanpa pilihan dianggap esai, sisanya pilihan ganda.");
+      }
       if (q && sec) {
         collecting = false;
         let body = q[2].trim();
         if (sec === "TF") body = body.replace(/\s*jawaban\s*:[\s\S]*$/i, "").trim();
-        cur = { num: Number(q[1]), sec, text: body, opts: [], stim };
+        cur = { num: Number(q[1]), sec, text: body, opts: [], stim, implicit: implicitSec };
         questions.push(cur);
         continue;
       }
 
       const o = RE_OPT.exec(text);
       if (o) {
-        const opt = { id: o[1].toUpperCase(), text: o[2].trim() };
+        let ot = o[2].trim();
+        let mk = !!b.marked;
+        if (/\s*(\*|✓|✔|√)\s*$/.test(ot)) { ot = ot.replace(/\s*(\*|✓|✔|√)\s*$/, "").trim(); mk = true; }
+        const opt = { id: o[1].toUpperCase(), text: ot, marked: mk };
         if (collecting && group) group.choices.push(opt);
         else if (cur && !collecting) (cur as Q).opts.push(opt);
         continue;
@@ -329,6 +380,7 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
 
   for (const q of ordered) {
     curNum = q.num;
+    if (q.implicit && q.opts.length === 0) q.sec = "ESSAY";
     const base = stimHtml(q.stim) + html(q.text);
     if (q.sec === "PG" || q.sec === "PGK") {
       const row: SoalRow = {
@@ -341,7 +393,11 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
       q.opts.slice(0, MAX_OPT).forEach((o, i) => {
         (row as Record<string, unknown>)[`Opsi_${LETTERS[i]}`] = o.text;
       });
-      const k = normLetters(keyOf(q.sec, q.num));
+      let k = normLetters(q.key ?? "") || normLetters(keyOf(q.sec, q.num));
+      if (!k && q.opts.length > 1) {
+        const mk = q.opts.filter((o) => o.marked);
+        if (mk.length && mk.length < q.opts.length) k = mk.map((o) => o.id).sort().join(",");
+      }
       if (!k) warnings.push(`Soal ${q.num}: kunci jawaban tidak ditemukan.`);
       else if (q.sec === "PG" && k.includes(",")) {
         warnings.push(`Soal ${q.num}: kunci lebih dari satu untuk pilihan ganda biasa, diambil ${k[0]}.`);
@@ -349,11 +405,11 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
       } else row.Kunci_Jawaban = k;
       pushRow(row);
     } else if (q.sec === "TF") {
-      const k = normTF(keyOf("TF", q.num));
+      const k = normTF(q.key ?? "") || normTF(keyOf("TF", q.num));
       if (!k) warnings.push(`Soal ${q.num}: kunci benar/salah tidak ditemukan (diisi BENAR, mohon cek).`);
       pushRow({ Tipe_Soal: "TRUE_FALSE", Teks_Soal: base, Kunci_Jawaban: k || "BENAR" });
     } else if (q.sec === "ESSAY") {
-      const k = keyOf("ESSAY", q.num);
+      const k = (q.key && !/^[\s().…_-]*$/.test(q.key) ? q.key : "") || keyOf("ESSAY", q.num);
       if (!k) warnings.push(`Soal ${q.num}: kunci/pedoman jawaban esai tidak ditemukan.`);
       pushRow({ Tipe_Soal: "ESSAY", Teks_Soal: base, Kunci_Jawaban: k });
     } else if (q.sec === "MATCH") {
