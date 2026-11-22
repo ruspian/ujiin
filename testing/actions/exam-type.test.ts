@@ -45,6 +45,7 @@ describe("Pengujian Server Action - Jenis Ujian (Exam Type)", () => {
       id: "ext-123",
       name: "Ujian Tengah Semester",
       code: "UTS",
+      active: true,
       createdAt: new Date(),
       updatedAt: new Date(),
       ...overrides,
