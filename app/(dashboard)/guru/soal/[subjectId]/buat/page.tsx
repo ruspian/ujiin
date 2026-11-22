@@ -28,7 +28,11 @@ export default async function TambahSoalPage({
   const [subject, examType, classTarget] = await Promise.all([
     prisma.subject.findUnique({ where: { id: subjectId } }),
     prisma.examType.findUnique({ where: { id: typeId } }),
-    classId ? prisma.class.findUnique({ where: { id: classId } }) : null,
+    // classId bisa berisi beberapa id dipisah koma (guru memilih lebih dari satu kelas)
+    prisma.class.findMany({
+      where: { id: { in: classId.split(",").filter(Boolean) } },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   if (!subject || !examType) return <div>Data referensi tidak valid.</div>;
@@ -49,7 +53,7 @@ export default async function TambahSoalPage({
             <span className="font-semibold text-gray-700">{subject.name}</span>{" "}
             • Kelas:{" "}
             <span className="font-semibold text-gray-700">
-              {classTarget?.name}
+              {classTarget.map((c) => c.name).join(", ")}
             </span>{" "}
             • Kategori:{" "}
             <span className="font-semibold text-gray-700">{examType.name}</span>
