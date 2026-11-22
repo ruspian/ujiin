@@ -10,7 +10,7 @@ description = "Aplikasi desktop (Windows & Linux) untuk guru & admin Ujiin (CBT)
 calamine = { version = "0.38.0", default-features = false }
 dirs = "7.0.0"
 egui_extras = { version = "0.37", default-features = false }
-eframe = { version = "0.37.0", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+eframe = { version = "0.37.0", default-features = false, features = ["clipboard", "default_fonts", "glow", "wayland", "x11"] }
 open = "5.4.5"
 rust_xlsxwriter = "0.102.0"
 serde = { version = "1.0.229", features = ["derive"] }
