@@ -3,10 +3,8 @@
 import { useRef, useState } from "react";
 import { FileText, Loader2, UploadCloud, X, Download, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { importQuestions } from "@/actions/question";
 import { buildSoalSheets, plainPreview } from "@/lib/word-soal-excel";
 import type { SoalRow } from "@/lib/word-soal";
-import type { ExcelRow, Props } from "@/types/question";
 
 const LABEL: Record<SoalRow["Tipe_Soal"], string> = {
   MULTIPLE_CHOICE: "Pilihan Ganda",
@@ -22,14 +20,8 @@ type Hasil = {
   counts: Record<SoalRow["Tipe_Soal"], number>;
 };
 
-export default function KonversiWordModal({
-  subjectId,
-  classId,
-  typeId,
-  onClose,
-}: Props & { onClose: () => void }) {
+export default function KonversiWordModal({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [total, setTotal] = useState(100);
   const [busy, setBusy] = useState(false);
   const [hasil, setHasil] = useState<Hasil | null>(null);
   const [namaFile, setNamaFile] = useState("");
@@ -39,7 +31,7 @@ export default function KonversiWordModal({
     setHasil(null);
     setNamaFile(file.name);
     try {
-      const res = await fetch(`/api/v1/soal-word?total=${total}`, {
+      const res = await fetch(`/api/v1/soal-word`, {
         method: "POST",
         body: file,
       });
@@ -60,29 +52,7 @@ export default function KonversiWordModal({
     const { sheets, data } = buildSoalSheets(hasil.rows);
     const base = namaFile.replace(/\.docx$/i, "") || "Soal";
     await writeXlsxFile(data, { sheets, fileName: `${base}-siap-upload.xlsx` });
-    toast.success("Excel diunduh. Periksa lalu upload lewat Import.");
-  };
-
-  const imporLangsung = async () => {
-    if (!hasil) return;
-    setBusy(true);
-    const toastId = toast.loading(`Menyimpan ${hasil.rows.length} soal...`);
-    try {
-      const r = await importQuestions({
-        subjectId,
-        classIds: classId ? classId.split(",") : [],
-        typeId,
-        questions: hasil.rows as unknown as ExcelRow[],
-      });
-      if (r.success) {
-        toast.success(r.message, { id: toastId });
-        onClose();
-      } else toast.error(r.message, { id: toastId });
-    } catch {
-      toast.error("Gagal menyimpan soal.", { id: toastId });
-    } finally {
-      setBusy(false);
-    }
+    toast.success("Excel diunduh. Isi kunci jawaban dan skor, lalu upload lewat Import.");
   };
 
   return (
@@ -104,24 +74,12 @@ export default function KonversiWordModal({
           <div>
             <h2 className="text-lg font-bold text-gray-900">Konversi Soal dari Word</h2>
             <p className="text-xs text-gray-500">
-              Unggah file .docx; soal, pilihan, stimulus, dan kunci dibaca otomatis.
+              Unggah file .docx; soal dan pilihan jawaban dijadikan Excel sesuai template.
             </p>
           </div>
         </div>
 
         <div className="mb-4 flex flex-wrap items-end gap-3">
-          <label className="text-xs font-semibold text-gray-600">
-            Total bobot semua soal
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={total}
-              onChange={(e) => setTotal(Math.max(1, Number(e.target.value) || 100))}
-              disabled={busy}
-              className="mt-1 block w-28 rounded-lg border border-gray-200 px-3 py-2 text-sm"
-            />
-          </label>
           <input
             ref={inputRef}
             type="file"
@@ -138,7 +96,7 @@ export default function KonversiWordModal({
             {hasil ? "Pilih file lain" : "Pilih file Word (.docx)"}
           </button>
           <p className="basis-full text-xs text-gray-400">
-            Bobot dibagi rata otomatis hingga totalnya sama dengan angka ini. Bobot bisa diubah lagi setelah soal masuk.
+            Kunci jawaban dan skor tidak dibaca. Isi sendiri di file Excel hasilnya, lalu upload lewat tombol Import.
           </p>
         </div>
 
@@ -167,7 +125,7 @@ export default function KonversiWordModal({
               </div>
             ) : (
               <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-green-700">
-                <CheckCircle2 size={14} /> Semua soal dan kunci terbaca.
+                <CheckCircle2 size={14} /> Semua soal terbaca.
               </p>
             )}
 
@@ -178,7 +136,6 @@ export default function KonversiWordModal({
                     <th className="px-3 py-2">#</th>
                     <th className="px-3 py-2">Jenis</th>
                     <th className="px-3 py-2">Soal</th>
-                    <th className="px-3 py-2">Kunci</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,11 +144,6 @@ export default function KonversiWordModal({
                       <td className="px-3 py-2 text-gray-400">{i + 1}</td>
                       <td className="whitespace-nowrap px-3 py-2">{LABEL[r.Tipe_Soal]}</td>
                       <td className="px-3 py-2">{plainPreview(r.Teks_Soal)}</td>
-                      <td className="px-3 py-2 font-mono">
-                        {r.Tipe_Soal === "MATCHING"
-                          ? "pasangan"
-                          : (r.Kunci_Jawaban || "—").slice(0, 24)}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -205,17 +157,9 @@ export default function KonversiWordModal({
             <button
               onClick={unduhExcel}
               disabled={busy}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-gray-200 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              <Download size={18} /> Unduh Excel (periksa dulu)
-            </button>
-            <button
-              onClick={imporLangsung}
-              disabled={busy}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white hover:bg-green-700 disabled:bg-green-400"
-            >
-              {busy ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
-              Impor {hasil.rows.length} soal sekarang
+              <Download size={18} /> Unduh Excel
             </button>
           </div>
         )}

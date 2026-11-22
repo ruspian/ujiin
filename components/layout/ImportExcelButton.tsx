@@ -257,7 +257,7 @@ export default function ImportExcelButton({
                 className="flex items-center justify-center gap-2 w-full py-2.5 text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors disabled:opacity-50"
               >
                 <FileText size={18} />
-                Soal masih di Word? Konversi otomatis
+                Soal masih di Word? Ubah jadi Excel
               </button>
             </div>
           </div>
@@ -265,15 +265,7 @@ export default function ImportExcelButton({
       )}
 
       {showWord && (
-        <KonversiWordModal
-          subjectId={subjectId}
-          classId={classId}
-          typeId={typeId}
-          onClose={() => {
-            setShowWord(false);
-            setIsOpen(false);
-          }}
-        />
+        <KonversiWordModal onClose={() => setShowWord(false)} />
       )}
     </>
   );

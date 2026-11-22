@@ -174,10 +174,10 @@ impl Net {
     }
 
     /// Kirim berkas .docx ke server untuk dikonversi menjadi baris soal siap impor.
-    pub fn word_convert(&self, path: std::path::PathBuf, total: u32) {
+    pub fn word_convert(&self, path: std::path::PathBuf) {
         let (agent, url, tx, ctx) = (
             self.agent.clone(),
-            format!("{}/api/v1/soal-word?total={}", self.base, total),
+            format!("{}/api/v1/soal-word", self.base),
             self.tx.clone(),
             self.repaint.clone(),
         );

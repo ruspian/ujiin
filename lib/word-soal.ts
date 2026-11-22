@@ -190,6 +190,12 @@ type MatchGroup = {
   choices: { id: string; text: string }[];
 };
 
+// Daftar pilihan kanan menjodohkan (dipakai bila kunci tidak dibaca, supaya guru bisa memasangkan sendiri)
+function refList(choices: { id: string; text: string }[]): string {
+  if (!choices.length) return "";
+  return "<br><br><b>Pilihan jawaban:</b><br>" + choices.map((c) => `${c.id}. ${esc(c.text)}`).join("<br>");
+}
+
 function stimHtml(stim: Stim | null): string {
   if (!stim) return "";
   const title = stim.title ? `<b>${esc(stim.title)}</b>` : "";
@@ -199,7 +205,15 @@ function stimHtml(stim: Stim | null): string {
 
 // ─────────────────────────── parser utama ───────────────────────────
 
-export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100): WordSoalResult {
+/**
+ * @param withKeys false (default): hanya soal + pilihan; kunci jawaban & skor dikosongkan
+ *   (guru mengisinya sendiri di Excel). true: baca juga kunci dan bagi bobot ke totalBobot.
+ */
+export function parseWordBlocks(
+  blocks: Block[],
+  totalBobot: number | null = 100,
+  withKeys = false,
+): WordSoalResult {
   const warnings: string[] = [];
   const questions: Q[] = [];
   const groups: MatchGroup[] = [];
@@ -263,12 +277,16 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
 
       const ik = RE_INLINE_KEY.exec(text);
       if (ik && cur && !RE_DOTS.test(ik[1])) {
+        if (!withKeys) continue;
         const c = cur as Q;
         if (c.sec !== "ESSAY" || !c.key) c.key = ik[1].trim();
         continue;
       }
 
-      if (/^kunci\s*jawaban/i.test(text)) { mode = "KUNCI"; keySec = null; flush(); continue; }
+      if (/^kunci\s*jawaban/i.test(text)) {
+        if (!withKeys) break; // bagian kunci di akhir dokumen diabaikan
+        mode = "KUNCI"; keySec = null; flush(); continue;
+      }
 
       const s = secOf(text);
       if (s) { sec = s; implicitSec = false; stim = null; flush(); group = null; collecting = false; continue; }
@@ -393,27 +411,45 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
       q.opts.slice(0, MAX_OPT).forEach((o, i) => {
         (row as Record<string, unknown>)[`Opsi_${LETTERS[i]}`] = o.text;
       });
-      let k = normLetters(q.key ?? "") || normLetters(keyOf(q.sec, q.num));
-      if (!k && q.opts.length > 1) {
+      let k = withKeys ? normLetters(q.key ?? "") || normLetters(keyOf(q.sec, q.num)) : "";
+      if (withKeys && !k && q.opts.length > 1) {
         const mk = q.opts.filter((o) => o.marked);
         if (mk.length && mk.length < q.opts.length) k = mk.map((o) => o.id).sort().join(",");
       }
-      if (!k) warnings.push(`Soal ${q.num}: kunci jawaban tidak ditemukan.`);
+      if (!withKeys) k = "";
+      else if (!k) warnings.push(`Soal ${q.num}: kunci jawaban tidak ditemukan.`);
       else if (q.sec === "PG" && k.includes(",")) {
         warnings.push(`Soal ${q.num}: kunci lebih dari satu untuk pilihan ganda biasa, diambil ${k[0]}.`);
         row.Kunci_Jawaban = k[0];
-      } else row.Kunci_Jawaban = k;
+      } else if (k) row.Kunci_Jawaban = k;
       pushRow(row);
     } else if (q.sec === "TF") {
       const k = normTF(q.key ?? "") || normTF(keyOf("TF", q.num));
-      if (!k) warnings.push(`Soal ${q.num}: kunci benar/salah tidak ditemukan (diisi BENAR, mohon cek).`);
-      pushRow({ Tipe_Soal: "TRUE_FALSE", Teks_Soal: base, Kunci_Jawaban: k || "BENAR" });
+      if (!withKeys) pushRow({ Tipe_Soal: "TRUE_FALSE", Teks_Soal: base });
+      else {
+        if (!k) warnings.push(`Soal ${q.num}: kunci benar/salah tidak ditemukan (diisi BENAR, mohon cek).`);
+        pushRow({ Tipe_Soal: "TRUE_FALSE", Teks_Soal: base, Kunci_Jawaban: k || "BENAR" });
+      }
     } else if (q.sec === "ESSAY") {
-      const k = (q.key && !/^[\s().…_-]*$/.test(q.key) ? q.key : "") || keyOf("ESSAY", q.num);
-      if (!k) warnings.push(`Soal ${q.num}: kunci/pedoman jawaban esai tidak ditemukan.`);
-      pushRow({ Tipe_Soal: "ESSAY", Teks_Soal: base, Kunci_Jawaban: k });
+      if (!withKeys) pushRow({ Tipe_Soal: "ESSAY", Teks_Soal: base });
+      else {
+        const k = (q.key && !/^[\s().…_-]*$/.test(q.key) ? q.key : "") || keyOf("ESSAY", q.num);
+        if (!k) warnings.push(`Soal ${q.num}: kunci/pedoman jawaban esai tidak ditemukan.`);
+        pushRow({ Tipe_Soal: "ESSAY", Teks_Soal: base, Kunci_Jawaban: k });
+      }
     } else if (q.sec === "MATCH") {
-      if (q.left && q.right) {
+      if (q.left && q.right && !withKeys) {
+        // tanpa kunci: tulis sisi kiri saja, pilihan kanan dicantumkan di teks soal sebagai acuan
+        const row: SoalRow = {
+          Tipe_Soal: "MATCHING",
+          Teks_Soal: base + refList(q.right),
+        };
+        q.left.slice(0, MAX_OPT).forEach((l, i) => {
+          (row as Record<string, unknown>)[`Opsi_${LETTERS[i]}`] = `${noPipe(l)} | `;
+        });
+        if (q.left.length > MAX_OPT) warnings.push(`Soal ${q.num}: lebih dari ${MAX_OPT} pasangan, sisanya dilewati.`);
+        pushRow(row, Math.min(q.left.length, MAX_OPT));
+      } else if (q.left && q.right) {
         const map = new Map<number, string>();
         for (const part of keyOf("MATCH", q.num).split(/[,;]/)) {
           const m = /(\d+)\s*[-–:=]\s*([A-Ha-h])/.exec(part);
@@ -442,6 +478,10 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
     matchDone.add(g);
     const pairs: { n: number; text: string }[] = [];
     for (const it of g.items) {
+      if (!withKeys) {
+        pairs.push({ n: it.num, text: `${noPipe(it.left)} | ` });
+        continue;
+      }
       const rid = normLetters(keyOf("MATCH", it.num))[0];
       const r = g.choices.find((c) => c.id === rid);
       if (!r) warnings.push(`Menjodohkan nomor ${it.num}: kunci/pilihan tidak ditemukan.`);
@@ -451,7 +491,10 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
       const chunk = pairs.slice(i, i + MAX_OPT);
       const row: SoalRow = {
         Tipe_Soal: "MATCHING",
-        Teks_Soal: stimHtml(g.stim) + "Pasangkan pernyataan pada Kolom A dengan jawaban yang tepat pada Kolom B!",
+        Teks_Soal:
+          stimHtml(g.stim) +
+          "Pasangkan pernyataan pada Kolom A dengan jawaban yang tepat pada Kolom B!" +
+          (withKeys ? "" : refList(g.choices)),
       };
       chunk.forEach((p, k) => ((row as Record<string, unknown>)[`Opsi_${LETTERS[k]}`] = p.text));
       drafts.push({ row, pairs: chunk.length, num: g.items[0]?.num ?? 0 });
@@ -464,7 +507,9 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
 
   // ── bobot: tiap soal = 1 butir, tiap pasangan menjodohkan = 1 butir ──
   const units = drafts.reduce((n, d) => n + (d.row.Tipe_Soal === "MATCHING" ? d.pairs ?? 1 : 1), 0);
-  if (totalBobot && units) {
+  if (!withKeys) {
+    // skor diisi guru sendiri di Excel
+  } else if (totalBobot && units) {
     let base = Math.floor(totalBobot / units);
     let rem = totalBobot - base * units;
     if (base < 1) {
@@ -509,6 +554,7 @@ export function parseWordBlocks(blocks: Block[], totalBobot: number | null = 100
 export async function convertWordSoal(
   buffer: Buffer | Uint8Array,
   totalBobot: number | null = 100,
+  withKeys = false,
 ): Promise<WordSoalResult> {
-  return parseWordBlocks(await readDocxBlocks(buffer), totalBobot);
+  return parseWordBlocks(await readDocxBlocks(buffer), totalBobot, withKeys);
 }

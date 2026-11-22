@@ -21,7 +21,7 @@ function total(rows: SoalRow[]) {
 
 describe("convertWordSoal — Bahasa Indonesia kelas X (kunci tabel, pilihan bersama)", () => {
   it("membaca semua jenis soal, kunci, dan total bobot 100", async () => {
-    const r = await convertWordSoal(fx("bahasa-indonesia-x.docx"));
+    const r = await convertWordSoal(fx("bahasa-indonesia-x.docx"), 100, true);
     expect(r.warnings).toEqual([]);
     expect(r.counts).toEqual({
       MULTIPLE_CHOICE: 7,
@@ -57,7 +57,7 @@ describe("convertWordSoal — Bahasa Indonesia kelas X (kunci tabel, pilihan ber
 
 describe("convertWordSoal — Sejarah kelas XI (menjodohkan per soal, benar-salah baris)", () => {
   it("membaca tabel Kolom A/B dengan kunci 1-B,2-C,3-A", async () => {
-    const r = await convertWordSoal(fx("sejarah-xi.docx"));
+    const r = await convertWordSoal(fx("sejarah-xi.docx"), 100, true);
     expect(r.warnings).toEqual([]);
     expect(r.counts.MATCHING).toBe(6);
     expect(r.counts.TRUE_FALSE).toBe(6);
@@ -79,7 +79,28 @@ describe("convertWordSoal — kasus tepi", () => {
     await expect(convertWordSoal(Buffer.from("bukan docx"))).rejects.toThrow();
   });
   it("tanpa pembagian bobot memakai skor bawaan", async () => {
-    const r = await convertWordSoal(fx("sejarah-xi.docx"), null);
+    const r = await convertWordSoal(fx("sejarah-xi.docx"), null, true);
     expect(r.rows.find((x) => x.Tipe_Soal === "MULTIPLE_CHOICE")!.Skor).toBe(2);
+  });
+
+  it("tanpa kunci (default): hanya soal dan pilihan, kunci & skor kosong", async () => {
+    for (const f of ["bahasa-indonesia-x.docx", "sejarah-xi.docx"]) {
+      const r = await convertWordSoal(fx(f));
+      expect(r.rows.length).toBeGreaterThan(20);
+      expect(r.warnings).toEqual([]);
+      for (const row of r.rows) {
+        expect(row.Kunci_Jawaban).toBeUndefined();
+        expect(row.Skor).toBeUndefined();
+        if (row.Tipe_Soal === "MATCHING") expect(row.Opsi_A).toMatch(/ \| $/);
+        if (row.Tipe_Soal === "MULTIPLE_CHOICE") expect(row.Opsi_B).toBeTruthy();
+      }
+    }
+  });
+
+  it("menjodohkan tanpa kunci mencantumkan daftar pilihan di teks soal", async () => {
+    const r = await convertWordSoal(fx("sejarah-xi.docx"));
+    const m = r.rows.filter((x) => x.Tipe_Soal === "MATCHING");
+    expect(m.length).toBeGreaterThan(0);
+    expect(m.every((x) => x.Teks_Soal.includes("Pilihan jawaban:"))).toBe(true);
   });
 });

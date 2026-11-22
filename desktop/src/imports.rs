@@ -248,8 +248,7 @@ pub struct SoalImport {
     pub questions: Vec<Value>,
     pub error: Option<String>,
     pub busy: bool,
-    /// Konversi dari Word: total bobot yang dibagikan, status, dan catatan dari server.
-    pub word_total: u32,
+    /// Konversi dari Word: status dan catatan dari server.
     pub word_busy: bool,
     pub from_word: bool,
     pub warnings: Vec<String>,
@@ -260,7 +259,6 @@ impl SoalImport {
         Self {
             subject_id: subject_id.into(),
             subject_name: subject_name.into(),
-            word_total: 100,
             ..Default::default()
         }
     }
@@ -272,7 +270,7 @@ impl SoalImport {
                 self.word_busy = true;
                 self.error = None;
                 self.file = Some(p.to_path_buf());
-                n.word_convert(p.to_path_buf(), self.word_total.max(1));
+                n.word_convert(p.to_path_buf());
             }
             None => self.error = Some("Belum login.".into()),
         }
@@ -286,7 +284,11 @@ impl SoalImport {
                 let rows = v["rows"].as_array().cloned().unwrap_or_default();
                 self.warnings = v["warnings"]
                     .as_array()
-                    .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|x| x.as_str().map(String::from))
+                            .collect()
+                    })
                     .unwrap_or_default();
                 self.from_word = true;
                 self.error = if rows.is_empty() {
@@ -551,7 +553,10 @@ pub fn plain_preview(html: &str, max: usize) -> String {
         .replace("&amp;", "&");
     let out = out.split_whitespace().collect::<Vec<_>>().join(" ");
     if out.chars().count() > max {
-        format!("{}…", out.chars().take(max.saturating_sub(1)).collect::<String>())
+        format!(
+            "{}…",
+            out.chars().take(max.saturating_sub(1)).collect::<String>()
+        )
     } else {
         out
     }
@@ -575,7 +580,14 @@ pub fn write_question_rows(path: &std::path::Path, rows: &[Value]) -> Result<(),
         if subset.is_empty() {
             continue;
         }
-        let mut head = vec!["Teks_Soal", "Opsi_A", "Opsi_B", "Opsi_C", "Opsi_D", "Opsi_E"];
+        let mut head = vec![
+            "Teks_Soal",
+            "Opsi_A",
+            "Opsi_B",
+            "Opsi_C",
+            "Opsi_D",
+            "Opsi_E",
+        ];
         if full {
             head.extend(["Kunci_Jawaban", "Skor"]);
         }
@@ -701,13 +713,11 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
             ui.separator();
             ui.label(RichText::new("Soal masih di Word?").strong());
             ui.label(
-                RichText::new("Pilih berkas .docx: soal, pilihan, stimulus, dan kunci dibaca otomatis lalu bobot dibagi rata. Periksa pratinjau sebelum mengimpor.")
+                RichText::new("Pilih berkas .docx: soal dan pilihan jawaban dijadikan Excel sesuai template. Kunci jawaban dan skor diisi sendiri di Excel, lalu diimpor lewat \"Pilih berkas Excel\".")
                     .size(12.5)
                     .color(GRAY),
             );
             ui.horizontal(|ui| {
-                ui.label("Total bobot");
-                ui.add(egui::DragValue::new(&mut st.word_total).range(1..=1000));
                 if st.word_busy {
                     ui.spinner();
                     ui.label("Membaca berkas Word...");
@@ -747,8 +757,9 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                     }
                 }
                 ui.label(format!(
-                    "{} soal siap diimpor dari {} ({})",
+                    "{} soal {} dari {} ({})",
                     st.questions.len(),
+                    if st.from_word { "terbaca" } else { "siap diimpor" },
                     file_name(&st.file),
                     ringkas.join(", ")
                 ));
@@ -756,7 +767,12 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                     .striped(true)
                     .spacing(theme::GRID_SPACING)
                     .show(ui, |ui| {
-                        for h in ["Jenis", "Soal", "Kunci", "Skor"] {
+                        let heads: &[&str] = if st.from_word {
+                            &["Jenis", "Soal"]
+                        } else {
+                            &["Jenis", "Soal", "Kunci", "Skor"]
+                        };
+                        for h in heads {
                             theme::th(ui, h);
                         }
                         ui.end_row();
@@ -768,8 +784,10 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                             };
                             ui.label(tipe_label(q["Tipe_Soal"].as_str().unwrap_or("")));
                             ui.add(egui::Label::new(plain_preview(&g("Teks_Soal"), 60)).truncate());
-                            ui.label(g("Kunci_Jawaban").chars().take(14).collect::<String>());
-                            ui.label(g("Skor"));
+                            if !st.from_word {
+                                ui.label(g("Kunci_Jawaban").chars().take(14).collect::<String>());
+                                ui.label(g("Skor"));
+                            }
                             ui.end_row();
                         }
                     });
@@ -781,7 +799,7 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                 ui.add_space(6.0);
                 if st.from_word
                     && ui
-                        .button("Simpan sebagai Excel (untuk diperiksa)")
+                        .button("Simpan sebagai Excel")
                         .clicked()
                 {
                     let mut p = crate::export::downloads_dir();
@@ -793,6 +811,13 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                     }
                 }
                 ui.add_space(6.0);
+                if st.from_word {
+                    ui.label(
+                        RichText::new("Isi kunci jawaban dan skor di file Excel itu, lalu impor lewat \"Pilih berkas Excel...\".")
+                            .size(12.5)
+                            .color(GRAY),
+                    );
+                } else {
                 ui.label(
                     RichText::new("Setelah impor, cek kartu Total bobot di Soal Saya (target 100).")
                         .size(12.5)
@@ -826,6 +851,7 @@ pub fn soal_panel(app: &mut App, ui: &mut egui::Ui) {
                             );
                         }
                     }
+                }
                 }
             }
         });
@@ -874,7 +900,10 @@ mod tests {
     #[test]
     fn pratinjau_membuang_stimulus_dan_tag() {
         assert_eq!(
-            plain_preview("<b>Stimulus 1</b><br>Teks &amp; isi<br><br>Apa ibu kota?", 60),
+            plain_preview(
+                "<b>Stimulus 1</b><br>Teks &amp; isi<br><br>Apa ibu kota?",
+                60
+            ),
             "Apa ibu kota?"
         );
         assert_eq!(plain_preview("a<br>b", 60), "a b");

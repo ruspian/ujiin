@@ -12,7 +12,7 @@ describe("pembaca Word toleran", () => {
       p("Kunci: B"),
       p("2. Jelaskan arti proklamasi!"),
       p("Jawaban: Pernyataan kemerdekaan bangsa Indonesia"),
-    ], 100);
+    ], 100, true);
     expect(r.rows[0].Tipe_Soal).toBe("MULTIPLE_CHOICE");
     expect(r.rows[0].Opsi_B).toBe("Jakarta");
     expect(r.rows[0].Kunci_Jawaban).toBe("B");
@@ -27,7 +27,7 @@ describe("pembaca Word toleran", () => {
       p("2. Soal dua"), p("A. a"), p("B. b"),
       p("KUNCI JAWABAN"),
       p("1. A  2. B"),
-    ]);
+    ], 100, true);
     expect(r.rows.map((x) => x.Kunci_Jawaban)).toEqual(["A", "B"]);
   });
 
@@ -44,12 +44,12 @@ describe("pembaca Word toleran", () => {
       `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}</w:body></w:document>`,
     );
     const buf = await zip.generateAsync({ type: "nodebuffer" });
-    const r = await convertWordSoal(buf);
+    const r = await convertWordSoal(buf, 100, true);
     expect(r.rows[0].Kunci_Jawaban).toBe("B");
   });
 
   it("tanda * di akhir opsi dianggap kunci", () => {
-    const r = parseWordBlocks([p("1. Q"), p("a. x"), p("b. y *"), p("c. z")]);
+    const r = parseWordBlocks([p("1. Q"), p("a. x"), p("b. y *"), p("c. z")], 100, true);
     expect(r.rows[0].Kunci_Jawaban).toBe("B");
     expect(r.rows[0].Opsi_B).toBe("y");
   });
