@@ -107,6 +107,8 @@ pub struct App {
     mon_prev: HashMap<String, (String, i64, bool)>,
     pub forms: crate::forms::Forms,
     rpc_done: Vec<(String, bool)>,
+    /// Hasil konversi Word yang menunggu diambil panel impor soal.
+    pub word_done: Vec<Result<Value, String>>,
     /// Hanya untuk uji tampilan: dialog yang dibuka setelah login & data pilihan termuat.
     pending_form: Option<String>,
 }
@@ -148,6 +150,7 @@ impl App {
             mon_prev: HashMap::new(),
             forms: Default::default(),
             rpc_done: Vec::new(),
+            word_done: Vec::new(),
             pending_form: None,
         };
         // Untuk pengujian otomatis: UJIIN_SERVER / UJIIN_USER / UJIIN_PASS
@@ -378,6 +381,7 @@ impl App {
                     }
                 }
                 Msg::Upload { res } => crate::forms::on_upload_done(self, res),
+                Msg::Word { res } => self.word_done.push(res),
                 Msg::File { res } => match res {
                     Ok(path) => self.push_toast(format!("Tersimpan: {path}"), true),
                     Err(e) => self.push_toast(e, false),
