@@ -10,6 +10,8 @@ import { ExamTypeData, JenisUjianClientProps } from "@/types/examType";
 import MasterAdminNavbar from "./MasterAdminNavbar";
 import EditJenisUjianModal from "./EditJenisUjianModal";
 import DeleteJenisUjianModal from "./DeleteJenisUjianModal";
+import { toast } from "sonner";
+import { setExamTypeActive } from "@/actions/exam-type";
 
 export default function JenisUjian({
   examTypes,
@@ -24,6 +26,21 @@ export default function JenisUjian({
   const [isModalEditOpen, setIsModalEditOpen] = useState(false);
   const [isModalDeleteOpen, setIsModalDeleteOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ExamTypeData | null>(null);
+
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const toggleActive = async (item: ExamTypeData) => {
+    setBusyId(item.id);
+    const fd = new FormData();
+    fd.set("id", item.id);
+    fd.set("active", String(!(item.active ?? true)));
+    const res = await setExamTypeActive(fd);
+    setBusyId(null);
+    if (res.success) {
+      toast.success(res.message);
+      router.refresh();
+    } else toast.error(res.message);
+  };
 
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -99,6 +116,7 @@ export default function JenisUjian({
               <tr>
                 <th className="px-6 py-4 font-semibold">Kode</th>
                 <th className="px-6 py-4 font-semibold">Nama Jenis Ujian</th>
+                <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold text-right">Aksi</th>
               </tr>
             </thead>
@@ -116,6 +134,26 @@ export default function JenisUjian({
                     </td>
                     <td className="px-6 py-4 font-medium text-gray-900">
                       {item.name}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={item.active ?? true}
+                        aria-label={`Aktifkan ${item.name}`}
+                        disabled={busyId === item.id}
+                        onClick={() => toggleActive(item)}
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                          (item.active ?? true)
+                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20"
+                            : "bg-gray-100 text-gray-500 ring-1 ring-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`h-2 w-2 rounded-full ${(item.active ?? true) ? "bg-emerald-500" : "bg-gray-400"}`}
+                        />
+                        {(item.active ?? true) ? "Aktif" : "Nonaktif"}
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
@@ -143,7 +181,7 @@ export default function JenisUjian({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="p-10 text-center text-gray-500">
+                  <td colSpan={4} className="p-10 text-center text-gray-500">
                     Data Jenis Ujian belum ada.
                   </td>
                 </tr>

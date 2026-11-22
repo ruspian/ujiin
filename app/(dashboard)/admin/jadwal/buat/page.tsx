@@ -11,7 +11,7 @@ export default async function BuatJadwalAdminPage() {
     await Promise.all([
       prisma.subject.findMany({ orderBy: { name: "asc" } }),
       prisma.class.findMany({ orderBy: [{ level: "asc" }, { name: "asc" }] }),
-      prisma.examType.findMany({ orderBy: { name: "asc" } }),
+      prisma.examType.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
       prisma.academicYear.findMany({ orderBy: { year: "desc" } }),
       await prisma.user.findMany({
         where: { role: "GURU" },

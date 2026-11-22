@@ -27,7 +27,10 @@ export default async function EditJadwalAdminPage({
     await Promise.all([
       prisma.subject.findMany({ orderBy: { name: "asc" } }),
       prisma.class.findMany({ orderBy: [{ level: "asc" }, { name: "asc" }] }),
-      prisma.examType.findMany({ orderBy: { name: "asc" } }),
+      prisma.examType.findMany({
+        where: { OR: [{ active: true }, { id: exam.examTypeId }] },
+        orderBy: { name: "asc" },
+      }),
       prisma.academicYear.findMany({ orderBy: { year: "desc" } }),
       await prisma.user.findMany({
         where: { role: "GURU" },

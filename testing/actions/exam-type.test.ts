@@ -5,6 +5,7 @@ import {
   createExamType,
   updateExamType,
   deleteExamType,
+  setExamTypeActive,
 } from "@/actions/exam-type";
 import { ExamType } from "@prisma/client";
 
@@ -44,6 +45,7 @@ describe("Pengujian Server Action - Jenis Ujian (Exam Type)", () => {
       id: "ext-123",
       name: "Ujian Tengah Semester",
       code: "UTS",
+      active: true,
       createdAt: new Date(),
       updatedAt: new Date(),
       ...overrides,
@@ -199,6 +201,43 @@ describe("Pengujian Server Action - Jenis Ujian (Exam Type)", () => {
       expect(hasil.message).toBe("Jenis Ujian berhasil dihapus!");
       expect(prisma.examType.delete).toHaveBeenCalledWith({
         where: { id: "ext-aman" },
+      });
+    });
+  });
+
+  describe("setExamTypeActive", () => {
+    const fd = (id: string, active: string) => {
+      const f = new FormData();
+      f.set("id", id);
+      f.set("active", active);
+      return f;
+    };
+
+    test("hanya ADMIN yang boleh", async () => {
+      (auth as Mock).mockResolvedValue({ user: { role: "GURU" } });
+      const res = await setExamTypeActive(fd("e1", "false"));
+      expect(res.success).toBe(false);
+      expect(prisma.examType.update).not.toHaveBeenCalled();
+    });
+
+    test("menonaktifkan jenis ujian", async () => {
+      (auth as Mock).mockResolvedValue({ user: { role: "ADMIN" } });
+      (prisma.examType.update as Mock).mockResolvedValue({});
+      const res = await setExamTypeActive(fd("e1", "false"));
+      expect(res.success).toBe(true);
+      expect(prisma.examType.update).toHaveBeenCalledWith({
+        where: { id: "e1" },
+        data: { active: false },
+      });
+    });
+
+    test("mengaktifkan kembali", async () => {
+      (auth as Mock).mockResolvedValue({ user: { role: "ADMIN" } });
+      (prisma.examType.update as Mock).mockResolvedValue({});
+      await setExamTypeActive(fd("e1", "true"));
+      expect(prisma.examType.update).toHaveBeenCalledWith({
+        where: { id: "e1" },
+        data: { active: true },
       });
     });
   });
