@@ -23,6 +23,7 @@ export default function SubjectCard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [step, setStep] = useState<"CLASS" | "EXAM">("CLASS");
+  const [typeQuery, setTypeQuery] = useState("");
   const router = useRouter();
 
   const toggleClass = (classId: string) => {
@@ -44,7 +45,18 @@ export default function SubjectCard({
     setIsModalOpen(false);
     setSelectedClassIds([]);
     setStep("CLASS");
+    setTypeQuery("");
   };
+
+  const q = typeQuery.trim().toLowerCase();
+  const shownTypes = (q
+    ? examTypes.filter(
+        (t) => t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q),
+      )
+    : examTypes
+  )
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, "id"));
 
   return (
     <>
@@ -143,12 +155,27 @@ export default function SubjectCard({
                   <p className="text-sm text-gray-500 mb-5 text-center">
                     Pilih kategori ujian untuk soal:
                   </p>
-                  <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2">
-                    {examTypes.map((type) => (
+                  {examTypes.length > 5 && (
+                    <input
+                      type="search"
+                      value={typeQuery}
+                      onChange={(e) => setTypeQuery(e.target.value)}
+                      placeholder="Cari jenis ujian…"
+                      autoFocus
+                      className="w-full mb-3 px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                  )}
+                  <div className="grid grid-cols-1 gap-2 max-h-72 overflow-y-auto pr-2">
+                    {shownTypes.length === 0 && (
+                      <p className="text-sm text-gray-400 text-center py-6">
+                        Jenis ujian tidak ditemukan.
+                      </p>
+                    )}
+                    {shownTypes.map((type) => (
                       <button
                         key={type.id}
                         onClick={() => handleSelectExamType(type.id)}
-                        className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-blue-500 hover:bg-blue-50 transition-all group"
+                        className="flex items-center justify-between px-4 py-3 rounded-xl border-2 border-gray-100 hover:border-blue-500 hover:bg-blue-50 transition-all group"
                       >
                         <div className="text-left">
                           <span className="block font-bold text-gray-700 group-hover:text-blue-700">
